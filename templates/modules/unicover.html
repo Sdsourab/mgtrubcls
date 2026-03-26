@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}UniCover Generator{% endblock %}
+{% block nav_tasks %}{% endblock %}
+{% block nav_unicover %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">UniCover Generator</h1>
+            <p class="page-sub">Auto-generate professional assignment cover pages</p>
+        </div>
+    </div>
+
+    <div class="unicover-layout">
+        <!-- Form -->
+        <div class="unicover-form-card">
+            <h3>Cover Page Details</h3>
+            <form onsubmit="generateCoverPage(event)" class="modal-form" style="gap:16px;">
+                <div class="form-group">
+                    <label>Course Code *</label>
+                    <input type="text" id="uc_course" placeholder="e.g., MGT-3103" required style="text-transform:uppercase">
+                </div>
+                <div class="form-group">
+                    <label>Assignment / Report Title</label>
+                    <input type="text" id="uc_title" placeholder="e.g., Market Entry Strategy Analysis">
+                </div>
+                <div class="form-group">
+                    <label>Submission Date</label>
+                    <input type="date" id="uc_date">
+                </div>
+                <div id="ucError" class="auth-error hidden"></div>
+                <button type="submit" class="btn-primary btn-full">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Generate Cover
+                </button>
+            </form>
+        </div>
+
+        <!-- Preview -->
+        <div class="unicover-preview-card hidden" id="ucPreviewCard">
+            <div class="cover-preview-actions">
+                <span class="section-sub">Preview</span>
+                <button class="btn-sm btn-success" onclick="window.print()">🖨 Print</button>
+            </div>
+            <div class="cover-a4" id="ucA4">
+                <!-- rendered by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.unicover-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    align-items: flex-start;
+}
+.unicover-form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    position: sticky;
+    top: 24px;
+}
+.unicover-form-card h3 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+.unicover-preview-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+}
+.cover-preview-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.cover-a4 {
+    background: #fff;
+    color: #000;
+    width: 100%;
+    max-width: 595px;
+    min-height: 842px;
+    margin: 0 auto;
+    padding: 60px 50px;
+    border-radius: 4px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    font-family: 'Times New Roman', serif;
+    position: relative;
+}
+.a4-logo-area {
+    text-align: center;
+    border-bottom: 2px solid #1a1a2e;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+.a4-univ-name { font-size: 1.1rem; font-weight: bold; letter-spacing: 0.02em; }
+.a4-dept-name { font-size: 0.95rem; margin-top: 4px; }
+.a4-center-seal {
+    width: 80px; height: 80px;
+    border: 3px double #1a1a2e;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 16px auto;
+    font-weight: bold;
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: 0.05em;
+}
+.a4-doc-type {
+    text-align: center;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid #aaa;
+    padding: 6px 24px;
+    display: inline-block;
+    margin: 0 auto 24px;
+}
+.a4-title-area { text-align: center; margin: 28px 0 36px; }
+.a4-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-bottom: 1px solid #000;
+    padding-bottom: 8px;
+    display: inline-block;
+    min-width: 60%;
+    text-align: center;
+    line-height: 1.4;
+}
+.a4-fields { margin: 0 auto; max-width: 380px; }
+.a4-field {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+    font-size: 0.92rem;
+}
+.a4-field-label { font-weight: bold; min-width: 140px; }
+.a4-footer {
+    position: absolute;
+    bottom: 40px; left: 50px; right: 50px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #666;
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+}
+
+@media print {
+    body * { visibility: hidden !important; }
+    .cover-a4, .cover-a4 * { visibility: visible !important; }
+    .cover-a4 { position: fixed; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+}
+
+@media (max-width: 768px) {
+    .unicover-layout { grid-template-columns: 1fr; }
+    .unicover-form-card { position: static; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    UniSync.requireAuth();
+    // Pre-fill date
+    document.getElementById('uc_date').value = new Date().toISOString().split('T')[0];
+});
+
+async function generateCoverPage(e) {
+    e.preventDefault();
+    const user = UniSync.getUser();
+    if (!user) return;
+
+    const courseCode = document.getElementById('uc_course').value.trim().toUpperCase();
+    const assignTitle = document.getElementById('uc_title').value.trim();
+    const dateStr = document.getElementById('uc_date').value;
+    const errDiv = document.getElementById('ucError');
+    errDiv.classList.add('hidden');
+
+    try {
+        const res = await fetch('/productivity/api/unicover', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: user.id, course_code: courseCode})
+        });
+        const data = await res.json();
+        if (!data.success) {
+            errDiv.textContent = data.error || 'Failed to generate cover';
+            errDiv.classList.remove('hidden');
+            return;
+        }
+
+        const d = data.cover_data;
+        const formattedDate = dateStr
+            ? new Date(dateStr).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'})
+            : new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'});
+
+        document.getElementById('ucA4').innerHTML = `
+        <div class="a4-logo-area">
+            <div class="a4-univ-name">${d.university}</div>
+            <div class="a4-dept-name">${d.department}</div>
+            <div class="a4-center-seal">RUB<br>EST<br>1999</div>
+        </div>
+
+        <div style="text-align:center;margin-bottom:12px;">
+            <div class="a4-doc-type">Assignment / Report Submission</div>
+        </div>
+
+        <div class="a4-title-area">
+            <div class="a4-title">${assignTitle || 'Assignment Title'}</div>
+        </div>
+
+        <div style="text-align:center;margin-bottom:8px;font-size:0.85rem;letter-spacing:0.08em;text-transform:uppercase;font-weight:bold;">Submitted For</div>
+
+        <div class="a4-fields">
+            <div class="a4-field">
+                <div class="a4-field-label">Course Code</div>
+                <div>${d.course_code}</div>
+            </div>
+            <div class="a4-field">
+                <div class="a4-field-label">Course Title</div>
+                <div>${d.course_name}</div>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin:28px 0 8px;font-size:0.85rem;letter-spacing:0.08em;text-transform:uppercase;font-weight:bold;">Submitted By</div>
+
+        <div class="a4-fields">
+            <div class="a4-field">
+                <div class="a4-field-label">Name</div>
+                <div>${d.student_name}</div>
+            </div>
+            <div class="a4-field">
+                <div class="a4-field-label">Department</div>
+                <div>${d.dept || 'Management'}</div>
+            </div>
+            <div class="a4-field">
+                <div class="a4-field-label">Batch / Session</div>
+                <div>${d.batch || '—'}</div>
+            </div>
+            <div class="a4-field">
+                <div class="a4-field-label">Date of Submission</div>
+                <div>${formattedDate}</div>
+            </div>
+        </div>
+
+        <div class="a4-footer">
+            ${d.university} · ${d.department}<br>
+            This cover page was generated by UniSync Academic Portal
+        </div>`;
+
+        document.getElementById('ucPreviewCard').classList.remove('hidden');
+        document.getElementById('ucPreviewCard').scrollIntoView({behavior:'smooth'});
+        UniSync.toast('Cover page ready! Use Print to save as PDF.', 'success');
+
+    } catch(err) {
+        errDiv.textContent = 'Connection error. Is the server running?';
+        errDiv.classList.remove('hidden');
+    }
+}
+</script>
+{% endblock %}

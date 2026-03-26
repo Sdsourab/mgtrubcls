@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment secrets — NEVER commit this
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / dev artefacts
+deep_test.py
+test_connection.py
+fix_config.py
+Codebase.py
+ai_master_context.txt
+*.log
+
+# Vercel
+.vercel/

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Page Not Found · UniSync</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d0d14; --card: #16162a; --border: rgba(255,255,255,0.07);
+            --accent: #7c6fff; --accent-light: #a78bfa; --pink: #ec4899;
+            --text: #f0f0ff; --muted: #60607a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 20px;
+        }
+        .err-box { max-width: 420px; }
+        .err-code {
+            font-family: 'Syne', sans-serif; font-size: 7rem; font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent-light), var(--pink));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05em;
+        }
+        .err-title { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; margin: 16px 0 8px; }
+        .err-sub   { color: var(--muted); font-size: 0.95rem; margin-bottom: 28px; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: linear-gradient(135deg, var(--accent), #6b5ce7);
+            color: #fff; border: none; border-radius: 10px;
+            padding: 12px 24px; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; text-decoration: none;
+        }
+        .btn:hover { filter: brightness(1.15); }
+    </style>
+</head>
+<body>
+    <div class="err-box">
+        <div class="err-code">404</div>
+        <div class="err-title">Page Not Found</div>
+        <div class="err-sub">The page you're looking for doesn't exist or has been moved.</div>
+        <a href="/dashboard" class="btn">← Back to Dashboard</a>
+    </div>
+</body>
+</html>

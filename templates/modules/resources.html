@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Resources{% endblock %}
+{% block nav_resources %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Study Resources</h1>
+            <p class="page-sub">Notes, files and study materials</p>
+        </div>
+        <button class="btn-primary" onclick="openAddResource()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Upload
+        </button>
+    </div>
+
+    <div class="filter-bar">
+        <input type="text" id="resourceSearch" placeholder="Search by subject..." class="filter-search" oninput="loadResources()">
+    </div>
+
+    <div class="resources-grid" id="resourcesGrid">
+        <div class="resource-skeleton"></div>
+        <div class="resource-skeleton"></div>
+    </div>
+</div>
+
+<!-- Add Resource Modal -->
+<div class="modal-overlay hidden" id="addResourceModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="document.getElementById('addResourceModal').classList.add('hidden')">✕</button>
+        <h3>Share a Resource</h3>
+        <form onsubmit="submitResource(event)" class="modal-form">
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="r_title" placeholder="e.g., MGT-3103 Chapter 5 Notes" required>
+            </div>
+            <div class="form-group">
+                <label>Subject / Course</label>
+                <input type="text" id="r_subject" placeholder="e.g., Insurance and Risk Management">
+            </div>
+            <div class="form-group">
+                <label>File URL (Google Drive, etc.)</label>
+                <input type="url" id="r_url" placeholder="https://drive.google.com/...">
+            </div>
+            <button type="submit" class="btn-primary btn-full">Share Resource</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    UniSync.requireAuth();
+    loadResources();
+});
+
+async function loadResources() {
+    const search = document.getElementById('resourceSearch').value;
+    const params = new URLSearchParams({dept:'Management'});
+    if (search) params.append('subject', search);
+
+    try {
+        const res = await fetch(`/campus/api/resources?${params}`);
+        const data = await res.json();
+        const grid = document.getElementById('resourcesGrid');
+
+        if (!data.success || !data.data.length) {
+            grid.innerHTML = `<div class="empty-state-full">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <h3>No resources yet</h3>
+                <p>Be the first to share study materials!</p>
+            </div>`;
+            return;
+        }
+
+        grid.innerHTML = data.data.map(r => `
+        <div class="resource-card">
+            <div class="resource-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div class="resource-info">
+                <div class="resource-title">${r.title || 'Untitled'}</div>
+                <div class="resource-subject">${r.subject || r.dept}</div>
+                <div class="resource-uploader">Shared by ${r.uploaded_by || 'Anonymous'}</div>
+            </div>
+            ${r.file_url ? `<a href="${r.file_url}" target="_blank" class="btn-sm resource-download">Open →</a>` : ''}
+        </div>`).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function submitResource(e) {
+    e.preventDefault();
+    const user = UniSync.getUser();
+    const payload = {
+        title: document.getElementById('r_title').value,
+        subject: document.getElementById('r_subject').value,
+        file_url: document.getElementById('r_url').value,
+        dept: 'Management',
+        uploaded_by: user?.full_name || 'Anonymous',
+    };
+    try {
+        const res = await fetch('/campus/api/resources', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            UniSync.toast('Resource shared!', 'success');
+            document.getElementById('addResourceModal').classList.add('hidden');
+            loadResources();
+        }
+    } catch(e) { UniSync.toast('Error', 'error'); }
+}
+
+function openAddResource() { document.getElementById('addResourceModal').classList.remove('hidden'); }
+</script>
+{% endblock %}

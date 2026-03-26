@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Tasks{% endblock %}
+{% block nav_tasks %}active{% endblock %}
+{% block mob_tasks %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">My Tasks</h1>
+            <p class="page-sub">Track your assignments and deadlines</p>
+        </div>
+        <button class="btn-primary" onclick="openAddTask()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Task
+        </button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all" onclick="filterTasks('all', this)">All</button>
+        <button class="filter-btn" data-filter="pending" onclick="filterTasks('pending', this)">Pending</button>
+        <button class="filter-btn" data-filter="in_progress" onclick="filterTasks('in_progress', this)">In Progress</button>
+        <button class="filter-btn" data-filter="done" onclick="filterTasks('done', this)">Done</button>
+    </div>
+
+    <!-- Tasks Board -->
+    <div class="tasks-board" id="tasksBoard">
+        <div class="task-skeleton"><div class="skeleton-block"></div><div class="skeleton-block"></div></div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal-overlay hidden" id="addTaskModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeAddTask()">✕</button>
+        <h3>New Task</h3>
+        <form onsubmit="submitTask(event)" class="modal-form">
+            <div class="form-group">
+                <label>Task Title *</label>
+                <input type="text" id="t_title" placeholder="e.g., Submit assignment" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="t_desc" placeholder="Details about the task..." rows="3"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Deadline</label>
+                    <input type="datetime-local" id="t_deadline">
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="t_priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Course Code</label>
+                <input type="text" id="t_course" placeholder="e.g., MGT-3103">
+            </div>
+            <button type="submit" class="btn-primary btn-full">Add Task</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allTasks = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    UniSync.requireAuth();
+    loadTasks();
+});
+
+async function loadTasks() {
+    const user = UniSync.getUser();
+    if (!user) return;
+    try {
+        const res = await fetch(`/productivity/api/tasks?user_id=${user.id}`);
+        const data = await res.json();
+        if (data.success) { allTasks = data.data; renderTasks(allTasks); }
+    } catch(e) { console.error(e); }
+}
+
+function renderTasks(tasks) {
+    const board = document.getElementById('tasksBoard');
+    if (!tasks.length) {
+        board.innerHTML = `<div class="empty-state-full"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56"><rect x="9" y="3" width="13" height="13" rx="2"/><path d="M5 7H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg><h3>No tasks yet</h3><p>Add your first task to get started</p></div>`;
+        return;
+    }
+    board.innerHTML = tasks.map(t => {
+        const dl = t.deadline ? new Date(t.deadline) : null;
+        const dlStr = dl ? dl.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : 'No deadline';
+        const isUrgent = t.urgent_flag;
+        const isDone = t.status === 'done';
+        const prio = t.priority || 'medium';
+
+        let badge = `<span class="priority-badge ${prio}">${prio.toUpperCase()}</span>`;
+        if (isUrgent) badge = `<span class="priority-badge urgent blink">URGENT</span>`;
+
+        return `
+        <div class="task-card ${isDone ? 'task-done' : ''} ${isUrgent ? 'task-urgent' : ''}">
+            <div class="task-card-top">
+                ${badge}
+                <span class="task-card-date">${dlStr}</span>
+            </div>
+            <div class="task-card-title ${isDone ? 'line-through' : ''}">${t.title}</div>
+            ${t.description ? `<div class="task-card-desc">${t.description}</div>` : ''}
+            ${t.course_code ? `<div class="task-card-course"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>${t.course_code}</div>` : ''}
+            <div class="task-card-actions">
+                ${!isDone ? `
+                <button class="btn-sm" onclick="updateStatus('${t.id}', 'in_progress')">In Progress</button>
+                <button class="btn-sm btn-success" onclick="updateStatus('${t.id}', 'done')">✓ Done</button>` : `
+                <button class="btn-sm" onclick="updateStatus('${t.id}', 'pending')">↩ Reopen</button>`}
+                <button class="btn-sm btn-danger" onclick="deleteTask('${t.id}')">Delete</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filterTasks(filter, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (filter === 'all') renderTasks(allTasks);
+    else renderTasks(allTasks.filter(t => t.status === filter));
+}
+
+async function submitTask(e) {
+    e.preventDefault();
+    const user = UniSync.getUser();
+    const payload = {
+        user_id: user.id,
+        title: document.getElementById('t_title').value,
+        description: document.getElementById('t_desc').value,
+        deadline: document.getElementById('t_deadline').value || null,
+        priority: document.getElementById('t_priority').value,
+        course_code: document.getElementById('t_course').value,
+    };
+    try {
+        const res = await fetch('/productivity/api/tasks', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            UniSync.toast('Task added!', 'success');
+            closeAddTask();
+            loadTasks();
+        } else { UniSync.toast(data.error, 'error'); }
+    } catch(e) { UniSync.toast('Error adding task', 'error'); }
+}
+
+async function updateStatus(id, status) {
+    try {
+        await fetch(`/productivity/api/tasks/${id}`, {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({status})
+        });
+        UniSync.toast('Updated!', 'success');
+        loadTasks();
+    } catch(e) { UniSync.toast('Error', 'error'); }
+}
+
+async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    try {
+        await fetch(`/productivity/api/tasks/${id}`, {method:'DELETE'});
+        UniSync.toast('Deleted', 'success');
+        allTasks = allTasks.filter(t => t.id !== id);
+        renderTasks(allTasks);
+    } catch(e) { UniSync.toast('Error', 'error'); }
+}
+
+function openAddTask() { document.getElementById('addTaskModal').classList.remove('hidden'); }
+function closeAddTask() {
+    document.getElementById('addTaskModal').classList.add('hidden');
+    document.querySelector('#addTaskModal form').reset();
+}
+</script>
+{% endblock %}

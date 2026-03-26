@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}UniSync{% endblock %} — Rabindra University</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-mark">
+                <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="18" cy="18" r="17" stroke="url(#lg1)" stroke-width="2"/>
+                    <path d="M10 24 L18 12 L26 24" stroke="url(#lg2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="18" cy="22" r="2.5" fill="url(#lg2)"/>
+                    <defs>
+                        <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#7C6FFF"/>
+                            <stop offset="1" stop-color="#C084FC"/>
+                        </linearGradient>
+                        <linearGradient id="lg2" x1="10" y1="12" x2="26" y2="24" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#A78BFA"/>
+                            <stop offset="1" stop-color="#EC4899"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="logo-text">
+                <span class="logo-name">UniSync</span>
+                <span class="logo-sub">Rabindra University</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item {% block nav_home %}{% endblock %}" data-label="Home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="/productivity/tasks" class="nav-item {% block nav_tasks %}{% endblock %}" data-label="Tasks">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="13" height="13" rx="2"/><path d="M5 7H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><path d="m6 14 4 4 5-7"/></svg>
+                <span>Tasks</span>
+            </a>
+            <a href="/academic/routine" class="nav-item {% block nav_routine %}{% endblock %}" data-label="Routine">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Routine</span>
+            </a>
+            <a href="/academic/courses" class="nav-item {% block nav_courses %}{% endblock %}" data-label="Courses">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <span>Courses</span>
+            </a>
+            <a href="/campus/resources" class="nav-item {% block nav_resources %}{% endblock %}" data-label="Resources">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Resources</span>
+            </a>
+            <a href="/productivity/unicover" class="nav-item {% block nav_unicover %}{% endblock %}" data-label="UniCover">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>UniCover</span>
+            </a>
+            <a href="/admin/" class="nav-item {% block nav_admin %}{% endblock %} admin-only hidden" data-label="Admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="18" cy="18" r="3"/><path d="M18 15v3l2 1"/></svg>
+                <span>Admin</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-card" id="sidebarUserCard">
+                <div class="user-avatar" id="sidebarAvatar">?</div>
+                <div class="user-info">
+                    <div class="user-name" id="sidebarUserName">Loading...</div>
+                    <div class="user-role" id="sidebarUserRole">student</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="UniSync.logout()" title="Logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Top Bar -->
+    <header class="mobile-header">
+        <button class="mobile-menu-btn" onclick="UniSync.toggleSidebar()" id="menuBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="mobile-logo">
+            <span>UniSync</span>
+        </div>
+        <div class="mobile-user-avatar" id="mobileAvatar">?</div>
+    </header>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="UniSync.toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="mobile-bottom-nav">
+        <a href="/dashboard" class="mob-nav-item {% block mob_home %}{% endblock %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span>HOME</span>
+        </a>
+        <a href="/productivity/tasks" class="mob-nav-item {% block mob_tasks %}{% endblock %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="13" height="13" rx="2"/><path d="M5 7H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
+            <span>TASKS</span>
+        </a>
+        <a href="/academic/routine" class="mob-nav-item {% block mob_routine %}{% endblock %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>COURSES</span>
+        </a>
+        <a href="/auth/login" class="mob-nav-item {% block mob_profile %}{% endblock %}" onclick="event.preventDefault(); UniSync.showProfile()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>PROFILE</span>
+        </a>
+    </nav>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay hidden" id="profileModal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="document.getElementById('profileModal').classList.add('hidden')">✕</button>
+            <h3>My Profile</h3>
+            <div class="profile-modal-body" id="profileModalBody">
+                <div class="profile-avatar-lg" id="profileAvatarLg">?</div>
+                <div class="profile-detail"><label>Name</label><span id="pm_name">—</span></div>
+                <div class="profile-detail"><label>Email</label><span id="pm_email">—</span></div>
+                <div class="profile-detail"><label>Role</label><span id="pm_role">—</span></div>
+                <div class="profile-detail"><label>Department</label><span id="pm_dept">—</span></div>
+                <div class="profile-detail"><label>Batch</label><span id="pm_batch">—</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Developer Credit -->
+    <footer style="text-align:center;padding:28px 20px 16px;margin-top:40px;border-top:1px solid rgba(255,255,255,0.06);color:#60607a;font-size:0.73rem;line-height:1.9;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;background:rgba(124,111,255,0.06);border:1px solid rgba(124,111,255,0.15);border-radius:10px;padding:14px 20px;display:inline-block;text-align:left;">
+            <div style="color:#a78bfa;font-weight:700;margin-bottom:4px;">◈ UniSync — Academic Portal</div>
+            <div>Rabindra University, Bangladesh · Dept. of Management</div>
+            <div style="margin-top:6px;">Designed &amp; Developed by <span style="color:#a78bfa;font-weight:600;">Sourav</span></div>
+            <div>Stack: Flask · Supabase · Vanilla JS · v1.0.0 · 2025-26</div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/live_engine.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

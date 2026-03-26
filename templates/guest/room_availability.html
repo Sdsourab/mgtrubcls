@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Availability — UniSync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { padding:0; }
+        .guest-nav {
+            position:sticky; top:0; z-index:50;
+            background:var(--bg-surface); border-bottom:1px solid var(--border);
+            padding:14px 24px; display:flex; align-items:center; gap:14px;
+        }
+        .back-btn { display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem;text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:6px;transition:all 0.15s; }
+        .back-btn:hover { color:var(--text-primary);border-color:var(--border-strong); }
+        .guest-nav-title { font-family:'Syne',sans-serif;font-weight:700;font-size:1rem; }
+        .guest-badge-sm { margin-left:auto;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;padding:3px 10px;border-radius:20px; }
+        .page-wrap { max-width:860px;margin:0 auto;padding:28px 20px; }
+        .controls-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end; }
+        .ctrl-group { display:flex;flex-direction:column;gap:6px;flex:1;min-width:130px; }
+        .ctrl-group label { font-size:0.78rem;font-weight:600;color:var(--text-muted); }
+        .ctrl-group select { background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;color:var(--text-primary);font-size:0.9rem;cursor:pointer; }
+
+        .rooms-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
+        .room-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden; }
+        .room-card-header { padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+        .room-name { font-family:'Syne',sans-serif;font-size:1rem;font-weight:700; }
+        .room-free-count { font-size:0.75rem;color:var(--green);font-weight:600; }
+
+        .time-slot-row { display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04); }
+        .time-slot-row:last-child { border-bottom:none; }
+        .slot-indicator { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+        .slot-indicator.busy { background:var(--red); }
+        .slot-indicator.free { background:var(--green); }
+        .slot-time-lbl { font-family:'JetBrains Mono',monospace;font-size:0.74rem;color:var(--text-muted);min-width:105px;flex-shrink:0; }
+        .slot-info { flex:1;font-size:0.82rem; }
+        .slot-busy-text { color:var(--text-primary);font-weight:600; }
+        .slot-free-text { color:var(--green); }
+        .slot-teacher { font-size:0.74rem;color:var(--text-muted);margin-top:2px; }
+
+        .lunch-row { padding:8px 16px;background:rgba(124,111,255,0.05);border-bottom:1px solid rgba(255,255,255,0.04); }
+        .lunch-row-inner { font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-align:center; }
+
+        @media(max-width:700px){ .rooms-grid{grid-template-columns:1fr;} }
+    </style>
+</head>
+<body>
+
+<nav class="guest-nav">
+    <a href="/guest/" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m15 18-6-6 6-6"/></svg>
+        Back
+    </a>
+    <span class="guest-nav-title">Room Availability</span>
+    <span class="guest-badge-sm">GUEST</span>
+</nav>
+
+<div class="page-wrap">
+    <div class="controls-card">
+        <div class="ctrl-group">
+            <label>Day</label>
+            <select id="daySelect" onchange="loadRooms()">
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+            </select>
+        </div>
+        <div style="padding-bottom:2px;color:var(--text-muted);font-size:0.82rem;align-self:center;">
+            🟢 Free &nbsp; 🔴 Occupied
+        </div>
+    </div>
+
+    <div class="rooms-grid" id="roomsGrid">
+        <div class="skeleton-block" style="height:300px;"></div>
+        <div class="skeleton-block" style="height:300px;"></div>
+        <div class="skeleton-block" style="height:300px;"></div>
+    </div>
+</div>
+
+<script>
+const ROOMS = [
+    {no:'101', label:'Room 101'},
+    {no:'201', label:'Room 201'},
+    {no:'100', label:'Computer Lab'},
+];
+const ALL_SLOTS = [
+    {slot:'9:00-10:30',  start:'09:00', end:'10:30'},
+    {slot:'10:30-12:00', start:'10:30', end:'12:00'},
+    {slot:'12:00-1:30',  start:'12:00', end:'13:30'},
+    {slot:'2:00-3:30',   start:'14:00', end:'15:30'},
+    {slot:'3:30-5:00',   start:'15:30', end:'17:00'},
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Auto-select today
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const today = days[new Date().getDay()];
+    const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+    const sel = document.getElementById('daySelect');
+    if (validDays.includes(today)) sel.value = today;
+    loadRooms();
+});
+
+async function loadRooms() {
+    const day  = document.getElementById('daySelect').value;
+    const grid = document.getElementById('roomsGrid');
+    grid.innerHTML = ROOMS.map(() => '<div class="skeleton-block" style="height:280px;"></div>').join('');
+
+    try {
+        const res  = await fetch(`/guest/api/room-availability?day=${day}`);
+        const data = await res.json();
+        if (!data.success) { grid.innerHTML = '<p style="color:var(--text-muted);">Could not load data.</p>'; return; }
+
+        // Build lookup: room_no -> time_slot -> entry
+        const lookup = {};
+        data.data.forEach(r => {
+            if (!lookup[r.room_no]) lookup[r.room_no] = {};
+            lookup[r.room_no][r.time_slot] = r;
+        });
+
+        grid.innerHTML = ROOMS.map(({no, label}) => {
+            const roomData = lookup[no] || {};
+            const freeCount = ALL_SLOTS.filter(s => !roomData[s.slot]).length;
+
+            let slotsHtml = '';
+            ALL_SLOTS.forEach((s, i) => {
+                const entry = roomData[s.slot];
+                if (i === 2) { // after slot 3, add lunch
+                    slotsHtml += `<div class="lunch-row"><div class="lunch-row-inner">Prayer & Lunch Break (1:30–2:00)</div></div>`;
+                }
+                if (entry) {
+                    slotsHtml += `
+                    <div class="time-slot-row">
+                        <div class="slot-indicator busy"></div>
+                        <div class="slot-time-lbl">${s.slot}</div>
+                        <div class="slot-info">
+                            <div class="slot-busy-text">${entry.course_code}</div>
+                            <div class="slot-teacher">${entry.teacher_name || entry.teacher_code}</div>
+                        </div>
+                    </div>`;
+                } else {
+                    slotsHtml += `
+                    <div class="time-slot-row">
+                        <div class="slot-indicator free"></div>
+                        <div class="slot-time-lbl">${s.slot}</div>
+                        <div class="slot-info"><div class="slot-free-text">Available</div></div>
+                    </div>`;
+                }
+            });
+
+            return `
+            <div class="room-card">
+                <div class="room-card-header">
+                    <div class="room-name">${label}</div>
+                    <div class="room-free-count">${freeCount} free slots</div>
+                </div>
+                ${slotsHtml}
+            </div>`;
+        }).join('');
+
+    } catch(e) {
+        grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Failed to load. Check connection.</p>';
+    }
+}
+</script>
+</body>
+</html>

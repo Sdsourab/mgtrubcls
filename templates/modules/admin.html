@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Admin Panel</h1>
+            <p class="page-sub">Routine management & system controls</p>
+        </div>
+        <span class="admin-badge">ADMIN ONLY</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="adminStats">
+        <div class="stat-card"><div class="stat-label">ROUTINE ENTRIES</div><div class="stat-value" id="aStatRoutines">—</div></div>
+        <div class="stat-card"><div class="stat-label">MAPPINGS</div><div class="stat-value" id="aStatMappings">—</div></div>
+        <div class="stat-card"><div class="stat-label">USERS</div><div class="stat-value" id="aStatUsers">—</div></div>
+        <div class="stat-card"><div class="stat-label">TASKS</div><div class="stat-value" id="aStatTasks">—</div></div>
+    </div>
+
+    <!-- Seed DB -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>🌱 Seed Database</h3>
+            <p>Load the class schedule from the routine image (Rabindra University, Session 2025-26) into the database. Run this once on first setup.</p>
+        </div>
+        <div id="seedResult" class="admin-result hidden"></div>
+        <button class="btn-primary" onclick="seedDatabase()">Seed Routine & Mappings</button>
+    </div>
+
+    <!-- Upload Routine -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>📤 Upload Routine Excel</h3>
+            <p>Upload a new .xlsx routine file to replace the current schedule. Format: Day | Room | 9:00-10:30 | 10:30-12:00 | 12:00-1:30 | (lunch) | 2:00-3:30 | 3:30-5:00</p>
+        </div>
+        <div class="upload-zone" id="uploadZone" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>Drag & drop .xlsx here or <label for="excelFile" class="file-label">browse</label></p>
+            <input type="file" id="excelFile" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(this)">
+            <div id="uploadFileName" class="upload-filename hidden"></div>
+        </div>
+        <div id="uploadResult" class="admin-result hidden"></div>
+        <button class="btn-primary mt-16" onclick="uploadRoutine()" id="uploadBtn" disabled>Upload & Replace</button>
+    </div>
+
+    <!-- UniCover Generator -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h3>📄 UniCover Page Generator</h3>
+            <p>Auto-generate a cover page for assignments. Your profile info is auto-filled.</p>
+        </div>
+        <form onsubmit="generateCover(event)" class="modal-form">
+            <div class="form-group">
+                <label>Course Code</label>
+                <input type="text" id="uc_course" placeholder="e.g., MGT-3103" required>
+            </div>
+            <div class="form-group">
+                <label>Assignment Title</label>
+                <input type="text" id="uc_title" placeholder="e.g., Market Entry Strategy Analysis">
+            </div>
+            <button type="submit" class="btn-primary">Generate Cover Page</button>
+        </form>
+        <div id="coverPreview" class="cover-preview hidden"></div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedFile = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    UniSync.requireAuth();
+    loadAdminStats();
+});
+
+async function loadAdminStats() {
+    try {
+        const res = await fetch('/admin/api/stats');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('aStatRoutines').textContent = data.stats.routines;
+            document.getElementById('aStatMappings').textContent = data.stats.mappings;
+            document.getElementById('aStatUsers').textContent    = data.stats.users;
+            document.getElementById('aStatTasks').textContent    = data.stats.tasks;
+        }
+    } catch(e) {}
+}
+
+async function seedDatabase() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Seeding...';
+    const res_div = document.getElementById('seedResult');
+    try {
+        const res = await fetch('/admin/api/seed-database', {method:'POST'});
+        const data = await res.json();
+        res_div.textContent = data.success ? ('✅ ' + data.message) : ('❌ ' + data.error);
+        res_div.className = 'admin-result ' + (data.success ? 'success' : 'error');
+        res_div.classList.remove('hidden');
+        if (data.success) loadAdminStats();
+    } catch(e) {
+        res_div.textContent = '❌ Connection error';
+        res_div.className = 'admin-result error';
+        res_div.classList.remove('hidden');
+    }
+    btn.disabled = false; btn.textContent = 'Seed Routine & Mappings';
+}
+
+function handleFileSelect(input) {
+    selectedFile = input.files[0];
+    if (selectedFile) {
+        document.getElementById('uploadFileName').textContent = selectedFile.name;
+        document.getElementById('uploadFileName').classList.remove('hidden');
+        document.getElementById('uploadBtn').disabled = false;
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+        selectedFile = file;
+        document.getElementById('uploadFileName').textContent = file.name;
+        document.getElementById('uploadFileName').classList.remove('hidden');
+        document.getElementById('uploadBtn').disabled = false;
+    }
+}
+
+async function uploadRoutine() {
+    if (!selectedFile) return;
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true; btn.textContent = 'Uploading...';
+    const res_div = document.getElementById('uploadResult');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+        const res = await fetch('/admin/api/upload-routine', {method:'POST', body: formData});
+        const data = await res.json();
+        res_div.textContent = data.success
+            ? `✅ Uploaded ${data.inserted} routine entries successfully.`
+            : '❌ ' + (data.error || 'Upload failed');
+        res_div.className = 'admin-result ' + (data.success ? 'success' : 'error');
+        res_div.classList.remove('hidden');
+        if (data.success) loadAdminStats();
+    } catch(e) {
+        res_div.textContent = '❌ Upload failed. Check your connection.';
+        res_div.className = 'admin-result error';
+        res_div.classList.remove('hidden');
+    }
+    btn.disabled = false; btn.textContent = 'Upload & Replace';
+}
+
+async function generateCover(e) {
+    e.preventDefault();
+    const user = UniSync.getUser();
+    const courseCode = document.getElementById('uc_course').value;
+    const assignTitle = document.getElementById('uc_title').value;
+
+    try {
+        const res = await fetch('/productivity/api/unicover', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({user_id: user.id, course_code: courseCode})
+        });
+        const data = await res.json();
+        if (data.success) {
+            const d = data.cover_data;
+            const preview = document.getElementById('coverPreview');
+            preview.innerHTML = `
+            <div class="cover-page">
+                <div class="cover-univ">${d.university}</div>
+                <div class="cover-dept">${d.department}</div>
+                <div class="cover-divider"></div>
+                <div class="cover-label">ASSIGNMENT / REPORT</div>
+                <div class="cover-asgn-title">${assignTitle || 'Assignment Title'}</div>
+                <div class="cover-divider"></div>
+                <div class="cover-field"><span>Course:</span> ${d.course_code} — ${d.course_name}</div>
+                <div class="cover-field"><span>Submitted By:</span> ${d.student_name}</div>
+                <div class="cover-field"><span>Department:</span> ${d.dept}</div>
+                <div class="cover-field"><span>Batch:</span> ${d.batch || 'N/A'}</div>
+                <div class="cover-field"><span>Date:</span> ${new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})}</div>
+                <button class="btn-sm btn-success mt-16" onclick="window.print()">🖨 Print Cover</button>
+            </div>`;
+            preview.classList.remove('hidden');
+        }
+    } catch(e) { UniSync.toast('Error generating cover', 'error'); }
+}
+</script>
+{% endblock %}

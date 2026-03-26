@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block mob_home %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+    <!-- Happening Now Hero Card -->
+    <section class="hero-section">
+        <div class="hero-card" id="liveCard">
+            <div class="hero-card-inner">
+                <div class="live-badge">
+                    <span class="live-dot"></span>
+                    HAPPENING NOW
+                </div>
+                <div id="liveContent">
+                    <div class="live-loading">
+                        <div class="skeleton-line w-40"></div>
+                        <div class="skeleton-line w-60 mt-8"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-bg-glow"></div>
+        </div>
+    </section>
+
+    <!-- Stats Row -->
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">CURRENT GPA</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            </div>
+            <div class="stat-value" id="statGpa">3.92</div>
+            <div class="stat-sub">+0.12 from last semester</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">ATTENDANCE RATE</span>
+                <svg class="stat-icon text-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="stat-value text-green" id="statAttendance">96%</div>
+            <div class="stat-sub">Top 5% of your cohort</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">TOTAL CREDITS</span>
+                <svg class="stat-icon text-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="stat-value text-purple" id="statCredits">104</div>
+            <div class="stat-sub">16 credits remaining to graduate</div>
+        </div>
+    </section>
+
+    <!-- Upcoming Tasks -->
+    <section class="tasks-section">
+        <div class="section-header">
+            <h2>Upcoming Tasks</h2>
+            <div class="section-header-right">
+                <span class="badge-count" id="pendingCount">0 Pending</span>
+                <a href="/productivity/tasks" class="view-all-link">View All →</a>
+            </div>
+        </div>
+        <div class="tasks-list" id="dashTasksList">
+            <div class="task-skeleton">
+                <div class="skeleton-block"></div>
+                <div class="skeleton-block"></div>
+                <div class="skeleton-block"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Time Search Widget -->
+    <section class="time-search-section">
+        <div class="section-header">
+            <h2>Find a Class</h2>
+            <span class="section-sub">Search by time slot</span>
+        </div>
+        <div class="time-search-card">
+            <div class="time-search-inputs">
+                <div class="ts-input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <input type="time" id="tsTime" class="ts-input" placeholder="HH:MM">
+                </div>
+                <select id="tsDay" class="ts-select">
+                    <option value="">Any Day</option>
+                    <option value="Sunday">Sunday</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                </select>
+                <button class="btn-primary ts-btn" onclick="runTimeSearch()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    Search
+                </button>
+            </div>
+            <div id="tsResults" class="ts-results hidden"></div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    UniSync.requireAuth();
+    loadDashboardTasks();
+});
+
+async function loadDashboardTasks() {
+    const user = UniSync.getUser();
+    if (!user) return;
+    try {
+        const res = await fetch(`/productivity/api/tasks?user_id=${user.id}`);
+        const data = await res.json();
+        if (data.success) renderDashTasks(data.data);
+    } catch(e) { console.error(e); }
+}
+
+function renderDashTasks(tasks) {
+    const list = document.getElementById('dashTasksList');
+    const pending = tasks.filter(t => t.status !== 'done');
+    document.getElementById('pendingCount').textContent = pending.length + ' Pending';
+
+    const show = tasks.slice(0, 5);
+    if (!show.length) {
+        list.innerHTML = '<div class="empty-state"><p>No tasks yet. <a href="/productivity/tasks">Add one →</a></p></div>';
+        return;
+    }
+
+    list.innerHTML = show.map(t => {
+        const priority = t.priority || 'medium';
+        const dl = t.deadline ? new Date(t.deadline) : null;
+        const dlStr = dl ? dl.toLocaleDateString('en-GB', {day:'numeric',month:'short'}) : '';
+        const isUrgent = t.urgent_flag;
+        const isDueSoon = dl && (dl - Date.now()) < 86400000;
+
+        let badge = `<span class="priority-badge ${priority}">${priority.toUpperCase()}</span>`;
+        if (isUrgent) badge = `<span class="priority-badge urgent">URGENT</span>`;
+        else if (isDueSoon) badge = `<span class="priority-badge due-soon">DUE SOON</span>`;
+
+        return `
+        <div class="task-item ${isUrgent ? 'urgent-glow' : ''}">
+            <div class="task-item-left">
+                ${badge}
+                <span class="task-date">${dlStr || 'No deadline'}</span>
+            </div>
+            <div class="task-item-body">
+                <div class="task-title">${t.title}</div>
+                ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
+            </div>
+            <div class="task-item-actions">
+                <button class="task-action-btn" onclick="quickDone('${t.id}', this)" title="Mark done">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+                <button class="task-action-btn dots" title="More">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function quickDone(taskId, btn) {
+    try {
+        await fetch(`/productivity/api/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: 'done'})
+        });
+        btn.closest('.task-item').style.opacity = '0.4';
+        setTimeout(() => { btn.closest('.task-item').remove(); }, 400);
+        UniSync.toast('Task marked as done!', 'success');
+    } catch(e) { UniSync.toast('Error updating task', 'error'); }
+}
+
+async function runTimeSearch() {
+    const time = document.getElementById('tsTime').value;
+    const day  = document.getElementById('tsDay').value;
+    const res_div = document.getElementById('tsResults');
+    if (!time) { UniSync.toast('Please select a time', 'warning'); return; }
+
+    res_div.innerHTML = '<div class="ts-loading">Searching...</div>';
+    res_div.classList.remove('hidden');
+
+    try {
+        const params = new URLSearchParams({time});
+        if (day) params.append('day', day);
+        const res = await fetch(`/academic/api/time-search?${params}`);
+        const data = await res.json();
+        if (!data.success || !data.data.length) {
+            res_div.innerHTML = '<div class="ts-empty">No classes found at this time.</div>';
+            return;
+        }
+        res_div.innerHTML = data.data.map(c => `
+            <div class="ts-result-item">
+                <div class="ts-result-code">${c.course_code}</div>
+                <div class="ts-result-info">
+                    <div class="ts-result-name">${c.course_name || c.course_code}</div>
+                    <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name || c.teacher_code} · ${c.day}</div>
+                </div>
+                <div class="ts-result-time">${c.time_slot}</div>
+            </div>`).join('');
+    } catch(e) { res_div.innerHTML = '<div class="ts-empty">Search failed. Try again.</div>'; }
+}
+</script>
+{% endblock %}

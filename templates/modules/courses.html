@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Courses{% endblock %}
+{% block nav_courses %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Courses</h1>
+            <p class="page-sub">All courses & faculty for Department of Management</p>
+        </div>
+        <div class="header-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="courseSearch" placeholder="Search course or code..." oninput="filterCourses(this.value)">
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterByType('all',this)">All</button>
+        <button class="filter-btn" onclick="filterByType('BBA',this)">BBA</button>
+        <button class="filter-btn" onclick="filterByType('MBA',this)">MBA</button>
+        <button class="filter-btn" onclick="filterByType('HRM',this)">HRM</button>
+        <button class="filter-btn" onclick="filterByType('GED',this)">GED</button>
+    </div>
+
+    <div class="courses-grid" id="coursesGrid">
+        <div class="course-skeleton"></div>
+        <div class="course-skeleton"></div>
+        <div class="course-skeleton"></div>
+        <div class="course-skeleton"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allCourses = [], allTeachers = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    UniSync.requireAuth();
+    await loadMappings();
+});
+
+async function loadMappings() {
+    try {
+        const res = await fetch('/academic/api/mappings');
+        const data = await res.json();
+        if (data.success) {
+            allCourses  = data.data.filter(m => m.type === 'course');
+            allTeachers = data.data.filter(m => m.type === 'teacher');
+            renderCourses(allCourses);
+        }
+    } catch(e) { console.error(e); }
+}
+
+function renderCourses(courses) {
+    const grid = document.getElementById('coursesGrid');
+    if (!courses.length) { grid.innerHTML = '<div class="empty-state"><p>No courses found.</p></div>'; return; }
+    grid.innerHTML = courses.map(c => {
+        const prefix = c.code.split('-')[0];
+        const color = {'MGT':'purple','GED':'blue','HRM':'green','BBA':'orange'}[prefix] || 'gray';
+        return `
+        <div class="course-card" data-code="${c.code}" data-type="${prefix}">
+            <div class="course-card-header ${color}">
+                <span class="course-code-badge">${c.code}</span>
+            </div>
+            <div class="course-card-body">
+                <div class="course-name">${c.full_name}</div>
+                <div class="course-meta">
+                    <span class="course-dept">${prefix} Program</span>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filterCourses(query) {
+    const q = query.toLowerCase();
+    const filtered = allCourses.filter(c =>
+        c.code.toLowerCase().includes(q) || c.full_name.toLowerCase().includes(q)
+    );
+    renderCourses(filtered);
+}
+
+function filterByType(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (type === 'all') renderCourses(allCourses);
+    else renderCourses(allCourses.filter(c => c.code.startsWith(type)));
+}
+</script>
+{% endblock %}

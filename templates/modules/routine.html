@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Class Routine{% endblock %}
+{% block nav_routine %}active{% endblock %}
+{% block mob_routine %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Class Routine</h1>
+            <p class="page-sub">Department of Management · Rabindra University</p>
+        </div>
+    </div>
+
+    <!-- Day Tabs -->
+    <div class="day-tabs" id="dayTabs">
+        <button class="day-tab" data-day="Sunday"    onclick="loadRoutine('Sunday',this)">Sun</button>
+        <button class="day-tab" data-day="Monday"    onclick="loadRoutine('Monday',this)">Mon</button>
+        <button class="day-tab" data-day="Tuesday"   onclick="loadRoutine('Tuesday',this)">Tue</button>
+        <button class="day-tab" data-day="Wednesday" onclick="loadRoutine('Wednesday',this)">Wed</button>
+        <button class="day-tab" data-day="Thursday"  onclick="loadRoutine('Thursday',this)">Thu</button>
+    </div>
+
+    <!-- Routine Table -->
+    <div class="routine-card">
+        <div id="routineContent">
+            <div class="routine-loading">
+                <div class="skeleton-block"></div>
+                <div class="skeleton-block"></div>
+                <div class="skeleton-block"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="routine-legend">
+        <div class="legend-title">Faculty Code Legend</div>
+        <div class="legend-grid" id="legendGrid"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const TIME_SLOTS = ['9:00-10:30','10:30-12:00','12:00-1:30','2:00-3:30','3:30-5:00'];
+const ROOMS = ['101','201','100'];
+const ROOM_LABELS = {'101':'Room 101','201':'Room 201','100':'Computer Lab'};
+
+const TEACHER_MAP = {
+    'FA':'Prof. Dr. Feroz Ahmed','HR':'Habibur Rahaman','MK':'Malina Khatun',
+    'PKP':'Prashanta Kumar Podder','TI':'Md. Tarequl Islam','AH':'Alamgir Hossain',
+    'KHR':'Md. Kazi Hafizur Rahman','THT':'Tamima Hasan Taishi'
+};
+
+let mappings = {};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    UniSync.requireAuth();
+    await loadMappings();
+    const today = new Date().toLocaleDateString('en-US',{weekday:'long'});
+    const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+    const activeDay = validDays.includes(today) ? today : 'Sunday';
+    const activeTab = document.querySelector(`[data-day="${activeDay}"]`);
+    if (activeTab) loadRoutine(activeDay, activeTab);
+    else loadRoutine('Sunday', document.querySelector('[data-day="Sunday"]'));
+    renderLegend();
+});
+
+async function loadMappings() {
+    try {
+        const res = await fetch('/academic/api/mappings');
+        const data = await res.json();
+        if (data.success) {
+            data.data.forEach(m => { mappings[m.code] = m.full_name; });
+        }
+    } catch(e) {}
+}
+
+async function loadRoutine(day, btn) {
+    document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const content = document.getElementById('routineContent');
+    content.innerHTML = '<div class="routine-loading"><div class="skeleton-block"></div><div class="skeleton-block"></div><div class="skeleton-block"></div></div>';
+
+    try {
+        const res = await fetch(`/academic/api/routine?day=${day}`);
+        const data = await res.json();
+        if (data.success) renderRoutine(data.data, day);
+        else content.innerHTML = '<div class="empty-state"><p>No routine data. Ask admin to seed the database.</p></div>';
+    } catch(e) {
+        content.innerHTML = '<div class="empty-state"><p>Could not load routine. Check your connection.</p></div>';
+    }
+}
+
+function renderRoutine(rows, day) {
+    const content = document.getElementById('routineContent');
+
+    // Build lookup: room -> slot -> entry
+    const lookup = {};
+    rows.forEach(r => {
+        if (!lookup[r.room_no]) lookup[r.room_no] = {};
+        lookup[r.room_no][r.time_slot] = r;
+    });
+
+    let html = `
+    <div class="routine-day-title">${day}</div>
+    <div class="routine-table-wrap">
+    <table class="routine-table">
+        <thead>
+            <tr>
+                <th>Room</th>
+                <th>9:00–10:30</th>
+                <th>10:30–12:00</th>
+                <th>12:00–1:30</th>
+                <th class="lunch-col">1:30–2:00</th>
+                <th>2:00–3:30</th>
+                <th>3:30–5:00</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    ROOMS.forEach(room => {
+        const roomData = lookup[room] || {};
+        html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
+        ['9:00-10:30','10:30-12:00','12:00-1:30'].forEach(slot => {
+            const entry = roomData[slot];
+            html += entry ? `<td class="class-cell">${buildCell(entry)}</td>` : `<td class="empty-cell">—</td>`;
+        });
+        html += `<td class="lunch-cell"><div class="lunch-label">PRAYER & LUNCH</div></td>`;
+        ['2:00-3:30','3:30-5:00'].forEach(slot => {
+            const entry = roomData[slot];
+            html += entry ? `<td class="class-cell">${buildCell(entry)}</td>` : `<td class="empty-cell">—</td>`;
+        });
+        html += `</tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    content.innerHTML = html;
+}
+
+function buildCell(entry) {
+    const courseName = mappings[entry.course_code] || entry.course_code;
+    const teacherName = mappings[entry.teacher_code] || entry.teacher_code;
+    return `
+    <div class="class-badge">
+        <div class="class-code">${entry.course_code}</div>
+        <div class="class-name" title="${courseName}">${courseName.length > 22 ? courseName.substring(0,22)+'…' : courseName}</div>
+        <div class="class-teacher">${entry.teacher_code} · Room ${entry.room_no}</div>
+    </div>`;
+}
+
+function renderLegend() {
+    const grid = document.getElementById('legendGrid');
+    grid.innerHTML = Object.entries(TEACHER_MAP).map(([code, name]) =>
+        `<div class="legend-item"><span class="legend-code">${code}</span><span class="legend-name">${name}</span></div>`
+    ).join('');
+}
+</script>
+{% endblock %}

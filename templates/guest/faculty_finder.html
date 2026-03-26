@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Finder — UniSync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { padding: 0; }
+        .guest-nav {
+            position:sticky; top:0; z-index:50;
+            background:var(--bg-surface); border-bottom:1px solid var(--border);
+            padding:14px 24px; display:flex; align-items:center; gap:14px;
+        }
+        .back-btn {
+            display:flex; align-items:center; gap:6px;
+            color:var(--text-muted); font-size:0.85rem; text-decoration:none;
+            padding:6px 12px; border:1px solid var(--border);
+            border-radius:6px; transition:all 0.15s;
+        }
+        .back-btn:hover { color:var(--text-primary); border-color:var(--border-strong); }
+        .guest-nav-title { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; }
+        .guest-badge-sm {
+            margin-left:auto; background:rgba(251,191,36,0.12);
+            border:1px solid rgba(251,191,36,0.3); color:#fbbf24;
+            font-size:0.65rem; font-weight:700; letter-spacing:0.1em;
+            padding:3px 10px; border-radius:20px;
+        }
+        .page-wrap { max-width:800px; margin:0 auto; padding:28px 20px; }
+        .search-card {
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:var(--radius); padding:24px; margin-bottom:24px;
+        }
+        .teacher-grid {
+            display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+            gap:10px; margin-top:20px;
+        }
+        .teacher-chip {
+            background:var(--bg-elevated); border:1px solid var(--border);
+            border-radius:8px; padding:10px 14px; cursor:pointer;
+            transition:all 0.15s; text-align:center;
+        }
+        .teacher-chip:hover, .teacher-chip.active {
+            border-color:var(--accent); background:var(--accent-glow); color:var(--accent-light);
+        }
+        .teacher-chip-code { font-family:'JetBrains Mono',monospace; font-size:0.85rem; font-weight:700; }
+        .teacher-chip-name { font-size:0.72rem; color:var(--text-muted); margin-top:3px; }
+        .teacher-chip.active .teacher-chip-name { color:var(--accent-light); }
+
+        .schedule-result { margin-top:8px; }
+        .schedule-header {
+            background:linear-gradient(135deg,rgba(124,111,255,0.15),rgba(236,72,153,0.1));
+            border:1px solid rgba(124,111,255,0.25); border-radius:var(--radius);
+            padding:20px 24px; margin-bottom:16px;
+            display:flex; align-items:center; gap:16px;
+        }
+        .schedule-avatar {
+            width:52px; height:52px; border-radius:50%;
+            background:linear-gradient(135deg,var(--accent),var(--pink));
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.3rem; font-weight:800; color:#fff; flex-shrink:0;
+        }
+        .schedule-teacher-name { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; }
+        .schedule-teacher-code { font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--text-muted); margin-top:3px; }
+        .day-group { margin-bottom:20px; }
+        .day-label {
+            font-size:0.72rem; font-weight:700; letter-spacing:0.1em;
+            text-transform:uppercase; color:var(--accent-light);
+            margin-bottom:8px; padding-bottom:6px;
+            border-bottom:1px solid var(--border);
+        }
+        .slot-row {
+            display:flex; align-items:center; gap:12px;
+            padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+        }
+        .slot-time {
+            font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+            color:var(--text-muted); min-width:110px; flex-shrink:0;
+        }
+        .slot-course-code {
+            background:var(--accent-glow); color:var(--accent-light);
+            border:1px solid rgba(124,111,255,0.25); font-family:'JetBrains Mono',monospace;
+            font-size:0.74rem; font-weight:700; padding:2px 8px; border-radius:4px; flex-shrink:0;
+        }
+        .slot-course-name { font-size:0.85rem; font-weight:600; flex:1; }
+        .slot-room {
+            font-size:0.74rem; color:var(--text-muted);
+            background:var(--bg-elevated); border:1px solid var(--border);
+            padding:2px 8px; border-radius:4px; white-space:nowrap;
+        }
+        .no-result { text-align:center; padding:40px 20px; color:var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<nav class="guest-nav">
+    <a href="/guest/" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m15 18-6-6 6-6"/></svg>
+        Back
+    </a>
+    <span class="guest-nav-title">Faculty Finder</span>
+    <span class="guest-badge-sm">GUEST</span>
+</nav>
+
+<div class="page-wrap">
+    <div class="search-card">
+        <div class="section-header" style="margin-bottom:16px;">
+            <h2>Select a Faculty Member</h2>
+            <span class="section-sub">Click to view their full weekly schedule</span>
+        </div>
+        <div class="teacher-grid" id="teacherGrid">
+            <div class="skeleton-block" style="height:60px;"></div>
+            <div class="skeleton-block" style="height:60px;"></div>
+            <div class="skeleton-block" style="height:60px;"></div>
+        </div>
+    </div>
+
+    <div class="schedule-result hidden" id="scheduleResult"></div>
+</div>
+
+<script>
+const DAYS_ORDER = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+
+document.addEventListener('DOMContentLoaded', loadTeachers);
+
+async function loadTeachers() {
+    try {
+        const res  = await fetch('/guest/api/all-teachers');
+        const data = await res.json();
+        const grid = document.getElementById('teacherGrid');
+        if (!data.success || !data.data.length) {
+            grid.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No faculty data found. Ask admin to seed the database.</p>';
+            return;
+        }
+        grid.innerHTML = data.data.map(t => `
+            <div class="teacher-chip" onclick="loadSchedule('${t.code}','${t.full_name}',this)">
+                <div class="teacher-chip-code">${t.code}</div>
+                <div class="teacher-chip-name">${t.full_name.split(' ').slice(-1)[0]}</div>
+            </div>`).join('');
+    } catch(e) {
+        document.getElementById('teacherGrid').innerHTML = '<p style="color:var(--text-muted);">Could not load faculty list.</p>';
+    }
+}
+
+async function loadSchedule(code, name, chip) {
+    document.querySelectorAll('.teacher-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+
+    const resultDiv = document.getElementById('scheduleResult');
+    resultDiv.classList.remove('hidden');
+    resultDiv.innerHTML = '<div class="skeleton-block" style="height:80px;margin-bottom:12px;"></div><div class="skeleton-block" style="height:200px;"></div>';
+
+    try {
+        const res  = await fetch(`/guest/api/faculty-schedule?code=${code}`);
+        const data = await res.json();
+
+        if (!data.success || !data.data.length) {
+            resultDiv.innerHTML = `<div class="no-result"><p>No classes found for <strong>${name}</strong> in the current schedule.</p></div>`;
+            return;
+        }
+
+        // Group by day
+        const byDay = {};
+        data.data.forEach(r => {
+            if (!byDay[r.day]) byDay[r.day] = [];
+            byDay[r.day].push(r);
+        });
+
+        const initial = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        let html = `
+        <div class="schedule-header">
+            <div class="schedule-avatar">${initial}</div>
+            <div>
+                <div class="schedule-teacher-name">${name}</div>
+                <div class="schedule-teacher-code">${code} · ${data.data.length} class slots/week</div>
+            </div>
+        </div>`;
+
+        DAYS_ORDER.filter(d => byDay[d]).forEach(day => {
+            html += `<div class="day-group"><div class="day-label">${day}</div>`;
+            byDay[day].forEach(r => {
+                html += `
+                <div class="slot-row">
+                    <div class="slot-time">${r.time_slot}</div>
+                    <div class="slot-course-code">${r.course_code}</div>
+                    <div class="slot-course-name">${r.course_name || r.course_code}</div>
+                    <div class="slot-room">Room ${r.room_no}</div>
+                </div>`;
+            });
+            html += `</div>`;
+        });
+
+        resultDiv.innerHTML = html;
+    } catch(e) {
+        resultDiv.innerHTML = '<div class="no-result"><p>Failed to load schedule. Check connection.</p></div>';
+    }
+}
+</script>
+</body>
+</html>
