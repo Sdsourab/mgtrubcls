@@ -1,10 +1,10 @@
 -- ============================================================
--- UniSync — Supabase Database Schema
+-- UniSync — Complete Database Schema (Fixed Version)
 -- Run this in: Supabase Dashboard > SQL Editor
 -- ============================================================
 
 -- ============================================================
--- 1. PROFILES TABLE (linked to auth.users)
+-- 1. PROFILES TABLE
 -- ============================================================
 create table if not exists public.profiles (
     id          uuid primary key references auth.users(id) on delete cascade,
@@ -14,20 +14,31 @@ create table if not exists public.profiles (
     role        text default 'student' check (role in ('admin','teacher','student')),
     dept        text default 'Management',
     batch       text,
+    program     text default 'BBA',
+    year        int  default 1,
+    semester    int  default 1,
     created_at  timestamptz default now()
 );
+
+-- Add missing columns if table already exists
+alter table public.profiles add column if not exists program  text default 'BBA';
+alter table public.profiles add column if not exists year     int  default 1;
+alter table public.profiles add column if not exists semester int  default 1;
 
 -- RLS
 alter table public.profiles enable row level security;
 
+drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
     on public.profiles for select
     using (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
     on public.profiles for update
     using (auth.uid() = id);
 
+drop policy if exists "Admins can read all profiles" on public.profiles;
 create policy "Admins can read all profiles"
     on public.profiles for select
     using (
@@ -36,6 +47,11 @@ create policy "Admins can read all profiles"
             where p.id = auth.uid() and p.role = 'admin'
         )
     );
+
+drop policy if exists "Service role full access profiles" on public.profiles;
+create policy "Service role full access profiles"
+    on public.profiles for all
+    using (true);
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -59,7 +75,7 @@ create trigger on_auth_user_created
 
 
 -- ============================================================
--- 2. MAPPINGS TABLE (course & teacher code -> full name)
+-- 2. MAPPINGS TABLE
 -- ============================================================
 create table if not exists public.mappings (
     code        text primary key,
@@ -70,10 +86,12 @@ create table if not exists public.mappings (
 
 alter table public.mappings enable row level security;
 
+drop policy if exists "Anyone can read mappings" on public.mappings;
 create policy "Anyone can read mappings"
     on public.mappings for select
     using (true);
 
+drop policy if exists "Service role can manage mappings" on public.mappings;
 create policy "Service role can manage mappings"
     on public.mappings for all
     using (true);
@@ -89,23 +107,25 @@ create table if not exists public.routines (
     time_slot    text not null,
     time_start   text not null,
     time_end     text not null,
-    course_code  text references public.mappings(code) on delete set null,
-    teacher_code text references public.mappings(code) on delete set null,
+    course_code  text,
+    teacher_code text,
     session      text default '2025-26',
     created_at   timestamptz default now()
 );
 
 alter table public.routines enable row level security;
 
+drop policy if exists "Anyone can read routines" on public.routines;
 create policy "Anyone can read routines"
     on public.routines for select
     using (true);
 
+drop policy if exists "Service role can manage routines" on public.routines;
 create policy "Service role can manage routines"
     on public.routines for all
     using (true);
 
-create index if not exists idx_routines_day on public.routines(day);
+create index if not exists idx_routines_day  on public.routines(day);
 create index if not exists idx_routines_time on public.routines(time_start, time_end);
 
 
@@ -127,6 +147,7 @@ create table if not exists public.tasks (
 
 alter table public.tasks enable row level security;
 
+drop policy if exists "Users can manage own tasks" on public.tasks;
 create policy "Users can manage own tasks"
     on public.tasks for all
     using (auth.uid() = user_id);
@@ -150,18 +171,18 @@ create table if not exists public.resources (
 
 alter table public.resources enable row level security;
 
+drop policy if exists "Anyone can read resources" on public.resources;
 create policy "Anyone can read resources"
     on public.resources for select
     using (true);
 
+drop policy if exists "Authenticated users can insert resources" on public.resources;
 create policy "Authenticated users can insert resources"
     on public.resources for insert
     with check (auth.role() = 'authenticated');
 
 create index if not exists idx_resources_dept on public.resources(dept);
 
-
 -- ============================================================
--- DONE! Now go to the UniSync Admin Panel and click
--- "Seed Routine & Mappings" to populate the schedule.
+-- DONE!
 -- ============================================================
