@@ -7,58 +7,68 @@ academic_bp = Blueprint('academic', __name__)
 
 
 def _enrich(rows, sb):
+    """Add course_name and teacher_name to rows."""
     for row in rows:
-        c = sb.table('mappings').select('full_name').eq('code', row.get('course_code', '')).execute()
-        t = sb.table('mappings').select('full_name').eq('code', row.get('teacher_code', '')).execute()
-        row['course_name']  = c.data[0]['full_name'] if c.data else row.get('course_code', '')
-        row['teacher_name'] = t.data[0]['full_name'] if t.data else row.get('teacher_code', '')
+        try:
+            c = sb.table('mappings').select('full_name')\
+                .eq('code', row.get('course_code', '')).execute()
+            row['course_name'] = c.data[0]['full_name'] if c.data else row.get('course_code', '')
+        except Exception:
+            row['course_name'] = row.get('course_code', '')
+
+        try:
+            t = sb.table('mappings').select('full_name')\
+                .eq('code', row.get('teacher_code', '')).execute()
+            row['teacher_name'] = t.data[0]['full_name'] if t.data else row.get('teacher_code', '')
+        except Exception:
+            row['teacher_name'] = row.get('teacher_code', '')
     return rows
 
 
-def _ml_suggestion(time_str: str, classes: list) -> dict:
+def _ml_hint(time_str: str, classes: list) -> dict:
+    """Rule-based smart suggestion engine."""
     if not time_str or not classes:
         return {}
     try:
         h, m = map(int, time_str.split(':'))
-        query_mins = h * 60 + m
+        q = h * 60 + m
     except Exception:
         return {}
 
     suggestions = []
     for cls in classes:
         try:
-            sh, sm = map(int, cls.get('time_start', '00:00').split(':'))
-            eh, em = map(int, cls.get('time_end',   '00:00').split(':'))
+            sh, sm = map(int, (cls.get('time_start') or '00:00').split(':'))
+            eh, em = map(int, (cls.get('time_end')   or '00:00').split(':'))
         except Exception:
             continue
-        start_mins = sh * 60 + sm
-        end_mins   = eh * 60 + em
-        late_mins  = query_mins - start_mins
-        remaining  = end_mins - query_mins
-        course     = cls.get('course_name', cls.get('course_code', 'Class'))
-        room       = cls.get('room_no', '?')
-        teacher    = cls.get('teacher_name', cls.get('teacher_code', ''))
 
-        if late_mins <= 0:
-            mins_until = abs(late_mins)
-            if   mins_until <= 5:  tip = f"⚡ '{course}' starts in {mins_until} min — go to Room {room} NOW!"
-            elif mins_until <= 15: tip = f"🏃 '{course}' starts in {mins_until} min. Head to Room {room}."
-            elif mins_until <= 30: tip = f"🕐 '{course}' in {mins_until} min. Wrap up and get ready."
-            else:                  tip = f"📖 {mins_until} min before '{course}'. Good time to review notes."
-        elif 1 <= late_mins <= 15:
-            tip = f"🚶 {late_mins} min late for '{course}'. Go to Room {room} — intro still on."
-        elif 16 <= late_mins <= 30:
-            tip = f"⚠️ {late_mins} min late for '{course}'. Join Room {room} now — core content starting."
-        elif 31 <= late_mins <= 50:
-            tip = f"📝 Missed {late_mins} min of '{course}'. {remaining} min left. Join or get notes."
-        elif remaining > 20:
-            tip = f"⏳ Very late for '{course}'. {remaining} min left. Join for the summary."
+        start  = sh * 60 + sm
+        end    = eh * 60 + em
+        late   = q - start
+        remain = end - q
+        course  = cls.get('course_name') or cls.get('course_code', 'Class')
+        room    = cls.get('room_no', '?')
+
+        if late <= 0:
+            mins = abs(late)
+            if   mins <= 5:  tip = f"⚡ '{course}' শুরু হবে {mins} মিনিটে — Room {room} এ যাও!"
+            elif mins <= 15: tip = f"🏃 {mins} মিনিটে '{course}' শুরু। এখনই রওনা দাও।"
+            elif mins <= 30: tip = f"🕐 {mins} মিনিট বাকি। '{course}' এর জন্য প্রস্তুত হও।"
+            else:            tip = f"📖 {mins} মিনিট বাকি '{course}' শুরুর। Notes review করো।"
+        elif 1 <= late <= 15:
+            tip = f"🚶 '{course}' এ {late} মিনিট দেরি। Room {room} — intro এখনো চলছে।"
+        elif 16 <= late <= 35:
+            tip = f"⚠️ '{course}' এ {late} মিনিট দেরি। Room {room} এ যাও — core content শুরু।"
+        elif remain > 15:
+            tip = f"📝 '{course}' এ অনেক দেরি। {remain} মিনিট বাকি। Join করো বা notes নাও।"
         else:
-            tip = f"🔔 '{course}' ends in {remaining} min. Prepare for next class."
+            tip = f"🔔 '{course}' শেষ হবে {remain} মিনিটে। পরের class এর জন্য তৈরি হও।"
 
         suggestions.append({
-            'course': course, 'room': room, 'teacher': teacher,
-            'late_mins': max(0, late_mins), 'remaining': remaining, 'suggestion': tip,
+            'course': course, 'room': room,
+            'late_mins': max(0, late), 'remaining': remain,
+            'suggestion': tip,
         })
     return {'suggestions': suggestions}
 
@@ -66,13 +76,15 @@ def _ml_suggestion(time_str: str, classes: list) -> dict:
 # ── Pages ─────────────────────────────────────────────────────
 
 @academic_bp.route('/routine')
-def routine_page():  return render_template('modules/routine.html')
+def routine_page():
+    return render_template('modules/routine.html')
 
 @academic_bp.route('/courses')
-def courses_page():  return render_template('modules/courses.html')
+def courses_page():
+    return render_template('modules/courses.html')
 
 
-# ── API: Routine filtered by user's year+semester ─────────────
+# ── API: Routine ──────────────────────────────────────────────
 
 @academic_bp.route('/api/routine', methods=['GET'])
 def get_routine():
@@ -84,15 +96,40 @@ def get_routine():
     sb = get_supabase_admin()
     try:
         q = sb.table('routines').select('*')
-        if day:     q = q.eq('day', day)
-        if program: q = q.eq('program', program)
-        if year:    q = q.eq('course_year', int(year))
-        if semester:q = q.eq('course_semester', int(semester))
-        resp = q.order('time_start').execute()
-        rows = _enrich(resp.data or [], sb)
-        return jsonify({'success': True, 'data': rows})
+        if day:
+            q = q.eq('day', day)
+
+        # If program/year/semester given, filter
+        if program and year and semester:
+            # Filter: show exact match OR program='ALL'
+            # Supabase doesn't support OR across columns easily,
+            # so we get all for program and filter in Python
+            resp_prog = sb.table('routines').select('*')
+            if day:
+                resp_prog = resp_prog.eq('day', day)
+            resp_prog = resp_prog.eq('program', program)\
+                .eq('course_year', int(year))\
+                .eq('course_semester', int(semester))\
+                .order('time_start').execute()
+
+            rows = _enrich(resp_prog.data or [], sb)
+            return jsonify({'success': True, 'data': rows})
+        else:
+            resp = q.order('time_start').execute()
+            rows = _enrich(resp.data or [], sb)
+            return jsonify({'success': True, 'data': rows})
+
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        # Fallback: return all without filter
+        try:
+            q2 = sb.table('routines').select('*')
+            if day:
+                q2 = q2.eq('day', day)
+            resp2 = q2.order('time_start').execute()
+            rows2 = resp2.data or []
+            return jsonify({'success': True, 'data': rows2, 'fallback': True})
+        except Exception as e2:
+            return jsonify({'success': False, 'error': str(e2)}), 500
 
 
 # ── API: Live class ───────────────────────────────────────────
@@ -113,16 +150,20 @@ def get_live_class():
         return jsonify({
             'success': True, 'live': None,
             'is_holiday': True, 'holiday_name': hol_name,
-            'message': f'No classes today — {hol_name} 🎉',
         })
 
     sb = get_supabase_admin()
     try:
-        q = sb.table('routines').select('*').eq('day', day)\
-              .lte('time_start', time_now).gte('time_end', time_now)
-        if program: q = q.eq('program', program)
-        if year:    q = q.eq('course_year', int(year))
-        if semester:q = q.eq('course_semester', int(semester))
+        q = sb.table('routines').select('*')\
+            .eq('day', day)\
+            .lte('time_start', time_now)\
+            .gte('time_end',   time_now)
+
+        if program and year and semester:
+            q = q.eq('program', program)\
+                 .eq('course_year', int(year))\
+                 .eq('course_semester', int(semester))
+
         resp = q.execute()
         data = _enrich(resp.data or [], sb)
         return jsonify({'success': True, 'live': data, 'is_holiday': False})
@@ -158,45 +199,24 @@ def duration_search():
 
     sb = get_supabase_admin()
     try:
-        q = sb.table('routines').select('*').lt('time_start', tn).gt('time_end', fn)
-        if day:     q = q.eq('day', day)
-        if program: q = q.eq('program', program)
-        if year:    q = q.eq('course_year', int(year))
-        if semester:q = q.eq('course_semester', int(semester))
+        q = sb.table('routines').select('*')\
+            .lt('time_start', tn)\
+            .gt('time_end',   fn)
+
+        if day:
+            q = q.eq('day', day)
+        if program and year and semester:
+            q = q.eq('program', program)\
+                 .eq('course_year', int(year))\
+                 .eq('course_semester', int(semester))
+
         resp = q.order('time_start').execute()
         rows = _enrich(resp.data or [], sb)
-        ml   = _ml_suggestion(fn, rows)
-        return jsonify({'success': True, 'data': rows, 'ml': ml, 'window': {'from': fn, 'to': tn}})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ── API: Time-point search ────────────────────────────────────
-
-@academic_bp.route('/api/time-search', methods=['GET'])
-def time_search():
-    tq       = request.args.get('time', '')
-    day      = request.args.get('day', '')
-    program  = request.args.get('program', '')
-    year     = request.args.get('year', '')
-    semester = request.args.get('semester', '')
-
-    if not tq: return jsonify({'error': 'time required'}), 400
-    p = tq.split(':')
-    if len(p) != 2: return jsonify({'error': 'Use HH:MM'}), 400
-    tn = f"{p[0].zfill(2)}:{p[1].zfill(2)}"
-
-    sb = get_supabase_admin()
-    try:
-        q = sb.table('routines').select('*').lte('time_start', tn).gte('time_end', tn)
-        if day:     q = q.eq('day', day)
-        if program: q = q.eq('program', program)
-        if year:    q = q.eq('course_year', int(year))
-        if semester:q = q.eq('course_semester', int(semester))
-        resp = q.execute()
-        rows = _enrich(resp.data or [], sb)
-        ml   = _ml_suggestion(tn, rows)
-        return jsonify({'success': True, 'data': rows, 'ml': ml})
+        ml   = _ml_hint(fn, rows)
+        return jsonify({
+            'success': True, 'data': rows,
+            'ml': ml, 'window': {'from': fn, 'to': tn}
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -211,8 +231,11 @@ def holiday_check():
     except Exception:
         return jsonify({'error': 'Use YYYY-MM-DD'}), 400
     is_hol, name = is_holiday(d)
-    return jsonify({'is_holiday': is_hol, 'name': name, 'upcoming': get_upcoming_holidays(30)})
+    upcoming = get_upcoming_holidays(30)
+    return jsonify({'is_holiday': is_hol, 'name': name, 'upcoming': upcoming})
 
+
+# ── API: Mappings ─────────────────────────────────────────────
 
 @academic_bp.route('/api/mappings', methods=['GET'])
 def get_mappings():

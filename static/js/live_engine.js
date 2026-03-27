@@ -1,7 +1,6 @@
 /**
- * UniSync — Live Engine
- * Polls every 60 seconds to check current class
- * and updates the dashboard "Happening Now" hero card.
+ * UniSync — Live Class Engine
+ * Polls every 60s, respects user's program/year/semester
  */
 
 const LiveEngine = (() => {
@@ -9,15 +8,15 @@ const LiveEngine = (() => {
   const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
   function getNow() {
-    const now = new Date();
+    const now  = new Date();
     const day  = DAYS[now.getDay()];
     const h    = String(now.getHours()).padStart(2, '0');
     const m    = String(now.getMinutes()).padStart(2, '0');
-    const time = `${h}:${m}`;
-    return { day, time, hour: now.getHours(), minute: now.getMinutes(), date: now };
+    return { day, time: `${h}:${m}`, date: now };
   }
 
   function minsUntil(timeEnd) {
+    if (!timeEnd) return 0;
     const { date } = getNow();
     const [endH, endM] = timeEnd.split(':').map(Number);
     const end = new Date(date);
@@ -25,12 +24,11 @@ const LiveEngine = (() => {
     return Math.max(0, Math.floor((end - date) / 60000));
   }
 
-  function buildProgressRing(minsLeft, slotMinutes = 90) {
-    const pct = Math.min(1, minsLeft / slotMinutes);
-    const r = 34, cx = 40, cy = 40;
-    const circumference = 2 * Math.PI * r;
-    const offset = circumference * (1 - pct);
-
+  function buildRing(minsLeft, total = 90) {
+    const pct = Math.min(1, minsLeft / total);
+    const r   = 34, cx = 40, cy = 40;
+    const circ  = 2 * Math.PI * r;
+    const offset = circ * (1 - pct);
     return `
     <svg class="progress-ring-svg" width="80" height="80" viewBox="0 0 80 80">
       <defs>
@@ -40,58 +38,70 @@ const LiveEngine = (() => {
         </linearGradient>
       </defs>
       <circle class="progress-ring-bg" cx="${cx}" cy="${cy}" r="${r}"/>
-      <circle class="progress-ring-fill"
-        cx="${cx}" cy="${cy}" r="${r}"
-        stroke-dasharray="${circumference}"
-        stroke-dashoffset="${offset}"
-      />
+      <circle class="progress-ring-fill" cx="${cx}" cy="${cy}" r="${r}"
+        stroke-dasharray="${circ}" stroke-dashoffset="${offset}"/>
     </svg>`;
   }
 
-  async function fetchLiveClass() {
-    const liveCard = document.getElementById('liveContent');
-    if (!liveCard) return;
+  async function fetchLive() {
+    const liveContent = document.getElementById('liveContent');
+    if (!liveContent) return;
 
     const { day, time } = getNow();
+    const ACADEMIC = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
 
-    // Academic day check
-    const academicDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-    if (!academicDays.includes(day)) {
-      liveCard.innerHTML = renderNoClass(`No classes today (${day})`, 'Enjoy your day off! 📚');
+    if (!ACADEMIC.includes(day)) {
+      liveContent.innerHTML = renderNoClass('No Classes Today', `${day} is a weekend 🌴`);
       return;
     }
 
+    const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+
     try {
-      const res = await fetch(`/academic/api/live-class?day=${day}&time=${time}`);
+      const params = new URLSearchParams({ day, time });
+      if (user?.program)  params.set('program',  user.program);
+      if (user?.year)     params.set('year',      user.year);
+      if (user?.semester) params.set('semester',  user.semester);
+
+      const res  = await fetch(`/academic/api/live-class?${params}`);
       const data = await res.json();
 
       if (!data.success) {
-        liveCard.innerHTML = renderNoClass('Could not fetch schedule', 'Check your connection');
+        liveContent.innerHTML = renderNoClass('Could not fetch', 'Check connection');
+        return;
+      }
+
+      if (data.is_holiday) {
+        liveContent.innerHTML = `
+        <div class="no-class-state">
+          <div class="no-class-title">🎉 ${data.holiday_name}</div>
+          <div class="no-class-sub">No classes today — Holiday!</div>
+        </div>`;
         return;
       }
 
       if (!data.live || !data.live.length) {
-        liveCard.innerHTML = renderNoClass('No Ongoing Class', `${day} · ${time} — No class at this time`);
+        liveContent.innerHTML = renderNoClass('No Ongoing Class', `${day} · ${time} — Free time!`);
         return;
       }
 
-      const cls = data.live[0];
+      const cls      = data.live[0];
       const minsLeft = minsUntil(cls.time_end || '17:00');
-      const ring = buildProgressRing(minsLeft);
+      const ring     = buildRing(minsLeft);
 
-      liveCard.innerHTML = `
+      liveContent.innerHTML = `
       <div class="live-course-code">${cls.course_code}</div>
       <div class="live-course-name">${cls.course_name || cls.course_code}</div>
       <div class="live-meta">
         <div class="live-meta-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
           Room ${cls.room_no}
         </div>
         <div class="live-meta-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
@@ -106,13 +116,13 @@ const LiveEngine = (() => {
             <div class="ring-sub">MINS LEFT</div>
           </div>
         </div>
-        <button class="join-btn" onclick="UniSync.toast('Discussion board coming soon!', 'success')">
+        <button class="join-btn" onclick="UniSync.toast('Discussion board coming soon!','success')">
           Join Discussion
         </button>
       </div>`;
 
     } catch(e) {
-      liveCard.innerHTML = renderNoClass('Could not fetch schedule', 'Backend might not be running');
+      liveContent.innerHTML = renderNoClass('Cannot connect', 'Server may be offline');
     }
   }
 
@@ -125,17 +135,12 @@ const LiveEngine = (() => {
   }
 
   function init() {
-    const liveCard = document.getElementById('liveContent');
-    if (!liveCard) return;
-
-    fetchLiveClass();
-    // Poll every 60 seconds
-    setInterval(fetchLiveClass, 60000);
+    if (!document.getElementById('liveContent')) return;
+    fetchLive();
+    setInterval(fetchLive, 60000);
   }
 
-  // Auto-init when DOM is ready
   document.addEventListener('DOMContentLoaded', init);
-
-  return { init, fetchLiveClass, getNow };
+  return { init, fetchLive, getNow };
 
 })();

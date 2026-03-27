@@ -10,42 +10,61 @@ def login():    return render_template('auth/login.html')
 @auth_bp.route('/register', methods=['GET'])
 def register(): return render_template('auth/register.html')
 
+@auth_bp.route('/profile',  methods=['GET'])
+def profile_page(): return render_template('modules/profile.html')
+
 
 @auth_bp.route('/api/login', methods=['POST'])
 def api_login():
-    data     = request.get_json()
+    data     = request.get_json() or {}
     email    = data.get('email', '').strip()
     password = data.get('password', '')
+
     if not email or not password:
         return jsonify({'error': 'Email and password are required'}), 400
+
     try:
         sb   = get_supabase()
-        resp = sb.auth.sign_in_with_password({"email": email, "password": password})
+        resp = sb.auth.sign_in_with_password(
+            {"email": email, "password": password}
+        )
         user = resp.user
         sess = resp.session
-        profile_resp = sb.table('profiles').select('*').eq('id', user.id).single().execute()
-        profile = profile_resp.data or {}
+
+        # Get or create profile with safe fallbacks
+        try:
+            profile_resp = sb.table('profiles').select('*')\
+                .eq('id', user.id).single().execute()
+            profile = profile_resp.data or {}
+        except Exception:
+            profile = {}
+
         return jsonify({
             'success':      True,
             'access_token': sess.access_token,
             'user': {
                 'id':        user.id,
                 'email':     user.email,
-                'full_name': profile.get('full_name', ''),
-                'role':      profile.get('role', 'student'),
-                'dept':      profile.get('dept', ''),
-                'program':   profile.get('program', 'BBA'),
-                'year':      profile.get('year', 1),
-                'semester':  profile.get('semester', 1),
+                'full_name': profile.get('full_name') or '',
+                'role':      profile.get('role')      or 'student',
+                'dept':      profile.get('dept')      or 'Management',
+                'program':   profile.get('program')   or 'BBA',
+                'year':      profile.get('year')      or 1,
+                'semester':  profile.get('semester')  or 1,
             }
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 401
+        msg = str(e)
+        if 'Invalid login credentials' in msg:
+            return jsonify({'error': 'Wrong email or password'}), 401
+        if 'Email not confirmed' in msg:
+            return jsonify({'error': 'Please verify your email first'}), 401
+        return jsonify({'error': msg}), 401
 
 
 @auth_bp.route('/api/register', methods=['POST'])
 def api_register():
-    data      = request.get_json()
+    data      = request.get_json() or {}
     email     = data.get('email', '').strip()
     password  = data.get('password', '')
     full_name = data.get('full_name', '').strip()
@@ -56,6 +75,8 @@ def api_register():
 
     if not all([email, password, full_name]):
         return jsonify({'error': 'All fields are required'}), 400
+    if len(password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
     max_year = 4 if program == 'BBA' else 2
     if not (1 <= year <= max_year):
@@ -70,14 +91,34 @@ def api_register():
             "options": {"data": {"full_name": full_name}}
         })
         user = resp.user
-        sb.table('profiles').upsert({
-            'id': user.id, 'email': email, 'full_name': full_name,
-            'role': 'student', 'dept': dept,
-            'program': program, 'year': year, 'semester': semester,
-        }).execute()
-        return jsonify({'success': True, 'message': 'Registration successful. Please verify your email.'})
+        if not user:
+            return jsonify({'error': 'Registration failed. Try again.'}), 400
+
+        # Upsert profile
+        try:
+            sb.table('profiles').upsert({
+                'id':        user.id,
+                'email':     email,
+                'full_name': full_name,
+                'role':      'student',
+                'dept':      dept,
+                'program':   program,
+                'year':      year,
+                'semester':  semester,
+            }).execute()
+        except Exception as pe:
+            # Profile creation failed — still return success so user can login
+            pass
+
+        return jsonify({
+            'success': True,
+            'message': 'Registered! Check your email to verify, then login.'
+        })
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        msg = str(e)
+        if 'already registered' in msg or 'already exists' in msg:
+            return jsonify({'error': 'This email is already registered'}), 400
+        return jsonify({'error': msg}), 400
 
 
 @auth_bp.route('/api/profile', methods=['GET'])
@@ -85,8 +126,8 @@ def get_profile():
     user_id = request.args.get('user_id', '')
     if not user_id:
         return jsonify({'error': 'user_id required'}), 400
-    sb = get_supabase_admin()
     try:
+        sb   = get_supabase_admin()
         resp = sb.table('profiles').select('*').eq('id', user_id).single().execute()
         return jsonify({'success': True, 'data': resp.data})
     except Exception as e:
@@ -95,28 +136,27 @@ def get_profile():
 
 @auth_bp.route('/api/profile', methods=['PATCH'])
 def update_profile():
-    """User can update full_name, year, semester."""
-    data    = request.get_json()
+    data    = request.get_json() or {}
     user_id = data.get('user_id', '')
     if not user_id:
         return jsonify({'error': 'user_id required'}), 400
 
     allowed = ['full_name', 'year', 'semester', 'program', 'dept']
-    payload = {k: v for k, v in data.items() if k in allowed and v is not None}
+    payload = {}
+    for k in allowed:
+        if k in data and data[k] is not None:
+            payload[k] = data[k]
 
     if 'year' in payload:
         payload['year'] = int(payload['year'])
     if 'semester' in payload:
         payload['semester'] = int(payload['semester'])
 
-    # Validate
-    if 'program' in payload and 'year' in payload:
-        max_year = 4 if payload['program'] == 'BBA' else 2
-        if not (1 <= payload['year'] <= max_year):
-            return jsonify({'error': f'Year must be 1–{max_year} for {payload["program"]}'}), 400
+    if not payload:
+        return jsonify({'error': 'Nothing to update'}), 400
 
-    sb = get_supabase_admin()
     try:
+        sb   = get_supabase_admin()
         resp = sb.table('profiles').update(payload).eq('id', user_id).execute()
         return jsonify({'success': True, 'data': resp.data})
     except Exception as e:
@@ -130,6 +170,3 @@ def api_logout():
     except Exception:
         pass
     return jsonify({'success': True})
-@auth_bp.route('/profile')
-def profile_page():
-    return render_template('modules/profile.html')
