@@ -39,3 +39,14 @@ def upload_resource():
         return jsonify({'success': True, 'data': resp.data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@campus_bp.route('/api/resources/<resource_id>', methods=['DELETE'])
+def delete_resource(resource_id):
+    """Delete a resource by ID. Only the uploader's name is checked client-side; 
+    for production use RLS policies to enforce ownership."""
+    sb = get_supabase_admin()
+    try:
+        sb.table('resources').delete().eq('id', resource_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

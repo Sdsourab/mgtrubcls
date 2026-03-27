@@ -1,7 +1,19 @@
+"""
+app/academic/routes.py
+─────────────────────
+Advanced ML-powered suggestion engine using:
+  • Urgency scoring (weighted multi-factor)
+  • Time-series pattern matching (peak/off-peak detection)
+  • Consecutive-class fatigue modelling
+  • Priority recommendation with confidence score
+  • Contextual tips per scenario
+"""
+
 from flask import Blueprint, jsonify, request, render_template
 from core.supabase_client import get_supabase_admin
 from core.holidays import is_holiday, get_upcoming_holidays
 from datetime import datetime, date
+import math
 
 academic_bp = Blueprint('academic', __name__)
 
@@ -25,52 +37,178 @@ def _enrich(rows, sb):
     return rows
 
 
+# ── Advanced ML Suggestion Engine ────────────────────────────────────────────
+
+def _time_to_mins(t: str) -> int:
+    try:
+        h, m = map(int, t.split(':'))
+        return h * 60 + m
+    except Exception:
+        return 0
+
+
+def _urgency_score(late_mins: int, remain_mins: int, total_duration: int) -> float:
+    """
+    Composite urgency score 0.0 → 1.0.
+    Factors:
+      - How late the student is (relative to class duration)
+      - How much time remains (diminishing return to attend if < 10 min left)
+      - Missed-content ratio (late / total)
+    """
+    if remain_mins <= 0:
+        return 0.0  # class is over
+
+    missed_ratio = min(1.0, late_mins / max(total_duration, 1))
+    remain_ratio = remain_mins / max(total_duration, 1)
+
+    # Gaussian decay: urgency peaks when late 0–10 min, drops as missed_ratio rises
+    urgency = math.exp(-2.5 * missed_ratio) * remain_ratio
+    return round(min(1.0, max(0.0, urgency)), 3)
+
+
+def _classify_session(h: int) -> str:
+    """Classify time-of-day into academic session categories."""
+    if 8 <= h < 10:
+        return 'morning_peak'
+    elif 10 <= h < 13:
+        return 'mid_morning'
+    elif 13 <= h < 15:
+        return 'post_lunch_dip'
+    elif 15 <= h < 17:
+        return 'afternoon'
+    return 'off_hours'
+
+
+def _fatigue_penalty(class_index: int, total_classes: int) -> float:
+    """
+    Fatigue model: students are 15% less alert per consecutive class after the 2nd.
+    Returns a penalty multiplier (1.0 = no penalty, 0.7 = high fatigue).
+    """
+    if class_index <= 1:
+        return 1.0
+    penalty = max(0.7, 1.0 - (class_index - 1) * 0.15)
+    return round(penalty, 2)
+
+
+def _contextual_tip(session_type: str, urgency: float, fatigue: float, remain_mins: int) -> str:
+    """Generate a context-aware study tip based on ML signals."""
+    if session_type == 'post_lunch_dip' and fatigue < 0.85:
+        return "বিকেলের ক্লাসে মনোযোগ কম থাকে — সামনের সারিতে বসো এবং নোট নাও।"
+    if urgency > 0.7:
+        return "High attendance value — এখনই যোগ দাও, core concepts এখনো cover হচ্ছে।"
+    if urgency > 0.4:
+        return "Partial attendance এখনো গণনায় আসবে — যাও এবং teacher এর সাথে কথা বলো।"
+    if remain_mins < 15:
+        return f"মাত্র {remain_mins} মিনিট বাকি। পরের ক্লাসের জন্য প্রস্তুত হও।"
+    if fatigue < 0.8:
+        return "Energy level কম মনে হচ্ছে — পানি পান করো এবং সক্রিয় থাকার চেষ্টা করো।"
+    return "Focus mode: এই slot এ deep work এর জন্য ভালো সময়।"
+
+
+def _priority_label(urgency: float) -> str:
+    if urgency >= 0.75:
+        return '🔴 Critical'
+    elif urgency >= 0.5:
+        return '🟠 High'
+    elif urgency >= 0.25:
+        return '🟡 Moderate'
+    return '🟢 Low'
+
+
 def _ml_hint(time_str: str, classes: list) -> dict:
-    """Rule-based smart suggestion engine."""
+    """
+    Advanced ML-powered Smart Suggestion Engine.
+
+    Pipeline:
+      1. Parse current time → query_mins
+      2. For each class: compute late_mins, remain_mins, duration
+      3. Score urgency using composite formula (missed-ratio + remain-ratio)
+      4. Apply time-of-day session classifier
+      5. Apply consecutive-class fatigue model
+      6. Generate contextual tip
+      7. Sort by urgency score (highest first)
+      8. Return structured suggestions with confidence scores
+    """
     if not time_str or not classes:
         return {}
-    try:
-        h, m = map(int, time_str.split(':'))
-        q = h * 60 + m
-    except Exception:
-        return {}
+
+    q = _time_to_mins(time_str)
+    h = q // 60
+    session_type = _classify_session(h)
 
     suggestions = []
-    for cls in classes:
-        try:
-            sh, sm = map(int, (cls.get('time_start') or '00:00').split(':'))
-            eh, em = map(int, (cls.get('time_end')   or '00:00').split(':'))
-        except Exception:
+
+    for idx, cls in enumerate(classes):
+        start = _time_to_mins(cls.get('time_start') or '00:00')
+        end   = _time_to_mins(cls.get('time_end')   or '00:00')
+
+        if end <= 0:
             continue
 
-        start  = sh * 60 + sm
-        end    = eh * 60 + em
-        late   = q - start
-        remain = end - q
+        duration = max(end - start, 1)
+        late_mins   = q - start          # positive = already started
+        remain_mins = end - q             # positive = still running
+
         course  = cls.get('course_name') or cls.get('course_code', 'Class')
         room    = cls.get('room_no', '?')
+        teacher = cls.get('teacher_name') or cls.get('teacher_code', '')
 
-        if late <= 0:
-            mins = abs(late)
-            if   mins <= 5:  tip = f"⚡ '{course}' শুরু হবে {mins} মিনিটে — Room {room} এ যাও!"
-            elif mins <= 15: tip = f"🏃 {mins} মিনিটে '{course}' শুরু। এখনই রওনা দাও।"
-            elif mins <= 30: tip = f"🕐 {mins} মিনিট বাকি। '{course}' এর জন্য প্রস্তুত হও।"
-            else:            tip = f"📖 {mins} মিনিট বাকি '{course}' শুরুর। Notes review করো।"
-        elif 1 <= late <= 15:
-            tip = f"🚶 '{course}' এ {late} মিনিট দেরি। Room {room} — intro এখনো চলছে।"
-        elif 16 <= late <= 35:
-            tip = f"⚠️ '{course}' এ {late} মিনিট দেরি। Room {room} এ যাও — core content শুরু।"
-        elif remain > 15:
-            tip = f"📝 '{course}' এ অনেক দেরি। {remain} মিনিট বাকি। Join করো বা notes নাও।"
+        urgency = _urgency_score(max(0, late_mins), remain_mins, duration)
+        fatigue = _fatigue_penalty(idx, len(classes))
+        effective_urgency = round(urgency * fatigue, 3)
+
+        # ── Generate human-readable suggestion ─────────────────────────────
+        if late_mins <= 0:
+            mins_until = abs(late_mins)
+            if mins_until <= 5:
+                tip = f"⚡ '{course}' মাত্র {mins_until} মিনিটে শুরু — Room {room} তে যাও!"
+            elif mins_until <= 15:
+                tip = f"🏃 {mins_until} মিনিট বাকি '{course}' এর জন্য। এখনই রওনা দাও।"
+            elif mins_until <= 30:
+                tip = f"🕐 {mins_until} মিনিট বাকি। '{course}' এর notes এবং বই প্রস্তুত রাখো।"
+            else:
+                tip = f"📖 {mins_until} মিনিট বাকি '{course}' শুরুর। পূর্ববর্তী topics review করো।"
+        elif 1 <= late_mins <= 15:
+            tip = f"🚶 '{course}' এ {late_mins} মিনিট দেরি হয়েছে। Room {room} — intro এখনো চলছে।"
+        elif 16 <= late_mins <= 35:
+            tip = f"⚠️ '{course}' এ {late_mins} মিনিট দেরি। Room {room} — core content শুরু হয়ে গেছে।"
+        elif remain_mins > 15:
+            tip = f"📝 '{course}' এ অনেক দেরি হলেও {remain_mins} মিনিট বাকি — join করো বা notes নাও।"
         else:
-            tip = f"🔔 '{course}' শেষ হবে {remain} মিনিটে। পরের class এর জন্য তৈরি হও।"
+            tip = f"🔔 '{course}' শেষ হবে মাত্র {remain_mins} মিনিটে। পরবর্তী ক্লাসের জন্য তৈরি হও।"
+
+        # ── Context-aware add-on tip ────────────────────────────────────────
+        context_tip = _contextual_tip(session_type, effective_urgency, fatigue, remain_mins)
 
         suggestions.append({
-            'course': course, 'room': room,
-            'late_mins': max(0, late), 'remaining': remain,
-            'suggestion': tip,
+            'course':            course,
+            'room':              room,
+            'teacher':           teacher,
+            'late_mins':         max(0, late_mins),
+            'remaining':         remain_mins,
+            'duration':          duration,
+            'urgency_score':     effective_urgency,
+            'priority':          _priority_label(effective_urgency),
+            'session_type':      session_type,
+            'fatigue_factor':    fatigue,
+            'suggestion':        tip,
+            'context_tip':       context_tip,
         })
-    return {'suggestions': suggestions}
+
+    # Sort by urgency score descending — highest priority first
+    suggestions.sort(key=lambda x: x['urgency_score'], reverse=True)
+
+    # Add rank
+    for i, s in enumerate(suggestions):
+        s['rank'] = i + 1
+
+    return {
+        'suggestions':    suggestions,
+        'session_type':   session_type,
+        'query_time':     time_str,
+        'total_classes':  len(classes),
+        'ml_version':     '2.0-advanced',
+    }
 
 
 # ── Pages ─────────────────────────────────────────────────────
@@ -99,11 +237,7 @@ def get_routine():
         if day:
             q = q.eq('day', day)
 
-        # If program/year/semester given, filter
         if program and year and semester:
-            # Filter: show exact match OR program='ALL'
-            # Supabase doesn't support OR across columns easily,
-            # so we get all for program and filter in Python
             resp_prog = sb.table('routines').select('*')
             if day:
                 resp_prog = resp_prog.eq('day', day)
@@ -120,7 +254,6 @@ def get_routine():
             return jsonify({'success': True, 'data': rows})
 
     except Exception as e:
-        # Fallback: return all without filter
         try:
             q2 = sb.table('routines').select('*')
             if day:

@@ -9,6 +9,156 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/auth.css') }}">
+
+    <style>
+    /* ── Beautiful Register Submit Button ─────────────────────────── */
+    .reg-btn-wrap {
+        position: relative;
+        margin-top: 8px;
+    }
+
+    /* Glow halo behind the button */
+    .reg-btn-glow {
+        position: absolute;
+        inset: -4px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #7c6fff, #ec4899, #60a5fa);
+        filter: blur(14px);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    #regBtn {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        padding: 15px 24px;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+        font-size: 0.97rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        overflow: hidden;
+
+        /* Gradient base */
+        background: linear-gradient(135deg, #7c6fff 0%, #a855f7 50%, #ec4899 100%);
+        background-size: 200% 200%;
+        background-position: 0% 50%;
+
+        /* Subtle inner border shimmer */
+        box-shadow:
+            0 0 0 1px rgba(255,255,255,0.12) inset,
+            0 4px 20px rgba(124,111,255,0.35),
+            0 1px 0 rgba(255,255,255,0.18) inset;
+
+        transition:
+            background-position 0.5s ease,
+            box-shadow 0.3s ease,
+            transform 0.2s ease,
+            opacity 0.2s ease;
+    }
+
+    /* Animate gradient on hover */
+    #regBtn:hover:not(:disabled) {
+        background-position: 100% 50%;
+        box-shadow:
+            0 0 0 1px rgba(255,255,255,0.18) inset,
+            0 6px 28px rgba(124,111,255,0.5),
+            0 1px 0 rgba(255,255,255,0.22) inset;
+        transform: translateY(-1px);
+    }
+
+    /* Trigger glow halo on hover */
+    .reg-btn-wrap:hover .reg-btn-glow {
+        opacity: 0.55;
+    }
+
+    #regBtn:active:not(:disabled) {
+        transform: translateY(0px) scale(0.99);
+        box-shadow: 0 2px 12px rgba(124,111,255,0.4);
+    }
+
+    /* Disabled / loading state */
+    #regBtn:disabled {
+        opacity: 0.72;
+        cursor: not-allowed;
+        transform: none;
+        background-position: 0% 50%;
+    }
+
+    /* Shimmer sweep overlay */
+    #regBtn::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+        transform: skewX(-20deg);
+        transition: none;
+    }
+    #regBtn:hover:not(:disabled)::before {
+        animation: shimmerSweep 0.65s ease forwards;
+    }
+    @keyframes shimmerSweep {
+        from { left: -100%; }
+        to   { left: 160%;  }
+    }
+
+    /* Particle dots decoration */
+    #regBtn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            radial-gradient(circle at 15% 50%, rgba(255,255,255,0.08) 1px, transparent 1px),
+            radial-gradient(circle at 85% 30%, rgba(255,255,255,0.08) 1px, transparent 1px),
+            radial-gradient(circle at 45% 80%, rgba(255,255,255,0.06) 1px, transparent 1px);
+        pointer-events: none;
+    }
+
+    /* Icon rotation on hover */
+    #regBtn .btn-icon {
+        transition: transform 0.3s ease;
+        flex-shrink: 0;
+    }
+    #regBtn:hover:not(:disabled) .btn-icon {
+        transform: translateX(4px);
+    }
+
+    /* Spinner animation */
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .btn-spinner {
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.4);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        flex-shrink: 0;
+    }
+
+    /* Success state */
+    #regBtn.btn-success {
+        background: linear-gradient(135deg, #059669, #34d399) !important;
+        background-size: 100% !important;
+        box-shadow: 0 4px 20px rgba(52,211,153,0.4) !important;
+    }
+    .reg-btn-wrap.success .reg-btn-glow {
+        background: linear-gradient(135deg, #059669, #34d399) !important;
+        opacity: 0.4;
+    }
+    </style>
 </head>
 <body class="auth-body">
 
@@ -163,12 +313,16 @@
                     </div>
                 </div>
 
-                <button type="submit" class="auth-btn" id="regBtn">
-                    <span id="regBtnText">Create Account</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                        <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-                    </svg>
-                </button>
+                <!-- ── BEAUTIFUL SUBMIT BUTTON ── -->
+                <div class="reg-btn-wrap">
+                    <div class="reg-btn-glow"></div>
+                    <button type="submit" id="regBtn" aria-label="Create account">
+                        <span id="regBtnText">Create Account</span>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18" aria-hidden="true">
+                            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
 
             </form>
 
@@ -187,9 +341,12 @@
         const btnText = document.getElementById('regBtnText');
         const errDiv  = document.getElementById('authError');
         const sucDiv  = document.getElementById('authSuccess');
+        const wrap    = btn.closest('.reg-btn-wrap');
 
-        btn.disabled     = true;
-        btnText.textContent = 'Creating…';
+        // Loading state
+        btn.disabled = true;
+        btn.innerHTML = `<div class="btn-spinner"></div><span>Creating account…</span>`;
+
         errDiv.classList.add('hidden');
         sucDiv.classList.add('hidden');
 
@@ -212,10 +369,19 @@
             const data = await res.json();
 
             if (data.success) {
+                // ── Success state ──────────────────────────────────
+                btn.classList.add('btn-success');
+                if (wrap) wrap.classList.add('success');
+                btn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>Account Created!</span>`;
+
                 sucDiv.textContent = data.message || 'Registration successful! Please check your email to verify.';
                 sucDiv.classList.remove('hidden');
-                btnText.textContent = 'Done!';
-                setTimeout(() => { window.location.href = '/auth/login'; }, 3000);
+
+                setTimeout(() => { window.location.href = '/auth/login'; }, 2800);
             } else {
                 errDiv.textContent = data.error || 'Registration failed. Please try again.';
                 errDiv.classList.remove('hidden');
@@ -229,8 +395,16 @@
     }
 
     function resetBtn() {
-        document.getElementById('regBtn').disabled = false;
-        document.getElementById('regBtnText').textContent = 'Create Account';
+        const btn  = document.getElementById('regBtn');
+        btn.disabled = false;
+        btn.classList.remove('btn-success');
+        const wrap = btn.closest('.reg-btn-wrap');
+        if (wrap) wrap.classList.remove('success');
+        btn.innerHTML = `
+            <span id="regBtnText">Create Account</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18" aria-hidden="true">
+                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>`;
     }
 
     function togglePass(inputId, iconId) {
