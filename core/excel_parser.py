@@ -1,4 +1,12 @@
-import pandas as pd
+"""
+core/excel_parser.py
+
+IMPORTANT: pandas is intentionally NOT imported at module level.
+Importing pandas at the top of this file causes it to load on every cold
+start, even when only get_seed_routines() or get_seed_mappings() are called.
+pandas is large (~30MB) and only needed for parse_routine_excel().
+It is now imported lazily inside that function only.
+"""
 import re
 from typing import List, Dict, Optional
 
@@ -140,3 +148,59 @@ def get_seed_mappings() -> List[Dict]:
     ]
     return [{"code": t[0], "full_name": t[1], "type": t[2]}
             for t in teachers + courses]
+
+
+def parse_routine_excel(file_path: str) -> List[Dict]:
+    """
+    Parse a routine .xlsx file uploaded by the admin.
+    pandas is imported HERE (lazily) so it does NOT load on every cold start.
+    This function is only called when an admin uploads a file.
+    """
+    import pandas as pd  # ← lazy import: only loads when this function is called
+
+    try:
+        df = pd.read_excel(file_path)
+    except Exception as e:
+        raise ValueError(f"Could not read Excel file: {e}")
+
+    required_cols = {'day', 'room_no', 'time_start', 'time_end', 'course_code', 'teacher_code'}
+    cols = {c.strip().lower() for c in df.columns}
+    if not required_cols.issubset(cols):
+        missing = required_cols - cols
+        raise ValueError(f"Missing columns: {missing}. Required: {required_cols}")
+
+    df.columns = [c.strip().lower() for c in df.columns]
+    entries = []
+    for _, row in df.iterrows():
+        try:
+            cc   = str(row.get('course_code', '')).strip().upper()
+            meta = COURSE_META.get(cc, ('ALL', 0, 0))
+            ts   = str(row.get('time_start', '')).strip()
+            te   = str(row.get('time_end',   '')).strip()
+
+            # Normalise time strings like "9:00" → "09:00"
+            def norm_time(t):
+                parts = t.split(':')
+                if len(parts) == 2:
+                    return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}"
+                return t
+
+            entry = {
+                "day":             str(row.get('day', '')).strip(),
+                "room_no":         str(row.get('room_no', '')).strip(),
+                "time_slot":       f"{ts}-{te}",
+                "time_start":      norm_time(ts),
+                "time_end":        norm_time(te),
+                "course_code":     cc,
+                "teacher_code":    str(row.get('teacher_code', '')).strip().upper(),
+                "program":         meta[0],
+                "course_year":     meta[1],
+                "course_semester": meta[2],
+                "session":         str(row.get('session', '2025-26')).strip(),
+            }
+            if entry["day"] and entry["course_code"]:
+                entries.append(entry)
+        except Exception:
+            continue
+
+    return entries

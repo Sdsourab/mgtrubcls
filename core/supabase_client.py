@@ -1,10 +1,11 @@
 """
 core/supabase_client.py
 
-Serverless-safe Supabase client.
-- No module-level global singletons (avoids stale cache across warm Lambda reuse)
+Serverless-safe Supabase client for supabase-py v2.x.
+- No module-level singletons (avoids stale state across warm Lambda reuse)
 - Reads credentials from environment variables at call time
 - Falls back to hardcoded keys so the app works even without Vercel env vars set
+- get_supabase_with_token() updated for supabase-py v2 API
 """
 
 import os
@@ -18,7 +19,7 @@ _FALLBACK_SVC  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 def _get_credentials():
     """Read Supabase credentials fresh from environment (serverless-safe)."""
-    url      = os.environ.get("SUPABASE_URL")      or _FALLBACK_URL
+    url      = os.environ.get("SUPABASE_URL")       or _FALLBACK_URL
     anon_key = os.environ.get("SUPABASE_ANON_KEY")  or _FALLBACK_ANON
     svc_key  = os.environ.get("SUPABASE_SERVICE_KEY") or _FALLBACK_SVC
     return url, anon_key, svc_key
@@ -37,8 +38,13 @@ def get_supabase_admin() -> Client:
 
 
 def get_supabase_with_token(token: str) -> Client:
-    """Returns a Supabase client authenticated with a user JWT token."""
+    """
+    Returns a Supabase client authenticated with a user JWT token.
+    Updated for supabase-py v2.x — uses postgrest.auth() which is the
+    correct way to pass a Bearer token to PostgREST queries in v2.
+    """
     url, anon_key, _ = _get_credentials()
     client = create_client(url, anon_key)
+    # In supabase-py v2, set the auth header on the postgrest sub-client directly
     client.postgrest.auth(token)
     return client

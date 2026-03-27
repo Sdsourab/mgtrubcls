@@ -21,13 +21,13 @@ def create_app(config_name=None):
     mail.init_app(app)
 
     # ── Blueprints ────────────────────────────────────────────
-    from app.auth.routes        import auth_bp
-    from app.academic.routes    import academic_bp
+    from app.auth.routes         import auth_bp
+    from app.academic.routes     import academic_bp
     from app.productivity.routes import productivity_bp
-    from app.campus.routes      import campus_bp
-    from app.admin.routes       import admin_bp
-    from app.guest.routes       import guest_bp
-    from app.planner.routes     import planner_bp
+    from app.campus.routes       import campus_bp
+    from app.admin.routes        import admin_bp
+    from app.guest.routes        import guest_bp
+    from app.planner.routes      import planner_bp
 
     app.register_blueprint(auth_bp,          url_prefix='/auth')
     app.register_blueprint(academic_bp,      url_prefix='/academic')
@@ -63,10 +63,10 @@ def create_app(config_name=None):
     def forbidden(e):
         return jsonify({'error': 'Forbidden', 'code': 403}), 403
 
-    # ── Scheduler (disabled on Vercel — serverless environment) ──────────
-    # APScheduler requires a persistent process; Vercel lambdas are stateless.
-    # Only start if explicitly enabled AND not running on Vercel.
-    is_vercel = os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV')
+    # ── Scheduler ─────────────────────────────────────────────
+    # APScheduler needs a persistent process — Vercel lambdas are stateless.
+    # VERCEL env var is automatically set to "1" on all Vercel deployments.
+    is_vercel = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
     scheduler_enabled = app.config.get('SCHEDULER_ENABLED', False)
 
     if scheduler_enabled and not is_vercel:
