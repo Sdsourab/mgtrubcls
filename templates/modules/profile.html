@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block nav_profile %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">My Profile</h1>
+      <p class="page-sub">Update your name, year, and semester</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:700px;">
+
+    <!-- Profile Card -->
+    <div class="planner-card" style="grid-column:1/-1;display:flex;align-items:center;gap:20px;padding:24px;">
+      <div id="bigAvatar" style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;color:#fff;flex-shrink:0;">?</div>
+      <div>
+        <div id="profileName" style="font-size:1.3rem;font-weight:700;"></div>
+        <div id="profileEmail" style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;"></div>
+        <div id="profileBadge" style="margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <!-- Edit Name -->
+    <div class="planner-card">
+      <h3>✏️ Update Name</h3>
+      <div id="nameMsg" class="hidden" style="margin-bottom:12px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+      <div class="modal-form" style="gap:12px;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="inp_name" placeholder="Your full name">
+        </div>
+        <button class="btn-primary btn-full" onclick="saveName()">Save Name</button>
+      </div>
+    </div>
+
+    <!-- Edit Academic Info -->
+    <div class="planner-card">
+      <h3>🎓 Academic Info</h3>
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:14px;">
+        Changing year/semester instantly updates your routine and all features.
+      </p>
+      <div id="acadMsg" class="hidden" style="margin-bottom:12px;font-size:0.82rem;padding:8px 12px;border-radius:8px;"></div>
+      <div class="modal-form" style="gap:12px;">
+        <div class="form-group">
+          <label>Program</label>
+          <select id="inp_program" onchange="updateYearOpts()">
+            <option value="BBA">BBA</option>
+            <option value="MBA">MBA</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Year</label>
+            <select id="inp_year"></select>
+          </div>
+          <div class="form-group">
+            <label>Semester</label>
+            <select id="inp_semester">
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary btn-full" onclick="saveAcademic()">Save & Update Routine</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _user = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  UniSync.requireAuth();
+  _user = UniSync.getUser();
+  if (!_user) return;
+
+  // Populate UI
+  const initial = (_user.full_name || _user.email || '?')[0].toUpperCase();
+  document.getElementById('bigAvatar').textContent     = initial;
+  document.getElementById('profileName').textContent   = _user.full_name  || '—';
+  document.getElementById('profileEmail').textContent  = _user.email      || '—';
+  document.getElementById('profileBadge').innerHTML    = `
+    <span class="routine-program-tag">${_user.program||'BBA'} · Year ${_user.year||1} · Semester ${_user.semester||1}</span>`;
+
+  document.getElementById('inp_name').value     = _user.full_name || '';
+  document.getElementById('inp_program').value  = _user.program   || 'BBA';
+  updateYearOpts();
+  document.getElementById('inp_year').value     = _user.year      || 1;
+  document.getElementById('inp_semester').value = _user.semester  || 1;
+});
+
+function updateYearOpts() {
+  const prog  = document.getElementById('inp_program').value;
+  const max   = prog === 'BBA' ? 4 : 2;
+  const sel   = document.getElementById('inp_year');
+  const cur   = parseInt(sel.value) || 1;
+  sel.innerHTML = '';
+  for (let i = 1; i <= max; i++) {
+    sel.innerHTML += `<option value="${i}" ${i===cur?'selected':''}>Year ${i}</option>`;
+  }
+}
+
+async function saveName() {
+  const name  = document.getElementById('inp_name').value.trim();
+  const msgEl = document.getElementById('nameMsg');
+  if (!name) { showMsg(msgEl, 'Name cannot be empty', 'error'); return; }
+
+  try {
+    const res  = await fetch('/auth/api/profile', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: _user.id, full_name: name})
+    });
+    const data = await res.json();
+    if (data.success) {
+      _user.full_name = name;
+      localStorage.setItem('us_user', JSON.stringify(_user));
+      document.getElementById('profileName').textContent = name;
+      document.getElementById('bigAvatar').textContent   = name[0].toUpperCase();
+      UniSync.hydrateUI();
+      showMsg(msgEl, '✅ Name updated!', 'success');
+    } else {
+      showMsg(msgEl, data.error || 'Update failed', 'error');
+    }
+  } catch { showMsg(msgEl, 'Connection error', 'error'); }
+}
+
+async function saveAcademic() {
+  const program  = document.getElementById('inp_program').value;
+  const year     = parseInt(document.getElementById('inp_year').value);
+  const semester = parseInt(document.getElementById('inp_semester').value);
+  const msgEl    = document.getElementById('acadMsg');
+
+  try {
+    const res  = await fetch('/auth/api/profile', {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: _user.id, program, year, semester})
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Update local storage so everything refreshes
+      _user.program  = program;
+      _user.year     = year;
+      _user.semester = semester;
+      localStorage.setItem('us_user', JSON.stringify(_user));
+
+      document.getElementById('profileBadge').innerHTML =
+        `<span class="routine-program-tag">${program} · Year ${year} · Semester ${semester}</span>`;
+      UniSync.hydrateUI();
+      showMsg(msgEl, '✅ Academic info updated! Your routine is now refreshed.', 'success');
+    } else {
+      showMsg(msgEl, data.error || 'Update failed', 'error');
+    }
+  } catch { showMsg(msgEl, 'Connection error', 'error'); }
+}
+
+function showMsg(el, msg, type) {
+  el.textContent  = msg;
+  el.className    = '';
+  el.style.background = type === 'success' ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)';
+  el.style.color      = type === 'success' ? 'var(--green)' : 'var(--red)';
+  el.style.border     = `1px solid ${type === 'success' ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 4000);
+}
+</script>
+{% endblock %}

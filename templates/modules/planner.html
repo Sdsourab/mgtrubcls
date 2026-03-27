@@ -19,22 +19,26 @@
   </div>
 
   <!-- AI Key Setup -->
+  <!-- AI Key Setup -->
   <div class="planner-card" style="margin-bottom:18px;">
-    <h3 style="font-size:0.9rem;margin-bottom:10px;">🔑 Your AI API Key <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400;">(saved locally, never sent to server)</span></h3>
+    <h3 style="font-size:0.9rem;margin-bottom:4px;">🔑 Your AI API Key</h3>
+    <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;">
+      Saved only in your browser's localStorage — never sent to our server.<br>
+      Supports: <strong>Gemini</strong> (key starts with AIza…) · <strong>OpenAI</strong> (key starts with sk-…)
+    </p>
     <div class="ai-key-row">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16" style="color:var(--text-muted);flex-shrink:0;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"
+          style="color:var(--text-muted);flex-shrink:0;">
         <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
       </svg>
-      <input type="password" id="aiKeyInput" placeholder="Paste your Gemini or OpenAI API key…"
-             oninput="saveAiKey(this.value)">
+      <input type="password" id="aiKeyInput"
+            placeholder="Paste Gemini (AIza…) or OpenAI (sk-…) key here"
+            oninput="onAiKeyInput(this.value)">
       <button class="btn-sm btn-accent" onclick="toggleAiKey()">Show</button>
-      <button class="btn-sm" onclick="clearAiKey()">Clear</button>
+      <button class="btn-sm btn-danger" onclick="clearAiKey()">Clear</button>
     </div>
-    <p style="font-size:0.72rem;color:var(--text-muted);">
-      Supports: Gemini (generativelanguage.googleapis.com) · OpenAI (api.openai.com)
-    </p>
+    <div id="aiKeyStatus" style="font-size:0.75rem;margin-top:6px;color:var(--text-muted);">No key saved</div>
   </div>
-
   <div class="planner-grid">
     <!-- My Plans -->
     <div class="planner-card">

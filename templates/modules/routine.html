@@ -4,27 +4,29 @@
 {% block mob_routine %}active{% endblock %}
 
 {% block content %}
-<div class="page-wrapper stagger">
+<div class="page-wrapper">
 
   <div class="page-header">
     <div>
       <h1 class="page-title">Class Routine</h1>
-      <p class="page-sub">Department of Management · Rabindra University</p>
+      <p class="page-sub" id="routineSubtitle">Department of Management · Rabindra University</p>
     </div>
+    <a href="/auth/profile" class="btn-sm btn-accent">⚙ Change Semester</a>
   </div>
 
-  <!-- Holiday Banner (shown if today is holiday) -->
+  <!-- Holiday Banner -->
   <div id="holidayBanner" class="holiday-banner hidden">
     <div class="holiday-banner-icon">🎉</div>
     <div class="holiday-banner-text">
-      No classes today — <span class="holiday-banner-name" id="holidayName"></span>
+      No classes today — <span id="holidayName"></span>
     </div>
   </div>
 
-  <!-- Program Info Strip -->
-  <div id="programStrip" style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-    <span style="font-size:0.78rem;color:var(--text-muted);">Showing schedule for:</span>
+  <!-- Program Strip -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Your semester:</span>
     <span id="programTag" class="routine-program-tag">Loading…</span>
+    <span style="font-size:0.75rem;color:var(--text-muted);" id="courseCountLabel"></span>
   </div>
 
   <!-- Day Tabs -->
@@ -47,49 +49,21 @@
     </div>
   </div>
 
-  <!-- Duration Search -->
-  <div class="time-search-section">
+  <!-- My Courses This Semester -->
+  <section style="margin-bottom:20px;">
     <div class="section-header">
-      <h2>Duration Search</h2>
-      <span class="section-sub">Find classes in a time window + get smart suggestions</span>
+      <h2>My Courses This Semester</h2>
     </div>
-    <div class="time-search-card">
-      <div class="time-search-inputs">
-        <div class="ts-input-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <input type="time" id="dsFrom" class="ts-input" placeholder="From">
-        </div>
-        <span class="ts-sep">→</span>
-        <div class="ts-input-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <input type="time" id="dsTo" class="ts-input" placeholder="To">
-        </div>
-        <select id="dsDay" class="ts-select">
-          <option value="">Any Day</option>
-          <option value="Sunday">Sunday</option>
-          <option value="Monday">Monday</option>
-          <option value="Tuesday">Tuesday</option>
-          <option value="Wednesday">Wednesday</option>
-          <option value="Thursday">Thursday</option>
-        </select>
-        <button class="btn-primary ts-btn" onclick="runDurationSearch()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          Search
-        </button>
-      </div>
-      <div id="dsResults" class="ts-results hidden"></div>
+    <div class="courses-grid" id="myCoursesGrid">
+      <div class="skeleton-block course-skeleton"></div>
+      <div class="skeleton-block course-skeleton"></div>
+      <div class="skeleton-block course-skeleton"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- Faculty Legend -->
+  <!-- Legend -->
   <div class="routine-legend">
-    <div class="legend-title">Faculty Code Legend</div>
+    <div class="legend-title">Faculty Legend</div>
     <div class="legend-grid" id="legendGrid"></div>
   </div>
 
@@ -100,38 +74,42 @@
 <script>
 const ROOMS       = ['101','201','100'];
 const ROOM_LABELS = {'101':'Room 101','201':'Room 201','100':'Computer Lab'};
-const ALL_SLOTS   = ['9:00-10:30','10:30-12:00','12:00-1:30','2:00-3:30','3:30-5:00'];
-
 const TEACHER_MAP = {
-  FA:'Prof. Dr. Feroz Ahmed', HR:'Habibur Rahaman', MK:'Malina Khatun',
-  PKP:'Prashanta Kumar Podder', TI:'Md. Tarequl Islam', AH:'Alamgir Hossain',
-  KHR:'Md. Kazi Hafizur Rahman', THT:'Tamima Hasan Taishi'
+  FA:'Prof. Dr. Feroz Ahmed',HR:'Habibur Rahaman',MK:'Malina Khatun',
+  PKP:'Prashanta Kumar Podder',TI:'Md. Tarequl Islam',AH:'Alamgir Hossain',
+  KHR:'Md. Kazi Hafizur Rahman',THT:'Tamima Hasan Taishi'
 };
 
 let mappings = {};
 let userProfile = null;
+let allRoutineData = []; // all rows for this user's semester
 
 document.addEventListener('DOMContentLoaded', async () => {
   UniSync.requireAuth();
   userProfile = UniSync.getUser();
 
-  // Update program strip
   if (userProfile) {
-    const tag = document.getElementById('programTag');
-    tag.textContent = `${userProfile.program || 'BBA'} · Year ${userProfile.year || 1} · Sem ${userProfile.semester || 1}`;
+    const prog = userProfile.program || 'BBA';
+    const yr   = userProfile.year    || 1;
+    const sem  = userProfile.semester|| 1;
+    document.getElementById('programTag').textContent = `${prog} · Year ${yr} · Semester ${sem}`;
+    document.getElementById('routineSubtitle').textContent =
+      `${prog} Year ${yr} Sem ${sem} — Rabindra University`;
   }
 
   await loadMappings();
   await checkHoliday();
 
   // Auto-select today
-  const today     = new Date().toLocaleDateString('en-US', {weekday:'long'});
-  const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-  const activeDay = validDays.includes(today) ? today : 'Sunday';
-  const tab       = document.querySelector(`[data-day="${activeDay}"]`);
-  if (tab) loadRoutine(activeDay, tab);
+  const days    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const today   = days[new Date().getDay()];
+  const valid   = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+  const activeD = valid.includes(today) ? today : 'Sunday';
+  const tab     = document.querySelector(`[data-day="${activeD}"]`);
+  if (tab) loadRoutine(activeD, tab);
   else     loadRoutine('Sunday', document.querySelector('[data-day="Sunday"]'));
 
+  await loadMyCourses();
   renderLegend();
 });
 
@@ -160,34 +138,59 @@ async function loadRoutine(day, btn) {
   if (btn) btn.classList.add('active');
 
   const content = document.getElementById('routineContent');
-  content.innerHTML = '<div class="routine-loading"><div class="skeleton-block"></div><div class="skeleton-block"></div></div>';
+  content.innerHTML = `<div class="routine-loading">
+    <div class="skeleton-block"></div>
+    <div class="skeleton-block"></div>
+  </div>`;
+
+  if (!userProfile) return;
 
   try {
-    const params = new URLSearchParams({day});
-    if (userProfile?.program) params.set('program', userProfile.program);
-
+    const params = new URLSearchParams({
+      day,
+      program:  userProfile.program  || 'BBA',
+      year:     userProfile.year     || 1,
+      semester: userProfile.semester || 1,
+    });
     const res  = await fetch(`/academic/api/routine?${params}`);
     const data = await res.json();
 
-    if (data.success && data.data.length) renderRoutine(data.data, day);
-    else content.innerHTML = '<div class="empty-state"><p>No routine data found. Ask admin to seed the database.</p></div>';
+    if (data.success && data.data.length) {
+      renderRoutine(data.data, day);
+    } else {
+      content.innerHTML = `
+      <div style="padding:28px;text-align:center;color:var(--text-muted);">
+        <div style="font-size:1.5rem;margin-bottom:8px;">📭</div>
+        <div style="font-weight:600;margin-bottom:4px;">No classes on ${day}</div>
+        <div style="font-size:0.82rem;">for ${userProfile.program} Year ${userProfile.year} Sem ${userProfile.semester}</div>
+      </div>`;
+    }
   } catch(e) {
-    content.innerHTML = '<div class="empty-state"><p>Could not load routine. Check your connection.</p></div>';
+    content.innerHTML = '<div class="empty-state"><p>Could not load routine. Check connection.</p></div>';
   }
 }
 
 function renderRoutine(rows, day) {
   const content = document.getElementById('routineContent');
-  const lookup  = {};
+
+  // Build lookup: room_no → time_slot → row
+  const lookup = {};
   rows.forEach(r => {
     if (!lookup[r.room_no]) lookup[r.room_no] = {};
     lookup[r.room_no][r.time_slot] = r;
   });
 
+  // Only show rooms that have at least 1 class
+  const activeRooms = ROOMS.filter(r => lookup[r] && Object.keys(lookup[r]).length > 0);
+  if (!activeRooms.length) {
+    content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);">No classes scheduled for ${day} in your semester.</div>`;
+    return;
+  }
+
   let html = `
   <div class="routine-day-title">
     ${day}
-    <span class="routine-program-tag">${userProfile?.program || 'ALL'}</span>
+    <span class="routine-program-tag">${userProfile.program} Y${userProfile.year} S${userProfile.semester}</span>
   </div>
   <div class="routine-table-wrap">
   <table class="routine-table">
@@ -197,24 +200,24 @@ function renderRoutine(rows, day) {
         <th>9:00–10:30</th>
         <th>10:30–12:00</th>
         <th>12:00–1:30</th>
-        <th style="width:80px;">Lunch</th>
+        <th style="width:70px;font-size:0.6rem;">Lunch</th>
         <th>2:00–3:30</th>
         <th>3:30–5:00</th>
       </tr>
     </thead>
     <tbody>`;
 
-  ROOMS.forEach(room => {
+  activeRooms.forEach(room => {
     const rd = lookup[room] || {};
     html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
     ['9:00-10:30','10:30-12:00','12:00-1:30'].forEach(slot => {
       const e = rd[slot];
-      html += e ? `<td class="class-cell">${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
+      html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
-    html += `<td class="lunch-cell"><div class="lunch-label">PRAYER &amp;<br>LUNCH</div></td>`;
+    html += `<td class="lunch-cell"><div class="lunch-label">PRAYER &<br>LUNCH</div></td>`;
     ['2:00-3:30','3:30-5:00'].forEach(slot => {
       const e = rd[slot];
-      html += e ? `<td class="class-cell">${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
+      html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
     html += '</tr>';
   });
@@ -224,73 +227,77 @@ function renderRoutine(rows, day) {
 }
 
 function buildCell(e) {
-  const courseName = mappings[e.course_code]  || e.course_name  || e.course_code;
-  const short = courseName.length > 22 ? courseName.substring(0,22)+'…' : courseName;
+  const name  = mappings[e.course_code] || e.course_name || e.course_code;
+  const short = name.length > 24 ? name.substring(0,24)+'…' : name;
   return `
   <div class="class-badge">
     <div class="class-code">${e.course_code}</div>
-    <div class="class-name" title="${courseName}">${short}</div>
+    <div class="class-name" title="${name}">${short}</div>
     <div class="class-teacher">${e.teacher_code} · Rm ${e.room_no}</div>
   </div>`;
 }
 
-async function runDurationSearch() {
-  const from    = document.getElementById('dsFrom').value;
-  const to      = document.getElementById('dsTo').value;
-  const day     = document.getElementById('dsDay').value;
-  const resDiv  = document.getElementById('dsResults');
-
-  if (!from || !to) { UniSync.toast('Please select both From and To times', 'warning'); return; }
-  if (from >= to)   { UniSync.toast('From time must be before To time', 'warning'); return; }
-
-  resDiv.innerHTML = '<div class="ts-loading">Searching…</div>';
-  resDiv.classList.remove('hidden');
-
+async function loadMyCourses() {
+  if (!userProfile) return;
   try {
-    const params = new URLSearchParams({from, to});
-    if (day) params.set('day', day);
-    if (userProfile?.program) params.set('program', userProfile.program);
-
-    const res  = await fetch(`/academic/api/duration-search?${params}`);
+    // Get all days to find unique courses for this semester
+    const params = new URLSearchParams({
+      program:  userProfile.program  || 'BBA',
+      year:     userProfile.year     || 1,
+      semester: userProfile.semester || 1,
+    });
+    const res  = await fetch(`/academic/api/routine?${params}`);
     const data = await res.json();
 
-    if (!data.success) { resDiv.innerHTML = '<div class="ts-empty">Search failed.</div>'; return; }
-    if (!data.data.length) { resDiv.innerHTML = '<div class="ts-empty">No classes found in this time window.</div>'; return; }
+    if (!data.success) return;
 
-    let html = data.data.map(c => `
-    <div class="ts-result-item">
-      <div class="ts-result-code">${c.course_code}</div>
-      <div class="ts-result-info">
-        <div class="ts-result-name">${c.course_name || c.course_code}</div>
-        <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name || c.teacher_code} · ${c.day}</div>
-      </div>
-      <div class="ts-result-time">${c.time_slot}</div>
-    </div>`).join('');
+    // Unique courses
+    const seen = new Set();
+    const courses = [];
+    data.data.forEach(r => {
+      if (!seen.has(r.course_code)) {
+        seen.add(r.course_code);
+        courses.push({
+          code: r.course_code,
+          name: mappings[r.course_code] || r.course_name || r.course_code,
+          teacher: mappings[r.teacher_code] || r.teacher_name || r.teacher_code,
+        });
+      }
+    });
 
-    // ML Suggestions
-    if (data.ml?.suggestions?.length) {
-      html += `<div class="ml-suggestion-box">
-        <div class="ml-suggestion-title">🧠 Smart Suggestions</div>`;
-      data.ml.suggestions.forEach(s => {
-        html += `<div class="ml-suggestion-item">${s.suggestion}</div>`;
-      });
-      html += `</div>`;
+    document.getElementById('courseCountLabel').textContent = `(${courses.length} courses)`;
+
+    const grid = document.getElementById('myCoursesGrid');
+    if (!courses.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No courses found. Ask admin to seed the database.</p></div>';
+      return;
     }
 
-    resDiv.innerHTML = html;
-  } catch(e) {
-    resDiv.innerHTML = '<div class="ts-empty">Connection error.</div>';
-  }
+    const colors = ['purple','blue','green','orange','gray'];
+    grid.innerHTML = courses.map((c, i) => {
+      const color = colors[i % colors.length];
+      return `
+      <div class="course-card">
+        <div class="course-card-header ${color}">
+          <span class="course-code-badge">${c.code}</span>
+        </div>
+        <div class="course-card-body">
+          <div class="course-name">${c.name}</div>
+          <div class="course-dept" style="margin-top:4px;">👤 ${c.teacher}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
 }
 
 function renderLegend() {
-  const grid = document.getElementById('legendGrid');
-  grid.innerHTML = Object.entries(TEACHER_MAP).map(([code, name]) =>
-    `<div class="legend-item">
-      <span class="legend-code">${code}</span>
-      <span class="legend-name">${name}</span>
-    </div>`
-  ).join('');
+  document.getElementById('legendGrid').innerHTML =
+    Object.entries(TEACHER_MAP).map(([code, name]) =>
+      `<div class="legend-item">
+        <span class="legend-code">${code}</span>
+        <span class="legend-name">${name}</span>
+      </div>`
+    ).join('');
 }
 </script>
 {% endblock %}
