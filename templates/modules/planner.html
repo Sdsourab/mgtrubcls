@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}AI Planner{% endblock %}
-{% block nav_unicover %}active{% endblock %}
+{% block nav_unicover %}{% endblock %}
 {% block nav_planner %}active{% endblock %}
 
 {% block content %}
@@ -8,7 +8,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">AI Personal Planner</h1>
-      <p class="page-sub">Add personal plans — AI detects class conflicts and suggests solutions</p>
+      <p class="page-sub">Manage personal plans · View your semester schedule · Detect class conflicts with AI advice</p>
     </div>
     <button class="btn-primary" onclick="openAddPlan()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
@@ -19,11 +19,10 @@
   </div>
 
   <!-- AI Key Setup -->
-  <!-- AI Key Setup -->
   <div class="planner-card" style="margin-bottom:18px;">
     <h3 style="font-size:0.9rem;margin-bottom:4px;">🔑 Your AI API Key</h3>
     <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;">
-      Saved only in your browser's localStorage — never sent to our server.<br>
+      Saved only in your browser — never sent to our server.<br>
       Supports: <strong>Gemini</strong> (key starts with AIza…) · <strong>OpenAI</strong> (key starts with sk-…)
     </p>
     <div class="ai-key-row">
@@ -32,19 +31,38 @@
         <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
       </svg>
       <input type="password" id="aiKeyInput"
-            placeholder="Paste Gemini (AIza…) or OpenAI (sk-…) key here"
-            oninput="onAiKeyInput(this.value)">
-      <button class="btn-sm btn-accent" onclick="toggleAiKey()">Show</button>
+             placeholder="Paste Gemini (AIza…) or OpenAI (sk-…) key here"
+             oninput="onAiKeyInput(this.value)">
+      <!-- FIX: was toggleAiKey() — correct function is toggleAiKeyVis() -->
+      <button class="btn-sm btn-accent" id="toggleKeyBtn" onclick="toggleAiKeyVis()">Show</button>
       <button class="btn-sm btn-danger" onclick="clearAiKey()">Clear</button>
     </div>
-    <div id="aiKeyStatus" style="font-size:0.75rem;margin-top:6px;color:var(--text-muted);">No key saved</div>
+    <div id="aiKeyStatus" style="font-size:0.75rem;margin-top:6px;color:var(--text-muted);">⚪ No key saved</div>
   </div>
+
+  <!-- My Semester Schedule (NEW) -->
+  <div class="planner-card" style="margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <h3 style="margin:0;">🗓️ My Semester Schedule</h3>
+      <button class="btn-sm btn-accent" onclick="loadSemesterCourses()" title="Refresh schedule">
+        ↻ Refresh
+      </button>
+    </div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">
+      Your current semester's university classes. Conflict checker uses this schedule.
+    </p>
+    <div id="semesterCoursesBox">
+      <div class="skeleton-block" style="height:50px;margin-bottom:8px;"></div>
+      <div class="skeleton-block" style="height:80px;"></div>
+    </div>
+  </div>
+
   <div class="planner-grid">
     <!-- My Plans -->
     <div class="planner-card">
       <h3>📅 My Plans</h3>
       <div id="plansList">
-        <div class="skeleton-block" style="height:60px;"></div>
+        <div class="skeleton-block" style="height:60px;margin-bottom:8px;"></div>
         <div class="skeleton-block" style="height:60px;"></div>
       </div>
     </div>
@@ -53,7 +71,7 @@
     <div class="planner-card">
       <h3>⚡ Conflict Checker</h3>
       <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;">
-        Add a personal plan's details below to check if it conflicts with any university class.
+        Enter a time slot to check if it conflicts with <strong>your semester's</strong> university classes.
       </p>
       <div class="modal-form" style="gap:12px;">
         <div class="form-group">
@@ -70,7 +88,8 @@
             <input type="time" id="cc_end">
           </div>
         </div>
-        <button class="btn-primary btn-full" onclick="checkConflict()">
+        <!-- FIX: added id="conflictBtn" so JS can disable it during loading -->
+        <button id="conflictBtn" class="btn-primary btn-full" onclick="checkConflict()">
           Check Conflicts
         </button>
       </div>
@@ -122,5 +141,98 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Semester Schedule Styles ────────────────────────────── */
+.sem-course-summary {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.sem-course-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sem-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(99,102,241,0.12);
+  color: var(--accent);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(99,102,241,0.25);
+  cursor: default;
+}
+.sem-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.sem-day-col {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.sem-day-header {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  letter-spacing: 0.04em;
+}
+.sem-class-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+.sem-class-item:last-child { border-bottom: none; }
+.sem-class-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.sem-class-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.sem-class-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.sem-class-teacher {
+  font-size: 0.69rem;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+/* ── Conflict Box ─────────────────────────────────────── */
+.conflict-item {
+  padding: 8px 12px;
+  margin-top: 6px;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--amber);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .sem-day-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
 <script src="/static/js/planner.js"></script>
 {% endblock %}
