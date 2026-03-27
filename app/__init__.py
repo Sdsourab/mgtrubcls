@@ -63,13 +63,18 @@ def create_app(config_name=None):
     def forbidden(e):
         return jsonify({'error': 'Forbidden', 'code': 403}), 403
 
-    # ── Scheduler (start ONCE, not in reloader child) ────────
-    if app.config.get('SCHEDULER_ENABLED') and not app.debug or \
-       os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        try:
-            from core.scheduler import start_scheduler
-            start_scheduler(app)
-        except Exception as ex:
-            app.logger.warning(f'Scheduler not started: {ex}')
+    # ── Scheduler (disabled on Vercel — serverless environment) ──────────
+    # APScheduler requires a persistent process; Vercel lambdas are stateless.
+    # Only start if explicitly enabled AND not running on Vercel.
+    is_vercel = os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV')
+    scheduler_enabled = app.config.get('SCHEDULER_ENABLED', False)
+
+    if scheduler_enabled and not is_vercel:
+        if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+            try:
+                from core.scheduler import start_scheduler
+                start_scheduler(app)
+            except Exception as ex:
+                app.logger.warning(f'Scheduler not started: {ex}')
 
     return app
