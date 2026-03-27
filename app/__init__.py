@@ -1,75 +1,75 @@
-"""
-app/__init__.py — Flask Application Factory
-
-Absolute-path resolution for templates/ and static/ is required in
-Vercel's serverless environment, where the working directory is NOT
-the project root.  Using os.path.dirname(__file__) chains guarantees
-Flask always finds both folders regardless of where Python is invoked.
-"""
-
-import os
-from typing import Optional
-from flask import Flask, render_template, redirect, url_for, session, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask_mail import Mail
 from config import config
+import os
 
+mail = Mail()
 
-def create_app(config_name: Optional[str] = None) -> Flask:
+def create_app(config_name=None):
     if config_name is None:
-        config_name = os.environ.get("FLASK_ENV", "production")
+        config_name = os.environ.get('FLASK_ENV', 'development')
 
-    # ── Absolute path anchors ─────────────────────────────────────────────────
-    # app/__init__.py  →  _app_dir  = …/app/
-    # project root     →  _root     = …/             (one level up)
-    _app_dir = os.path.dirname(os.path.abspath(__file__))
-    _root    = os.path.dirname(_app_dir)
-
+    _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     app = Flask(
         __name__,
-        template_folder=os.path.join(_root, "templates"),
-        static_folder=os.path.join(_root, "static"),
+        template_folder=os.path.join(_root, 'templates'),
+        static_folder=os.path.join(_root, 'static'),
     )
-
     app.config.from_object(config[config_name])
 
-    # ── Register Blueprints ───────────────────────────────────────────────────
-    from app.auth.routes         import auth_bp
-    from app.academic.routes     import academic_bp
+    # ── Extensions ────────────────────────────────────────────
+    mail.init_app(app)
+
+    # ── Blueprints ────────────────────────────────────────────
+    from app.auth.routes        import auth_bp
+    from app.academic.routes    import academic_bp
     from app.productivity.routes import productivity_bp
-    from app.campus.routes       import campus_bp
-    from app.admin.routes        import admin_bp
-    from app.guest.routes        import guest_bp
+    from app.campus.routes      import campus_bp
+    from app.admin.routes       import admin_bp
+    from app.guest.routes       import guest_bp
+    from app.planner.routes     import planner_bp
 
-    app.register_blueprint(auth_bp,          url_prefix="/auth")
-    app.register_blueprint(academic_bp,      url_prefix="/academic")
-    app.register_blueprint(productivity_bp,  url_prefix="/productivity")
-    app.register_blueprint(campus_bp,        url_prefix="/campus")
-    app.register_blueprint(admin_bp,         url_prefix="/admin")
-    app.register_blueprint(guest_bp,         url_prefix="/guest")
+    app.register_blueprint(auth_bp,          url_prefix='/auth')
+    app.register_blueprint(academic_bp,      url_prefix='/academic')
+    app.register_blueprint(productivity_bp,  url_prefix='/productivity')
+    app.register_blueprint(campus_bp,        url_prefix='/campus')
+    app.register_blueprint(admin_bp,         url_prefix='/admin')
+    app.register_blueprint(guest_bp,         url_prefix='/guest')
+    app.register_blueprint(planner_bp,       url_prefix='/planner')
 
-    # ── Core Routes ───────────────────────────────────────────────────────────
-    @app.route("/")
+    # ── Core Routes ───────────────────────────────────────────
+    @app.route('/')
     def index():
-        return redirect(url_for("auth.login"))
+        return redirect(url_for('auth.login'))
 
-    @app.route("/dashboard")
+    @app.route('/dashboard')
     def dashboard():
-        return render_template("dashboard.html")
+        return render_template('dashboard.html')
 
-    # ── Error Handlers ────────────────────────────────────────────────────────
+    # ── Error Handlers ────────────────────────────────────────
     @app.errorhandler(404)
     def not_found(e):
-        if request.path.startswith("/api") or request.accept_mimetypes.accept_json:
-            return jsonify({"error": "Not found", "code": 404}), 404
-        return render_template("errors/404.html"), 404
+        if request.path.startswith('/api') or request.accept_mimetypes.accept_json:
+            return jsonify({'error': 'Not found', 'code': 404}), 404
+        return render_template('errors/404.html'), 404
 
     @app.errorhandler(500)
     def server_error(e):
-        if request.path.startswith("/api") or request.accept_mimetypes.accept_json:
-            return jsonify({"error": "Internal server error", "code": 500}), 500
-        return render_template("errors/500.html"), 500
+        if request.path.startswith('/api') or request.accept_mimetypes.accept_json:
+            return jsonify({'error': 'Internal server error', 'code': 500}), 500
+        return render_template('errors/500.html'), 500
 
     @app.errorhandler(403)
     def forbidden(e):
-        return jsonify({"error": "Forbidden — admin role required", "code": 403}), 403
+        return jsonify({'error': 'Forbidden', 'code': 403}), 403
+
+    # ── Scheduler (start ONCE, not in reloader child) ────────
+    if app.config.get('SCHEDULER_ENABLED') and not app.debug or \
+       os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        try:
+            from core.scheduler import start_scheduler
+            start_scheduler(app)
+        except Exception as ex:
+            app.logger.warning(f'Scheduler not started: {ex}')
 
     return app

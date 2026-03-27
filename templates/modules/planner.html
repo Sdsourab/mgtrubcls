@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}AI Planner{% endblock %}
+{% block nav_unicover %}active{% endblock %}
+{% block nav_planner %}active{% endblock %}
+
+{% block content %}
+<div class="page-wrapper stagger">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">AI Personal Planner</h1>
+      <p class="page-sub">Add personal plans — AI detects class conflicts and suggests solutions</p>
+    </div>
+    <button class="btn-primary" onclick="openAddPlan()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Plan
+    </button>
+  </div>
+
+  <!-- AI Key Setup -->
+  <div class="planner-card" style="margin-bottom:18px;">
+    <h3 style="font-size:0.9rem;margin-bottom:10px;">🔑 Your AI API Key <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400;">(saved locally, never sent to server)</span></h3>
+    <div class="ai-key-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16" style="color:var(--text-muted);flex-shrink:0;">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+      <input type="password" id="aiKeyInput" placeholder="Paste your Gemini or OpenAI API key…"
+             oninput="saveAiKey(this.value)">
+      <button class="btn-sm btn-accent" onclick="toggleAiKey()">Show</button>
+      <button class="btn-sm" onclick="clearAiKey()">Clear</button>
+    </div>
+    <p style="font-size:0.72rem;color:var(--text-muted);">
+      Supports: Gemini (generativelanguage.googleapis.com) · OpenAI (api.openai.com)
+    </p>
+  </div>
+
+  <div class="planner-grid">
+    <!-- My Plans -->
+    <div class="planner-card">
+      <h3>📅 My Plans</h3>
+      <div id="plansList">
+        <div class="skeleton-block" style="height:60px;"></div>
+        <div class="skeleton-block" style="height:60px;"></div>
+      </div>
+    </div>
+
+    <!-- Conflict Checker -->
+    <div class="planner-card">
+      <h3>⚡ Conflict Checker</h3>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;">
+        Add a personal plan's details below to check if it conflicts with any university class.
+      </p>
+      <div class="modal-form" style="gap:12px;">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="cc_date">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" id="cc_start">
+          </div>
+          <div class="form-group">
+            <label>End Time</label>
+            <input type="time" id="cc_end">
+          </div>
+        </div>
+        <button class="btn-primary btn-full" onclick="checkConflict()">
+          Check Conflicts
+        </button>
+      </div>
+
+      <div id="conflictResult" class="hidden" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Plan Modal -->
+<div class="modal-overlay hidden" id="addPlanModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('addPlanModal').classList.add('hidden')">✕</button>
+    <h3>New Personal Plan</h3>
+    <form onsubmit="submitPlan(event)" class="modal-form">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="p_title" placeholder="e.g., Tuition at Siddique's" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="p_type">
+          <option value="personal">Personal</option>
+          <option value="tuition">Tuition</option>
+          <option value="work">Work / Part-time</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="p_date" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Time *</label>
+          <input type="time" id="p_start" required>
+        </div>
+        <div class="form-group">
+          <label>End Time *</label>
+          <input type="time" id="p_end" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="p_note" placeholder="Optional details…" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn-primary btn-full">Save Plan</button>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/planner.js"></script>
+{% endblock %}

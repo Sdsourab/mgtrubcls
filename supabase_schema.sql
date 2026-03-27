@@ -186,3 +186,32 @@ create index if not exists idx_resources_dept on public.resources(dept);
 -- ============================================================
 -- DONE!
 -- ============================================================
+-- ── Personal Plans Table ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.plans (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title       text NOT NULL,
+    type        text DEFAULT 'personal'
+                CHECK (type IN ('personal','tuition','work','other')),
+    date        date NOT NULL,
+    start_time  text NOT NULL,   -- HH:MM
+    end_time    text NOT NULL,   -- HH:MM
+    note        text,
+    created_at  timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own plans"
+    ON public.plans FOR ALL
+    USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_plans_user_date
+    ON public.plans(user_id, date);
+
+-- ── Add program column to routines if missing ─────────────────
+ALTER TABLE public.routines
+    ADD COLUMN IF NOT EXISTS program text DEFAULT 'ALL'
+    CHECK (program IN ('BBA','MBA','ALL'));
+
+UPDATE public.routines SET program = 'ALL' WHERE program IS NULL;

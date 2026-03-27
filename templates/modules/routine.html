@@ -4,157 +4,293 @@
 {% block mob_routine %}active{% endblock %}
 
 {% block content %}
-<div class="page-wrapper">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Class Routine</h1>
-            <p class="page-sub">Department of Management · Rabindra University</p>
+<div class="page-wrapper stagger">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Class Routine</h1>
+      <p class="page-sub">Department of Management · Rabindra University</p>
+    </div>
+  </div>
+
+  <!-- Holiday Banner (shown if today is holiday) -->
+  <div id="holidayBanner" class="holiday-banner hidden">
+    <div class="holiday-banner-icon">🎉</div>
+    <div class="holiday-banner-text">
+      No classes today — <span class="holiday-banner-name" id="holidayName"></span>
+    </div>
+  </div>
+
+  <!-- Program Info Strip -->
+  <div id="programStrip" style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Showing schedule for:</span>
+    <span id="programTag" class="routine-program-tag">Loading…</span>
+  </div>
+
+  <!-- Day Tabs -->
+  <div class="day-tabs" id="dayTabs">
+    <button class="day-tab" data-day="Sunday"    onclick="loadRoutine('Sunday',this)">Sun</button>
+    <button class="day-tab" data-day="Monday"    onclick="loadRoutine('Monday',this)">Mon</button>
+    <button class="day-tab" data-day="Tuesday"   onclick="loadRoutine('Tuesday',this)">Tue</button>
+    <button class="day-tab" data-day="Wednesday" onclick="loadRoutine('Wednesday',this)">Wed</button>
+    <button class="day-tab" data-day="Thursday"  onclick="loadRoutine('Thursday',this)">Thu</button>
+  </div>
+
+  <!-- Routine Table -->
+  <div class="routine-card">
+    <div id="routineContent">
+      <div class="routine-loading">
+        <div class="skeleton-block"></div>
+        <div class="skeleton-block"></div>
+        <div class="skeleton-block"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duration Search -->
+  <div class="time-search-section">
+    <div class="section-header">
+      <h2>Duration Search</h2>
+      <span class="section-sub">Find classes in a time window + get smart suggestions</span>
+    </div>
+    <div class="time-search-card">
+      <div class="time-search-inputs">
+        <div class="ts-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <input type="time" id="dsFrom" class="ts-input" placeholder="From">
         </div>
-    </div>
-
-    <!-- Day Tabs -->
-    <div class="day-tabs" id="dayTabs">
-        <button class="day-tab" data-day="Sunday"    onclick="loadRoutine('Sunday',this)">Sun</button>
-        <button class="day-tab" data-day="Monday"    onclick="loadRoutine('Monday',this)">Mon</button>
-        <button class="day-tab" data-day="Tuesday"   onclick="loadRoutine('Tuesday',this)">Tue</button>
-        <button class="day-tab" data-day="Wednesday" onclick="loadRoutine('Wednesday',this)">Wed</button>
-        <button class="day-tab" data-day="Thursday"  onclick="loadRoutine('Thursday',this)">Thu</button>
-    </div>
-
-    <!-- Routine Table -->
-    <div class="routine-card">
-        <div id="routineContent">
-            <div class="routine-loading">
-                <div class="skeleton-block"></div>
-                <div class="skeleton-block"></div>
-                <div class="skeleton-block"></div>
-            </div>
+        <span class="ts-sep">→</span>
+        <div class="ts-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <input type="time" id="dsTo" class="ts-input" placeholder="To">
         </div>
+        <select id="dsDay" class="ts-select">
+          <option value="">Any Day</option>
+          <option value="Sunday">Sunday</option>
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+        </select>
+        <button class="btn-primary ts-btn" onclick="runDurationSearch()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          Search
+        </button>
+      </div>
+      <div id="dsResults" class="ts-results hidden"></div>
     </div>
+  </div>
 
-    <!-- Legend -->
-    <div class="routine-legend">
-        <div class="legend-title">Faculty Code Legend</div>
-        <div class="legend-grid" id="legendGrid"></div>
-    </div>
+  <!-- Faculty Legend -->
+  <div class="routine-legend">
+    <div class="legend-title">Faculty Code Legend</div>
+    <div class="legend-grid" id="legendGrid"></div>
+  </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const TIME_SLOTS = ['9:00-10:30','10:30-12:00','12:00-1:30','2:00-3:30','3:30-5:00'];
-const ROOMS = ['101','201','100'];
+const ROOMS       = ['101','201','100'];
 const ROOM_LABELS = {'101':'Room 101','201':'Room 201','100':'Computer Lab'};
+const ALL_SLOTS   = ['9:00-10:30','10:30-12:00','12:00-1:30','2:00-3:30','3:30-5:00'];
 
 const TEACHER_MAP = {
-    'FA':'Prof. Dr. Feroz Ahmed','HR':'Habibur Rahaman','MK':'Malina Khatun',
-    'PKP':'Prashanta Kumar Podder','TI':'Md. Tarequl Islam','AH':'Alamgir Hossain',
-    'KHR':'Md. Kazi Hafizur Rahman','THT':'Tamima Hasan Taishi'
+  FA:'Prof. Dr. Feroz Ahmed', HR:'Habibur Rahaman', MK:'Malina Khatun',
+  PKP:'Prashanta Kumar Podder', TI:'Md. Tarequl Islam', AH:'Alamgir Hossain',
+  KHR:'Md. Kazi Hafizur Rahman', THT:'Tamima Hasan Taishi'
 };
 
 let mappings = {};
+let userProfile = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    UniSync.requireAuth();
-    await loadMappings();
-    const today = new Date().toLocaleDateString('en-US',{weekday:'long'});
-    const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-    const activeDay = validDays.includes(today) ? today : 'Sunday';
-    const activeTab = document.querySelector(`[data-day="${activeDay}"]`);
-    if (activeTab) loadRoutine(activeDay, activeTab);
-    else loadRoutine('Sunday', document.querySelector('[data-day="Sunday"]'));
-    renderLegend();
+  UniSync.requireAuth();
+  userProfile = UniSync.getUser();
+
+  // Update program strip
+  if (userProfile) {
+    const tag = document.getElementById('programTag');
+    tag.textContent = `${userProfile.program || 'BBA'} · Year ${userProfile.year || 1} · Sem ${userProfile.semester || 1}`;
+  }
+
+  await loadMappings();
+  await checkHoliday();
+
+  // Auto-select today
+  const today     = new Date().toLocaleDateString('en-US', {weekday:'long'});
+  const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+  const activeDay = validDays.includes(today) ? today : 'Sunday';
+  const tab       = document.querySelector(`[data-day="${activeDay}"]`);
+  if (tab) loadRoutine(activeDay, tab);
+  else     loadRoutine('Sunday', document.querySelector('[data-day="Sunday"]'));
+
+  renderLegend();
 });
 
+async function checkHoliday() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const res   = await fetch(`/academic/api/holiday-check?date=${today}`);
+    const data  = await res.json();
+    if (data.is_holiday) {
+      document.getElementById('holidayBanner').classList.remove('hidden');
+      document.getElementById('holidayName').textContent = data.name;
+    }
+  } catch(e) {}
+}
+
 async function loadMappings() {
-    try {
-        const res = await fetch('/academic/api/mappings');
-        const data = await res.json();
-        if (data.success) {
-            data.data.forEach(m => { mappings[m.code] = m.full_name; });
-        }
-    } catch(e) {}
+  try {
+    const res  = await fetch('/academic/api/mappings');
+    const data = await res.json();
+    if (data.success) data.data.forEach(m => { mappings[m.code] = m.full_name; });
+  } catch(e) {}
 }
 
 async function loadRoutine(day, btn) {
-    document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+  document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 
-    const content = document.getElementById('routineContent');
-    content.innerHTML = '<div class="routine-loading"><div class="skeleton-block"></div><div class="skeleton-block"></div><div class="skeleton-block"></div></div>';
+  const content = document.getElementById('routineContent');
+  content.innerHTML = '<div class="routine-loading"><div class="skeleton-block"></div><div class="skeleton-block"></div></div>';
 
-    try {
-        const res = await fetch(`/academic/api/routine?day=${day}`);
-        const data = await res.json();
-        if (data.success) renderRoutine(data.data, day);
-        else content.innerHTML = '<div class="empty-state"><p>No routine data. Ask admin to seed the database.</p></div>';
-    } catch(e) {
-        content.innerHTML = '<div class="empty-state"><p>Could not load routine. Check your connection.</p></div>';
-    }
+  try {
+    const params = new URLSearchParams({day});
+    if (userProfile?.program) params.set('program', userProfile.program);
+
+    const res  = await fetch(`/academic/api/routine?${params}`);
+    const data = await res.json();
+
+    if (data.success && data.data.length) renderRoutine(data.data, day);
+    else content.innerHTML = '<div class="empty-state"><p>No routine data found. Ask admin to seed the database.</p></div>';
+  } catch(e) {
+    content.innerHTML = '<div class="empty-state"><p>Could not load routine. Check your connection.</p></div>';
+  }
 }
 
 function renderRoutine(rows, day) {
-    const content = document.getElementById('routineContent');
+  const content = document.getElementById('routineContent');
+  const lookup  = {};
+  rows.forEach(r => {
+    if (!lookup[r.room_no]) lookup[r.room_no] = {};
+    lookup[r.room_no][r.time_slot] = r;
+  });
 
-    // Build lookup: room -> slot -> entry
-    const lookup = {};
-    rows.forEach(r => {
-        if (!lookup[r.room_no]) lookup[r.room_no] = {};
-        lookup[r.room_no][r.time_slot] = r;
+  let html = `
+  <div class="routine-day-title">
+    ${day}
+    <span class="routine-program-tag">${userProfile?.program || 'ALL'}</span>
+  </div>
+  <div class="routine-table-wrap">
+  <table class="routine-table">
+    <thead>
+      <tr>
+        <th>Room</th>
+        <th>9:00–10:30</th>
+        <th>10:30–12:00</th>
+        <th>12:00–1:30</th>
+        <th style="width:80px;">Lunch</th>
+        <th>2:00–3:30</th>
+        <th>3:30–5:00</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  ROOMS.forEach(room => {
+    const rd = lookup[room] || {};
+    html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
+    ['9:00-10:30','10:30-12:00','12:00-1:30'].forEach(slot => {
+      const e = rd[slot];
+      html += e ? `<td class="class-cell">${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
-
-    let html = `
-    <div class="routine-day-title">${day}</div>
-    <div class="routine-table-wrap">
-    <table class="routine-table">
-        <thead>
-            <tr>
-                <th>Room</th>
-                <th>9:00–10:30</th>
-                <th>10:30–12:00</th>
-                <th>12:00–1:30</th>
-                <th class="lunch-col">1:30–2:00</th>
-                <th>2:00–3:30</th>
-                <th>3:30–5:00</th>
-            </tr>
-        </thead>
-        <tbody>`;
-
-    ROOMS.forEach(room => {
-        const roomData = lookup[room] || {};
-        html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
-        ['9:00-10:30','10:30-12:00','12:00-1:30'].forEach(slot => {
-            const entry = roomData[slot];
-            html += entry ? `<td class="class-cell">${buildCell(entry)}</td>` : `<td class="empty-cell">—</td>`;
-        });
-        html += `<td class="lunch-cell"><div class="lunch-label">PRAYER & LUNCH</div></td>`;
-        ['2:00-3:30','3:30-5:00'].forEach(slot => {
-            const entry = roomData[slot];
-            html += entry ? `<td class="class-cell">${buildCell(entry)}</td>` : `<td class="empty-cell">—</td>`;
-        });
-        html += `</tr>`;
+    html += `<td class="lunch-cell"><div class="lunch-label">PRAYER &amp;<br>LUNCH</div></td>`;
+    ['2:00-3:30','3:30-5:00'].forEach(slot => {
+      const e = rd[slot];
+      html += e ? `<td class="class-cell">${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
+    html += '</tr>';
+  });
 
-    html += `</tbody></table></div>`;
-    content.innerHTML = html;
+  html += '</tbody></table></div>';
+  content.innerHTML = html;
 }
 
-function buildCell(entry) {
-    const courseName = mappings[entry.course_code] || entry.course_code;
-    const teacherName = mappings[entry.teacher_code] || entry.teacher_code;
-    return `
-    <div class="class-badge">
-        <div class="class-code">${entry.course_code}</div>
-        <div class="class-name" title="${courseName}">${courseName.length > 22 ? courseName.substring(0,22)+'…' : courseName}</div>
-        <div class="class-teacher">${entry.teacher_code} · Room ${entry.room_no}</div>
-    </div>`;
+function buildCell(e) {
+  const courseName = mappings[e.course_code]  || e.course_name  || e.course_code;
+  const short = courseName.length > 22 ? courseName.substring(0,22)+'…' : courseName;
+  return `
+  <div class="class-badge">
+    <div class="class-code">${e.course_code}</div>
+    <div class="class-name" title="${courseName}">${short}</div>
+    <div class="class-teacher">${e.teacher_code} · Rm ${e.room_no}</div>
+  </div>`;
+}
+
+async function runDurationSearch() {
+  const from    = document.getElementById('dsFrom').value;
+  const to      = document.getElementById('dsTo').value;
+  const day     = document.getElementById('dsDay').value;
+  const resDiv  = document.getElementById('dsResults');
+
+  if (!from || !to) { UniSync.toast('Please select both From and To times', 'warning'); return; }
+  if (from >= to)   { UniSync.toast('From time must be before To time', 'warning'); return; }
+
+  resDiv.innerHTML = '<div class="ts-loading">Searching…</div>';
+  resDiv.classList.remove('hidden');
+
+  try {
+    const params = new URLSearchParams({from, to});
+    if (day) params.set('day', day);
+    if (userProfile?.program) params.set('program', userProfile.program);
+
+    const res  = await fetch(`/academic/api/duration-search?${params}`);
+    const data = await res.json();
+
+    if (!data.success) { resDiv.innerHTML = '<div class="ts-empty">Search failed.</div>'; return; }
+    if (!data.data.length) { resDiv.innerHTML = '<div class="ts-empty">No classes found in this time window.</div>'; return; }
+
+    let html = data.data.map(c => `
+    <div class="ts-result-item">
+      <div class="ts-result-code">${c.course_code}</div>
+      <div class="ts-result-info">
+        <div class="ts-result-name">${c.course_name || c.course_code}</div>
+        <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name || c.teacher_code} · ${c.day}</div>
+      </div>
+      <div class="ts-result-time">${c.time_slot}</div>
+    </div>`).join('');
+
+    // ML Suggestions
+    if (data.ml?.suggestions?.length) {
+      html += `<div class="ml-suggestion-box">
+        <div class="ml-suggestion-title">🧠 Smart Suggestions</div>`;
+      data.ml.suggestions.forEach(s => {
+        html += `<div class="ml-suggestion-item">${s.suggestion}</div>`;
+      });
+      html += `</div>`;
+    }
+
+    resDiv.innerHTML = html;
+  } catch(e) {
+    resDiv.innerHTML = '<div class="ts-empty">Connection error.</div>';
+  }
 }
 
 function renderLegend() {
-    const grid = document.getElementById('legendGrid');
-    grid.innerHTML = Object.entries(TEACHER_MAP).map(([code, name]) =>
-        `<div class="legend-item"><span class="legend-code">${code}</span><span class="legend-name">${name}</span></div>`
-    ).join('');
+  const grid = document.getElementById('legendGrid');
+  grid.innerHTML = Object.entries(TEACHER_MAP).map(([code, name]) =>
+    `<div class="legend-item">
+      <span class="legend-code">${code}</span>
+      <span class="legend-name">${name}</span>
+    </div>`
+  ).join('');
 }
 </script>
 {% endblock %}
