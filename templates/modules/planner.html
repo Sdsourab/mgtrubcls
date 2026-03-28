@@ -18,18 +18,20 @@
     </button>
   </div>
 
-  <!-- AI Status Badge -->
+  <!-- AI Status Badge — updated live by planner.js / ai-preloader.js -->
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;padding:10px 16px;
               background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.22);
               border-radius:var(--radius-sm);flex-wrap:wrap;">
-    <span style="width:8px;height:8px;background:var(--green);border-radius:50%;
-                 box-shadow:0 0 6px var(--green);animation:pulse-green 1.8s infinite;
+    <span id="aiBadgeDot"
+          style="width:8px;height:8px;background:var(--amber);border-radius:50%;
+                 box-shadow:0 0 6px var(--amber);animation:pulse-green 1.8s infinite;
                  flex-shrink:0;"></span>
-    <span style="font-size:0.82rem;color:var(--green);font-weight:600;">
-      OpenRouter AI Active
+    <span id="aiBadgeText"
+          style="font-size:0.82rem;color:var(--amber);font-weight:600;">
+      AI Loading…
     </span>
-    <span style="font-size:0.78rem;color:var(--text-muted);">
-      — Powered by OpenRouter.ai · Free-tier models · No API key needed from you.
+    <span id="aiBadgeSub" style="font-size:0.78rem;color:var(--text-muted);">
+      — Downloading model · runs 100% in your browser · no API key needed
     </span>
   </div>
 

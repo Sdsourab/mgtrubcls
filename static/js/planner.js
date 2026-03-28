@@ -1,21 +1,21 @@
 /**
- * UniSync — AI Personal Planner  v4.2
+ * UniSync — AI Personal Planner  v5.1
  * ─────────────────────────────────────────────────────────────
- * KEY CHANGES v4.2:
- *  1. Switched AI backend from OpenRouter → Groq (more reliable free tier)
- *  2. fetchAIAdvice shows per-model error details when all models fail
- *
- * KEY CHANGES v4.0:
- *  1. No user API key needed — AI powered by server-side Groq API
- *  2. Conflict checker BUG FIXED — year/semester=0 handled correctly
- *  3. Semester persists in localStorage across reload + re-login
- *  4. Conflict result shows full day schedule alongside conflicts
- *  5. AI advice includes full semester context
+ * KEY CHANGES v5.1:
+ *  1. AI model is preloaded by ai-preloader.js (loaded from base.html)
+ *  2. By the time user opens Planner, model is already warm/cached
+ *  3. fetchAIAdvice() reads window.__aiState.pipeline — no duplicate load
+ *  4. Listens to "ai-status" event to update badge in real-time
+ *  5. Groq / server-side AI completely removed
  */
 
 'use strict';
 
 let allPlans = [];
+
+/* ================================================================
+   DOM READY
+   ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof UniSync !== 'undefined') UniSync.requireAuth();
@@ -30,7 +30,52 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
+
+  // Sync badge with current preloader state immediately
+  _syncBadgeFromState();
+
+  // Listen for future state changes (model downloading / ready / error)
+  window.addEventListener('ai-status', _syncBadgeFromState);
 });
+
+/* ================================================================
+   AI STATUS BADGE SYNC
+   ================================================================ */
+
+function _syncBadgeFromState() {
+  const state = window.__aiState || { status: 'idle' };
+  const dot   = document.getElementById('aiBadgeDot');
+  const text  = document.getElementById('aiBadgeText');
+  const sub   = document.getElementById('aiBadgeSub');
+  if (!dot || !text) return;
+
+  if (state.status === 'idle' || state.status === 'loading') {
+    dot.style.background  = 'var(--amber)';
+    dot.style.boxShadow   = '0 0 6px var(--amber)';
+    dot.style.animation   = 'pulse-green 1.8s infinite';
+    text.style.color      = 'var(--amber)';
+    text.textContent      = 'AI Loading…';
+    if (sub) sub.textContent = '— Downloading model · runs 100% in your browser';
+
+  } else if (state.status === 'ready') {
+    dot.style.background  = 'var(--green)';
+    dot.style.boxShadow   = '0 0 6px var(--green)';
+    dot.style.animation   = 'pulse-green 1.8s infinite';
+    text.style.color      = 'var(--green)';
+    text.textContent      = '🤖 AI Ready';
+    if (sub) sub.textContent = '— Transformers.js · Phi-3-mini · runs entirely in your browser';
+
+  } else if (state.status === 'error') {
+    dot.style.background  = 'var(--red, #f87171)';
+    dot.style.boxShadow   = 'none';
+    dot.style.animation   = 'none';
+    text.style.color      = 'var(--red, #f87171)';
+    text.textContent      = 'AI Unavailable';
+    if (sub) sub.textContent = state.error
+      ? `— ${state.error}`
+      : '— Could not load AI model in this browser';
+  }
+}
 
 /* ================================================================
    PROFILE SYNC
@@ -268,20 +313,26 @@ async function checkConflict() {
     }
 
     // AI advice block
+    const aiState  = window.__aiState || {};
+    const aiReady  = aiState.status === 'ready';
+    const aiStatus = aiReady
+      ? 'AI analysing your schedule…'
+      : (aiState.status === 'loading' ? 'AI model loading… please wait' : 'AI unavailable');
+
     html += `
     <div class="ai-suggestion-box" style="margin-top:4px;">
       <div class="ai-suggestion-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span>🤖 Groq AI — Smart Advice</span>
+        <span>🤖 AI Smart Advice</span>
         <span id="aiSpinner" style="display:inline-flex;align-items:center;gap:5px;
               font-size:0.74rem;color:var(--text-muted);font-weight:400;">
           <span style="width:10px;height:10px;border:2px solid var(--text-muted);
                        border-top-color:var(--accent);border-radius:50%;display:inline-block;
                        animation:spin 0.75s linear infinite;"></span>
-          Groq AI analysing your schedule…
+          ${aiStatus}
         </span>
       </div>
       <div class="ai-suggestion-text" id="aiSuggText">
-        Generating personalised advice via Groq…
+        ${aiReady ? 'Generating personalised advice…' : 'Waiting for AI model…'}
       </div>
     </div>`;
 
@@ -293,7 +344,7 @@ async function checkConflict() {
         ).join('; ')
       : 'None';
 
-    await fetchAIAdvice({
+    fetchAIAdvice({
       conflict_summary:  conflictSummary,
       day:               dayLabel,
       date,
@@ -313,66 +364,109 @@ async function checkConflict() {
 }
 
 /* ================================================================
-   GROQ AI ADVICE — server-side call
+   AI ADVICE — uses preloaded pipeline from window.__aiState
    ================================================================ */
 
+function buildPrompt(payload) {
+  const {
+    conflict_summary, day, date, start, end,
+    program, year, semester, semester_classes,
+  } = payload;
+
+  const schedLines = (semester_classes || []).map(c =>
+    `  • ${c.course_code} ${c.time_start}–${c.time_end} Rm ${c.room_no}`
+  ).join('\n') || '  (none)';
+
+  return (
+    `<|user|>\n` +
+    `I am a ${program} Year ${year} Semester ${semester} student at Rabindra University, Bangladesh.\n` +
+    `My classes on ${day}:\n${schedLines}\n\n` +
+    `I want to schedule a personal plan on ${day} ${date} from ${start} to ${end}.\n` +
+    `Class conflicts: ${conflict_summary}.\n\n` +
+    `Give me 4 short bullet-point tips (start each with an emoji) covering:\n` +
+    `- What to prioritise\n` +
+    `- How to catch up on any missed class\n` +
+    `- One time-management tip\n` +
+    `- Encouragement\n` +
+    `<|end|>\n<|assistant|>\n`
+  );
+}
+
+/**
+ * Wait until the pipeline is ready (up to maxWait ms),
+ * then run inference. If model is already loaded, runs instantly.
+ */
 async function fetchAIAdvice(payload) {
   const textEl    = document.getElementById('aiSuggText');
   const spinnerEl = document.getElementById('aiSpinner');
 
+  if (!textEl) return;
+
+  // If model is still loading, wait for it (poll every 500ms, max 3 min)
+  const MAX_WAIT = 180_000;
+  const INTERVAL = 500;
+  let waited = 0;
+
+  while ((!window.__aiState || window.__aiState.status === 'loading' || window.__aiState.status === 'idle') && waited < MAX_WAIT) {
+    await new Promise(r => setTimeout(r, INTERVAL));
+    waited += INTERVAL;
+
+    // Update spinner text with live status
+    if (spinnerEl) {
+      const pct = window.__aiState?._pct;
+      spinnerEl.childNodes[1] && (spinnerEl.childNodes[1].nodeValue =
+        pct ? ` AI model loading… ${pct}%` : ' AI model loading…');
+    }
+  }
+
   try {
-    const res  = await fetch('/planner/api/ai-advice', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    });
-    const data = await res.json();
+    const state = window.__aiState || {};
 
-    if (spinnerEl) spinnerEl.remove();
-    if (!textEl) return;
-
-    if (data.success && data.advice) {
-      const lines = data.advice.split('\n').filter(l => l.trim());
-      textEl.innerHTML =
-        lines.map(line =>
-          `<div style="margin-bottom:9px;line-height:1.65;">${esc(line)}</div>`
-        ).join('') +
-        `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
-                     border-top:1px solid var(--border);padding-top:6px;">
-           🤖 Powered by Groq — model: ${esc(data.model || 'groq')}
-         </div>`;
-    } else {
-      const errorMsg = data.error   || 'AI advice unavailable.';
-      const details  = data.details || [];
-
-      let detailsHtml = '';
-      if (details.length) {
-        const rows = details.map(d => `<div style="margin-bottom:3px;">• ${esc(d)}</div>`).join('');
-        detailsHtml = `
-          <details style="margin-top:8px;">
-            <summary style="font-size:0.75rem;color:var(--text-muted);cursor:pointer;
-                            user-select:none;">🔍 Show model error details</summary>
-            <div style="margin-top:6px;padding:8px 10px;background:var(--bg-elevated);
-                        border-radius:var(--radius-sm);font-size:0.72rem;
-                        color:var(--text-muted);line-height:1.6;font-family:monospace;">
-              ${rows}
-            </div>
-          </details>`;
-      }
-
-      textEl.innerHTML = `
-        <div style="color:var(--amber);">⚠️ ${esc(errorMsg)}</div>
-        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">
-          The conflict analysis above is still accurate and complete.
-        </div>
-        ${detailsHtml}`;
+    if (state.status !== 'ready' || !state.pipeline) {
+      throw new Error(state.error || 'AI model is not available in this browser.');
     }
 
-  } catch (e) {
+    if (spinnerEl) {
+      spinnerEl.innerHTML = `
+        <span style="width:10px;height:10px;border:2px solid var(--text-muted);
+                     border-top-color:var(--accent);border-radius:50%;display:inline-block;
+                     animation:spin 0.75s linear infinite;"></span>
+        Generating advice…`;
+    }
+
+    const prompt = buildPrompt(payload);
+    const result = await state.pipeline(prompt, {
+      max_new_tokens:     300,
+      temperature:        0.7,
+      do_sample:          true,
+      repetition_penalty: 1.1,
+    });
+
     if (spinnerEl) spinnerEl.remove();
-    if (textEl) textEl.innerHTML = `
-      <div style="color:var(--text-muted);font-size:0.82rem;">
-        AI advice unavailable (network error). The conflict data above is still accurate.
+
+    const raw   = result[0]?.generated_text || '';
+    const after = raw.includes('<|assistant|>')
+      ? raw.split('<|assistant|>').pop().trim()
+      : raw.replace(prompt, '').trim();
+
+    const lines = after.split('\n').filter(l => l.trim());
+    if (!lines.length) throw new Error('Empty response from model.');
+
+    textEl.innerHTML =
+      lines.map(line =>
+        `<div style="margin-bottom:9px;line-height:1.65;">${esc(line)}</div>`
+      ).join('') +
+      `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
+                   border-top:1px solid var(--border);padding-top:6px;">
+         🤖 Powered by Transformers.js · Phi-3-mini · runs entirely in your browser
+       </div>`;
+
+  } catch (err) {
+    if (spinnerEl) spinnerEl.remove();
+    textEl.innerHTML = `
+      <div style="color:var(--amber);">⚠️ ${esc(err.message || 'AI advice unavailable.')}</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">
+        The conflict analysis above is still accurate and complete.
       </div>`;
   }
 }

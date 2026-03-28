@@ -158,6 +158,9 @@
 
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/live_engine.js') }}"></script>
+<!-- AI preloader: silently warms up Transformers.js model in the background
+     so it is ready by the time the user opens AI Planner -->
+<script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>
