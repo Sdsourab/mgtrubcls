@@ -24,6 +24,9 @@ import json as _json
 
 planner_bp = Blueprint('planner', __name__)
 
+# ── OpenRouter API Key (read at module load — most reliable on Vercel) ──
+_OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+
 # ── OpenRouter config ─────────────────────────────────────────
 OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions'
 
@@ -222,7 +225,8 @@ def ai_advice():
       { success, advice, model }   on success
       { success, error }           on failure
     """
-    api_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
+    # Use module-level key (read at startup — works reliably on Vercel serverless)
+    api_key = _OPENROUTER_API_KEY.strip()
 
     body             = request.get_json() or {}
     conflict_summary = body.get('conflict_summary', 'None')
