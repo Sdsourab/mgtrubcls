@@ -1,12 +1,12 @@
 /**
- * UniSync — AI Personal Planner  v4.1
+ * UniSync — AI Personal Planner  v4.2
  * ─────────────────────────────────────────────────────────────
- * KEY CHANGES v4.1:
- *  1. fetchAIAdvice now shows per-model error details when all models fail
- *  2. Cleaner error UI with amber warning + collapsible debug details
+ * KEY CHANGES v4.2:
+ *  1. Switched AI backend from OpenRouter → Groq (more reliable free tier)
+ *  2. fetchAIAdvice shows per-model error details when all models fail
  *
  * KEY CHANGES v4.0:
- *  1. No user API key needed — AI powered by server-side OpenRouter.ai
+ *  1. No user API key needed — AI powered by server-side Groq API
  *  2. Conflict checker BUG FIXED — year/semester=0 handled correctly
  *  3. Semester persists in localStorage across reload + re-login
  *  4. Conflict result shows full day schedule alongside conflicts
@@ -20,7 +20,6 @@ let allPlans = [];
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof UniSync !== 'undefined') UniSync.requireAuth();
 
-  // Sync user profile from DB on every load to keep semester fresh
   syncProfileFromDB().then(() => {
     loadPlans();
     loadSemesterCourses();
@@ -34,16 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ================================================================
-   PROFILE SYNC — keeps semester persistent and up-to-date
+   PROFILE SYNC
    ================================================================ */
 
-/**
- * On every page load, fetches the latest profile from the DB
- * and merges it into localStorage. This ensures:
- *  - semester persists across browser reload
- *  - semester survives re-login (login always writes fresh profile)
- *  - if user updates profile on another device, it syncs here
- */
 async function syncProfileFromDB() {
   const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
   if (!user || !user.id) return;
@@ -154,7 +146,7 @@ async function loadSemesterCourses() {
 }
 
 /* ================================================================
-   CONFLICT CHECKER (BUG FIXED)
+   CONFLICT CHECKER
    ================================================================ */
 
 async function checkConflict() {
@@ -179,7 +171,6 @@ async function checkConflict() {
     resultDiv.classList.remove('hidden');
   }
 
-  // ── CRITICAL FIX: use real values, default to 0 only if truly missing ──
   const prog = user?.program  || 'BBA';
   const yr   = parseInt(user?.year     || 0);
   const sem  = parseInt(user?.semester || 0);
@@ -205,7 +196,6 @@ async function checkConflict() {
       return;
     }
 
-    // Weekend / holiday
     if (data.message) {
       resultDiv.innerHTML = `
         <div style="padding:14px;background:rgba(52,211,153,0.08);
@@ -219,10 +209,9 @@ async function checkConflict() {
     const semesterClasses = data.semester_classes || [];
     const dayLabel        = data.day || '';
 
-    // ── Build result HTML ───────────────────────────────────
     let html = '';
 
-    // -- Full day schedule strip ---
+    // Full day schedule strip
     if (semesterClasses.length) {
       html += `
       <div style="margin-bottom:14px;padding:12px 14px;background:var(--bg-elevated);
@@ -238,9 +227,7 @@ async function checkConflict() {
               ${c.time_start}
             </span>
             <span style="flex:1;">${esc(c.course_name || c.course_code)}</span>
-            <span style="color:var(--text-muted);font-size:0.75rem;">
-              Rm ${c.room_no}
-            </span>
+            <span style="color:var(--text-muted);font-size:0.75rem;">Rm ${c.room_no}</span>
           </div>`).join('')}
       </div>`;
     } else {
@@ -253,7 +240,7 @@ async function checkConflict() {
       </div>`;
     }
 
-    // -- Conflict / no-conflict result ---
+    // Conflict result
     if (!conflicts.length) {
       html += `
       <div style="padding:14px;background:rgba(52,211,153,0.08);
@@ -280,29 +267,30 @@ async function checkConflict() {
       </div>`;
     }
 
-    // -- AI advice block (always shown) ---
+    // AI advice block
     html += `
     <div class="ai-suggestion-box" style="margin-top:4px;">
       <div class="ai-suggestion-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span>🤖 OpenRouter AI — Smart Advice</span>
+        <span>🤖 Groq AI — Smart Advice</span>
         <span id="aiSpinner" style="display:inline-flex;align-items:center;gap:5px;
               font-size:0.74rem;color:var(--text-muted);font-weight:400;">
           <span style="width:10px;height:10px;border:2px solid var(--text-muted);
                        border-top-color:var(--accent);border-radius:50%;display:inline-block;
                        animation:spin 0.75s linear infinite;"></span>
-          OpenRouter AI analysing your schedule…
+          Groq AI analysing your schedule…
         </span>
       </div>
       <div class="ai-suggestion-text" id="aiSuggText">
-        Generating personalised advice via OpenRouter.ai…
+        Generating personalised advice via Groq…
       </div>
     </div>`;
 
     resultDiv.innerHTML = html;
 
-    // -- Trigger AI advice ---
     const conflictSummary = conflicts.length
-      ? conflicts.map(c => `${c.course_code} (${c.course_name || c.course_code}) ${c.time_start}–${c.time_end}`).join('; ')
+      ? conflicts.map(c =>
+          `${c.course_code} (${c.course_name || c.course_code}) ${c.time_start}–${c.time_end}`
+        ).join('; ')
       : 'None';
 
     await fetchAIAdvice({
@@ -325,7 +313,7 @@ async function checkConflict() {
 }
 
 /* ================================================================
-   OPENROUTER AI ADVICE — server-side call  (v4.1 — better errors)
+   GROQ AI ADVICE — server-side call
    ================================================================ */
 
 async function fetchAIAdvice(payload) {
@@ -344,7 +332,6 @@ async function fetchAIAdvice(payload) {
     if (!textEl) return;
 
     if (data.success && data.advice) {
-      // ── Success: render advice lines ──────────────────────
       const lines = data.advice.split('\n').filter(l => l.trim());
       textEl.innerHTML =
         lines.map(line =>
@@ -352,13 +339,11 @@ async function fetchAIAdvice(payload) {
         ).join('') +
         `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
                      border-top:1px solid var(--border);padding-top:6px;">
-           🤖 Powered by OpenRouter.ai — model: ${esc(data.model || 'openrouter')}
+           🤖 Powered by Groq — model: ${esc(data.model || 'groq')}
          </div>`;
-
     } else {
-      // ── Failure: show error + optional per-model details ──
-      const errorMsg  = data.error   || 'AI advice unavailable.';
-      const details   = data.details || [];   // array of per-model error strings
+      const errorMsg = data.error   || 'AI advice unavailable.';
+      const details  = data.details || [];
 
       let detailsHtml = '';
       if (details.length) {
@@ -525,7 +510,6 @@ async function runDurationSearch() {
       <div class="ts-result-time">${c.time_slot}</div>
     </div>`).join('');
 
-    // Advanced ML suggestions
     if (data.ml?.suggestions?.length) {
       const sessionEmoji = {
         morning_peak: '🌅', mid_morning: '☀️',

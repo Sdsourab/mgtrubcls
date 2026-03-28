@@ -4,14 +4,18 @@ app/planner/routes.py
 Planner blueprint:
   - Plans CRUD
   - Conflict checker  (handles year/semester=0 gracefully)
-  - OpenRouter AI advice endpoint (server-side, key from env)
+  - AI advice endpoint — powered by Groq API (server-side)
 
-OpenRouter API:
-  Base URL : https://openrouter.ai/api/v1/chat/completions
-  Auth     : Bearer OPENROUTER_API_KEY  (set in .env or Vercel → Settings → Env Vars)
+Groq API:
+  Base URL : https://api.groq.com/openai/v1/chat/completions
+  Auth     : Bearer GROQ_API_KEY  (set in .env or Vercel → Settings → Env Vars)
   Models   : Free-tier waterfall — tried in order until one succeeds.
-             NO DeepSeek. Uses only Llama, Mistral, Phi, Qwen free models.
-  Docs     : https://openrouter.ai/docs
+  Docs     : https://console.groq.com/docs
+  Sign up  : https://console.groq.com  (free, no credit card needed)
+
+Why Groq instead of OpenRouter?
+  - OpenRouter free endpoints are heavily rate-limited and go offline frequently.
+  - Groq free tier is generous, extremely fast (LPU inference), and reliable.
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -24,23 +28,18 @@ import json as _json
 
 planner_bp = Blueprint('planner', __name__)
 
-# ── OpenRouter API Key (read at module load — most reliable on Vercel) ──
-_OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+# ── Groq API Key (read at module load — most reliable on Vercel) ──
+_GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 
-# ── OpenRouter config ─────────────────────────────────────────
-OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions'
+# ── Groq config ───────────────────────────────────────────────
+GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions'
 
 # Free-tier model waterfall — tried in order until one succeeds.
-# All of these are free on OpenRouter (no per-token charge).
-# DeepSeek intentionally excluded.
-# FIXED 2026: Removed discontinued google/gemma-2-9b-it:free.
-#             Added microsoft/phi-3-mini and qwen/qwen-2-7b as stable replacements.
-OPENROUTER_MODELS = [
-    'meta-llama/llama-3.3-70b-instruct:free',    # Llama 3.3 70B  — best quality
-    'mistralai/mistral-7b-instruct:free',          # Mistral 7B     — reliable
-    'microsoft/phi-3-mini-128k-instruct:free',     # Phi-3 Mini     — fast & stable
-    'qwen/qwen-2-7b-instruct:free',                # Qwen 2 7B      — solid fallback
-    'meta-llama/llama-3.1-8b-instruct:free',      # Llama 3.1 8B   — last resort
+GROQ_MODELS = [
+    'llama-3.3-70b-versatile',   # Llama 3.3 70B  — best quality, very fast on Groq
+    'llama-3.1-8b-instant',      # Llama 3.1 8B   — ultra-fast fallback
+    'gemma2-9b-it',              # Gemma 2 9B     — reliable fallback
+    'mixtral-8x7b-32768',        # Mixtral 8x7B   — last resort
 ]
 
 
@@ -154,7 +153,6 @@ def conflict_check():
 
     sb = get_supabase_admin()
 
-    # Single bulk mapping lookup
     try:
         map_resp = sb.table('mappings').select('code,full_name').execute()
         mapping  = {r['code']: r['full_name'] for r in (map_resp.data or [])}
@@ -177,7 +175,6 @@ def conflict_check():
         return q
 
     try:
-        # Overlapping conflicts
         conflict_q = apply_filters(
             sb.table('routines').select('*')
               .eq('day', day_name)
@@ -186,7 +183,6 @@ def conflict_check():
         )
         conflicts = enrich(conflict_q.execute().data or [])
 
-        # Full day schedule for the user's semester
         sched_q = apply_filters(
             sb.table('routines').select('*').eq('day', day_name)
         ).order('time_start')
@@ -204,39 +200,33 @@ def conflict_check():
         return jsonify({'success': False, 'error': str(ex)}), 500
 
 
-# ── OpenRouter AI Advice (server-side) ───────────────────────
+# ── Groq AI Advice (server-side) ─────────────────────────────
 
 @planner_bp.route('/api/ai-advice', methods=['POST'])
 def ai_advice():
     """
-    Calls OpenRouter.ai with a free-model waterfall (no DeepSeek).
-    Key is read server-side from OPENROUTER_API_KEY env var.
-    Users never see or need the key.
+    Calls Groq API with a free-model waterfall.
+    Key is read server-side from GROQ_API_KEY env var.
 
     Request body (JSON):
-      conflict_summary  : str   — e.g. "MGT-3103 09:00–10:30"
-      day               : str   — e.g. "Monday"
-      date              : str   — e.g. "2026-04-07"
-      start             : str   — e.g. "09:00"
-      end               : str   — e.g. "11:00"
-      program           : str   — "BBA" | "MBA"
-      year              : int
-      semester          : int
-      semester_classes  : list  — full day schedule rows
+      conflict_summary  : str
+      day, date, start, end, program, year, semester : str/int
+      semester_classes  : list
 
-    Response (JSON):
-      { success, advice, model }           on success
-      { success, error, details }          on failure (details = per-model errors)
+    Response:
+      { success, advice, model }   on success
+      { success, error, details }  on failure
     """
-    # Use module-level key (read at startup — works reliably on Vercel serverless)
-    api_key = _OPENROUTER_API_KEY.strip()
+    api_key = _GROQ_API_KEY.strip()
 
-    # ── Guard: no API key configured ──────────────────────────
     if not api_key:
         return jsonify({
             'success': False,
-            'error':   'OPENROUTER_API_KEY is not set. '
-                       'Add it in Vercel → Settings → Environment Variables.'
+            'error':   (
+                'GROQ_API_KEY is not configured. '
+                'Get a free key at https://console.groq.com → API Keys, '
+                'then add GROQ_API_KEY in Vercel → Settings → Environment Variables.'
+            )
         }), 503
 
     body             = request.get_json() or {}
@@ -250,7 +240,6 @@ def ai_advice():
     semester         = body.get('semester', 1)
     semester_classes = body.get('semester_classes', [])
 
-    # Build rich schedule context for the AI
     if semester_classes:
         sched_lines = [
             f"  • {c.get('course_name', c.get('course_code', '?'))} "
@@ -279,10 +268,9 @@ def ai_advice():
         f"Start each bullet with a relevant emoji."
     )
 
-    # ── Waterfall: try each model until one succeeds ───────────
-    all_errors = []   # collect per-model errors for debugging
+    all_errors = []
 
-    for model in OPENROUTER_MODELS:
+    for model in GROQ_MODELS:
         payload = {
             'model':       model,
             'messages':    [{'role': 'user', 'content': prompt}],
@@ -291,13 +279,11 @@ def ai_advice():
         }
 
         req = urllib.request.Request(
-            OPENROUTER_BASE,
+            GROQ_BASE,
             data    = _json.dumps(payload).encode('utf-8'),
             headers = {
                 'Content-Type':  'application/json',
                 'Authorization': f'Bearer {api_key}',
-                'HTTP-Referer':  'https://unisync.vercel.app',
-                'X-Title':       'UniSync - Rabindra University',
             },
             method = 'POST',
         )
@@ -306,7 +292,6 @@ def ai_advice():
             with urllib.request.urlopen(req, timeout=30) as resp:
                 result = _json.loads(resp.read().decode('utf-8'))
 
-                # Check for API-level error inside a 200 response (OpenRouter quirk)
                 if 'error' in result:
                     err_msg = result['error'].get('message', str(result['error']))
                     all_errors.append(f'{model}: {err_msg}')
@@ -339,24 +324,21 @@ def ai_advice():
 
             all_errors.append(f'{model}: {msg}')
 
-            # 401/403 = bad key → abort immediately, no point trying other models
             if status in (401, 403):
                 return jsonify({
                     'success': False,
-                    'error':   f'OpenRouter auth error: {msg}. Check your OPENROUTER_API_KEY.',
+                    'error':   f'Groq auth error: {msg}. Check your GROQ_API_KEY.',
                     'details': all_errors,
                 }), 401
 
-            # 429 rate limit / 503 overload → try next model
             continue
 
         except Exception as ex:
             all_errors.append(f'{model}: {ex}')
             continue
 
-    # All models exhausted — return every error for easier debugging
     return jsonify({
         'success': False,
-        'error':   'All OpenRouter models failed. Please try again later.',
+        'error':   'All Groq models failed. Please try again later.',
         'details': all_errors,
     }), 502
