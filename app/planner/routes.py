@@ -290,7 +290,7 @@ def ai_advice():
                 'Content-Type':  'application/json',
                 'Authorization': f'Bearer {api_key}',
                 'HTTP-Referer':  'https://unisync.vercel.app',   # shown in OpenRouter dashboard
-                'X-Title':       'UniSync — Rabindra University', # shown in OpenRouter dashboard
+                'X-Title':       'UniSync - Rabindra University',   # plain hyphen: urllib encodes headers as latin-1
             },
             method = 'POST',
         )

@@ -2,7 +2,7 @@
  * UniSync — AI Personal Planner  v4.0
  * ─────────────────────────────────────────────────────────────
  * KEY CHANGES:
- *  1. No user API key needed — AI powered by server-side DeepSeek
+ *  1. No user API key needed — AI powered by server-side OpenRouter.ai
  *  2. Conflict checker BUG FIXED — year/semester=0 handled correctly
  *  3. Semester persists in localStorage across reload + re-login
  *  4. Conflict result shows full day schedule alongside conflicts
@@ -284,7 +284,7 @@ async function checkConflict() {
     html += `
     <div class="ai-suggestion-box" style="margin-top:4px;">
       <div class="ai-suggestion-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span>🤖 DeepSeek AI — Smart Advice</span>
+        <span>🤖 OpenRouter AI — Smart Advice</span>
         <span id="aiSpinner" style="display:inline-flex;align-items:center;gap:5px;
               font-size:0.74rem;color:var(--text-muted);font-weight:400;">
           <span style="width:10px;height:10px;border:2px solid var(--text-muted);
@@ -325,7 +325,7 @@ async function checkConflict() {
 }
 
 /* ================================================================
-   DEEPSEEK AI ADVICE — server-side call
+   OPENROUTER AI ADVICE — server-side call
    ================================================================ */
 
 async function fetchAIAdvice(payload) {
