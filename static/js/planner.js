@@ -6,7 +6,7 @@
  *  2. By the time user opens Planner, model is already warm/cached
  *  3. fetchAIAdvice() reads window.__aiState.pipeline — no duplicate load
  *  4. Listens to "ai-status" event to update badge in real-time
- *  5. Groq / server-side AI completely removed
+ *  5. Groq / server-side AI completely removed — now uses MiniLM-L6-v2 (23 MB)
  */
 
 'use strict';
@@ -63,7 +63,7 @@ function _syncBadgeFromState() {
     dot.style.animation   = 'pulse-green 1.8s infinite';
     text.style.color      = 'var(--green)';
     text.textContent      = '🤖 AI Ready';
-    if (sub) sub.textContent = '— Transformers.js · Phi-3-mini · runs entirely in your browser';
+    if (sub) sub.textContent = '— Transformers.js · MiniLM-L6-v2 · semantic AI · runs entirely in your browser';
 
   } else if (state.status === 'error') {
     dot.style.background  = 'var(--red, #f87171)';
@@ -364,66 +364,81 @@ async function checkConflict() {
 }
 
 /* ================================================================
-   AI ADVICE — uses preloaded pipeline from window.__aiState
+   AI ADVICE — semantic similarity via window.__aiEngine
+   (MiniLM-L6-v2 · 23 MB · loaded by ai-preloader.js)
    ================================================================ */
 
-function buildPrompt(payload) {
+/**
+ * Build a semantic context string from the conflict-check payload.
+ * This is embedded and compared against the ADVICE_DB in ai-preloader.js.
+ */
+function buildContext(payload) {
   const {
-    conflict_summary, day, date, start, end,
+    conflict_summary, day, start, end,
     program, year, semester, semester_classes,
   } = payload;
 
-  const schedLines = (semester_classes || []).map(c =>
-    `  • ${c.course_code} ${c.time_start}–${c.time_end} Rm ${c.room_no}`
-  ).join('\n') || '  (none)';
+  const hasConflict = conflict_summary &&
+    !conflict_summary.toLowerCase().includes('none') &&
+    conflict_summary.toLowerCase() !== 'no conflict';
 
-  return (
-    `<|user|>\n` +
-    `I am a ${program} Year ${year} Semester ${semester} student at Rabindra University, Bangladesh.\n` +
-    `My classes on ${day}:\n${schedLines}\n\n` +
-    `I want to schedule a personal plan on ${day} ${date} from ${start} to ${end}.\n` +
-    `Class conflicts: ${conflict_summary}.\n\n` +
-    `Give me 4 short bullet-point tips (start each with an emoji) covering:\n` +
-    `- What to prioritise\n` +
-    `- How to catch up on any missed class\n` +
-    `- One time-management tip\n` +
-    `- Encouragement\n` +
-    `<|end|>\n<|assistant|>\n`
-  );
+  const conflictPart = hasConflict
+    ? `class schedule conflict overlap ${conflict_summary}`
+    : 'no conflict free time available clear window';
+
+  const hour      = parseInt((start || '08').split(':')[0], 10);
+  const timeOfDay = hour < 12 ? 'morning early hours' : hour < 15 ? 'afternoon mid-day' : 'evening night';
+
+  const classDensity = (semester_classes || []).length > 3
+    ? 'multiple classes busy day heavy schedule'
+    : 'light schedule few classes';
+
+  return [
+    `${program || 'BBA'} Year ${year || 1} Semester ${semester || 1}`,
+    'Rabindra University Bangladesh student',
+    day || '',
+    timeOfDay,
+    conflictPart,
+    classDensity,
+  ].filter(Boolean).join(' ');
 }
 
 /**
- * Wait until the pipeline is ready (up to maxWait ms),
- * then run inference. If model is already loaded, runs instantly.
+ * Wait for AI engine to be ready (max 60 s for the 23 MB model),
+ * then use semantic similarity to fetch the 4 most relevant tips.
  */
 async function fetchAIAdvice(payload) {
   const textEl    = document.getElementById('aiSuggText');
   const spinnerEl = document.getElementById('aiSpinner');
-
   if (!textEl) return;
 
-  // If model is still loading, wait for it (poll every 500ms, max 3 min)
-  const MAX_WAIT = 180_000;
+  // Poll until model ready — 23 MB model typically loads in < 15 s
+  const MAX_WAIT = 60_000;
   const INTERVAL = 500;
   let waited = 0;
 
-  while ((!window.__aiState || window.__aiState.status === 'loading' || window.__aiState.status === 'idle') && waited < MAX_WAIT) {
+  while (
+    (!window.__aiState ||
+      window.__aiState.status === 'loading' ||
+      window.__aiState.status === 'idle') &&
+    waited < MAX_WAIT
+  ) {
     await new Promise(r => setTimeout(r, INTERVAL));
     waited += INTERVAL;
-
-    // Update spinner text with live status
     if (spinnerEl) {
-      const pct = window.__aiState?._pct;
-      spinnerEl.childNodes[1] && (spinnerEl.childNodes[1].nodeValue =
-        pct ? ` AI model loading… ${pct}%` : ' AI model loading…');
+      const pct  = window.__aiState?._pct;
+      const node = spinnerEl.childNodes[1];
+      if (node) node.nodeValue = pct ? ` AI loading… ${pct}%` : ' AI loading…';
     }
   }
 
   try {
     const state = window.__aiState || {};
-
     if (state.status !== 'ready' || !state.pipeline) {
-      throw new Error(state.error || 'AI model is not available in this browser.');
+      throw new Error(state.error || 'AI not available in this browser.');
+    }
+    if (!window.__aiEngine) {
+      throw new Error('AI engine not initialised. Please refresh the page.');
     }
 
     if (spinnerEl) {
@@ -431,34 +446,23 @@ async function fetchAIAdvice(payload) {
         <span style="width:10px;height:10px;border:2px solid var(--text-muted);
                      border-top-color:var(--accent);border-radius:50%;display:inline-block;
                      animation:spin 0.75s linear infinite;"></span>
-        Generating advice…`;
+        Matching advice…`;
     }
 
-    const prompt = buildPrompt(payload);
-    const result = await state.pipeline(prompt, {
-      max_new_tokens:     300,
-      temperature:        0.7,
-      do_sample:          true,
-      repetition_penalty: 1.1,
-    });
+    const contextStr = buildContext(payload);
+    const tips       = await window.__aiEngine.suggest(contextStr, 4);
 
     if (spinnerEl) spinnerEl.remove();
 
-    const raw   = result[0]?.generated_text || '';
-    const after = raw.includes('<|assistant|>')
-      ? raw.split('<|assistant|>').pop().trim()
-      : raw.replace(prompt, '').trim();
-
-    const lines = after.split('\n').filter(l => l.trim());
-    if (!lines.length) throw new Error('Empty response from model.');
+    if (!tips || !tips.length) throw new Error('No relevant advice found.');
 
     textEl.innerHTML =
-      lines.map(line =>
-        `<div style="margin-bottom:9px;line-height:1.65;">${esc(line)}</div>`
+      tips.map(tip =>
+        `<div style="margin-bottom:9px;line-height:1.65;">${esc(tip)}</div>`
       ).join('') +
       `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
                    border-top:1px solid var(--border);padding-top:6px;">
-         🤖 Powered by Transformers.js · Phi-3-mini · runs entirely in your browser
+         🤖 Transformers.js · MiniLM-L6-v2 · semantic AI · runs entirely in your browser
        </div>`;
 
   } catch (err) {

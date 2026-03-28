@@ -1,6 +1,9 @@
 # ══════════════════════════════════════════════════════════════
 #  UniSync — Python Dependencies
 #  Install with: pip install -r requirements.txt
+#
+#  AI is handled 100% client-side via Transformers.js (MiniLM-L6-v2).
+#  No groq / openai / openrouter — zero API keys needed for AI.
 # ══════════════════════════════════════════════════════════════
 
 # ── Core Framework ─────────────────────────────────────────────
