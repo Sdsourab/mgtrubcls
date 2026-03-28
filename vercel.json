@@ -1,11 +1,22 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "includeFiles": "requirements.txt,templates/**,static/**,app/**,core/**,config.py"
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "150mb",
+        "includeFiles": [
+          "requirements.txt",
+          "templates/**",
+          "static/**",
+          "app/**",
+          "core/**",
+          "config.py"
+        ]
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
