@@ -3,15 +3,14 @@ app/planner/routes.py
 ─────────────────────
 Planner blueprint:
   - Plans CRUD
-  - Conflict checker  (FIXED: handles year/semester=0 gracefully)
-  - OpenRouter AI advice endpoint (server-side, key from Vercel env)
+  - Conflict checker  (handles year/semester=0 gracefully)
+  - OpenRouter AI advice endpoint (server-side, key from env)
 
 OpenRouter API:
   Base URL : https://openrouter.ai/api/v1/chat/completions
-  Auth     : Bearer OPENROUTER_API_KEY  (set in Vercel → Settings → Env Vars)
-  Models   : free tier uses  deepseek/deepseek-chat:free
-             falls back to   meta-llama/llama-3.1-8b-instruct:free
-             then            mistralai/mistral-7b-instruct:free
+  Auth     : Bearer OPENROUTER_API_KEY  (set in .env or Vercel → Settings → Env Vars)
+  Models   : Free-tier waterfall — tried in order until one succeeds.
+             NO DeepSeek. Uses only Llama, Mistral, Gemma free models.
   Docs     : https://openrouter.ai/docs
 """
 
@@ -30,13 +29,12 @@ OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions'
 
 # Free-tier model waterfall — tried in order until one succeeds.
 # All of these are free on OpenRouter (no per-token charge).
+# DeepSeek has been intentionally excluded.
 OPENROUTER_MODELS = [
-    'deepseek/deepseek-chat:free',            # DeepSeek V3, very capable
-    'deepseek/deepseek-r1:free',              # DeepSeek R1 reasoning model
-    'meta-llama/llama-3.3-70b-instruct:free', # Llama 3.3 70B
-    'meta-llama/llama-3.1-8b-instruct:free',  # Llama 3.1 8B, fast
-    'mistralai/mistral-7b-instruct:free',     # Mistral 7B
-    'google/gemma-2-9b-it:free',              # Gemma 2 9B
+    'meta-llama/llama-3.3-70b-instruct:free',   # Llama 3.3 70B — best quality
+    'meta-llama/llama-3.1-8b-instruct:free',    # Llama 3.1 8B  — fast fallback
+    'mistralai/mistral-7b-instruct:free',        # Mistral 7B    — reliable fallback
+    'google/gemma-2-9b-it:free',                 # Gemma 2 9B    — last resort
 ]
 
 
@@ -97,7 +95,7 @@ def delete_plan(plan_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ── Conflict Checker (FIXED) ──────────────────────────────────
+# ── Conflict Checker ──────────────────────────────────────────
 
 @planner_bp.route('/api/conflict-check', methods=['POST'])
 def conflict_check():
@@ -205,8 +203,9 @@ def conflict_check():
 @planner_bp.route('/api/ai-advice', methods=['POST'])
 def ai_advice():
     """
-    Calls OpenRouter.ai with a model waterfall (free-tier first).
-    Key: OPENROUTER_API_KEY in Vercel environment variables.
+    Calls OpenRouter.ai with a free-model waterfall (no DeepSeek).
+    Key is read server-side from OPENROUTER_API_KEY env var.
+    Users never see or need the key.
 
     Request body (JSON):
       conflict_summary  : str   — e.g. "MGT-3103 09:00–10:30"
@@ -228,8 +227,9 @@ def ai_advice():
         return jsonify({
             'success': False,
             'error':   (
-                'AI is not configured. '
-                'Add OPENROUTER_API_KEY to Vercel → Settings → Environment Variables.'
+                'AI advisor is not configured. '
+                'Add OPENROUTER_API_KEY to your .env file (local) '
+                'or Vercel → Settings → Environment Variables (production).'
             )
         }), 503
 
@@ -273,7 +273,7 @@ def ai_advice():
         f"Start each bullet with a relevant emoji."
     )
 
-    last_error = 'All OpenRouter models failed.'
+    last_error = 'All OpenRouter models failed. Please try again later.'
 
     for model in OPENROUTER_MODELS:
         payload = {

@@ -4,25 +4,59 @@
 
 ---
 
-## ⚡ Quickstart (3 steps)
+## ⚡ Quickstart (4 steps)
 
-### 1 — Add your Supabase API Keys
+### 1 — Copy the environment file
 
-Open `.env` and paste your keys from  
-**Supabase Dashboard → Project Settings → API**
-
-```env
-SUPABASE_URL=https://akitkwaeotifdujkoykd.supabase.co
-SUPABASE_ANON_KEY=<your anon/public key>
-SUPABASE_SERVICE_KEY=<your service_role key>
+```bash
+cp .env.example .env
 ```
 
-### 2 — Run the SQL Schema
+Open `.env` and fill in your keys (see sections below).
 
-Open **Supabase Dashboard → SQL Editor**, paste the full contents of `supabase_schema.sql` and run it.  
-This creates all 5 tables with Row Level Security policies.
+---
 
-### 3 — Launch the App
+### 2 — Add your Supabase API Keys
+
+Open **Supabase Dashboard → Project Settings → API** and paste:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-public-key
+SUPABASE_SERVICE_KEY=your-service-role-key
+```
+
+---
+
+### 3 — Add your OpenRouter API Key
+
+The **AI Planner Advisor** feature is powered by [OpenRouter.ai](https://openrouter.ai).  
+Your key lives **server-side only** — users never see it or need their own.
+
+1. Sign up free at → **https://openrouter.ai/keys**
+2. Create a key and paste it into `.env`:
+
+```env
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
+
+The app uses these **free-tier models** (tried in order, no cost):
+| Priority | Model |
+|----------|-------|
+| 1st | `meta-llama/llama-3.3-70b-instruct:free` |
+| 2nd | `meta-llama/llama-3.1-8b-instruct:free` |
+| 3rd | `mistralai/mistral-7b-instruct:free` |
+| 4th | `google/gemma-2-9b-it:free` |
+
+> DeepSeek models are **not used**.
+
+---
+
+### 4 — Run the SQL Schema + Launch
+
+Open **Supabase Dashboard → SQL Editor**, paste `supabase_schema.sql` and run it.
+
+Then launch:
 
 **Windows:**
 ```
@@ -31,6 +65,7 @@ Double-click start.bat
 
 **Linux / Mac:**
 ```bash
+chmod +x start.sh
 bash start.sh
 ```
 
@@ -41,6 +76,24 @@ python run.py
 ```
 
 Open → **http://localhost:5000**
+
+---
+
+## 🌐 Vercel Deployment
+
+1. Push your code to GitHub (make sure `.env` is in `.gitignore`)
+2. Import the repo in Vercel
+3. Go to **Vercel → Project → Settings → Environment Variables** and add:
+
+| Variable | Value |
+|----------|-------|
+| `OPENROUTER_API_KEY` | `sk-or-v1-your-key-here` |
+| `SUPABASE_URL` | `https://your-project.supabase.co` |
+| `SUPABASE_ANON_KEY` | `your-anon-key` |
+| `SUPABASE_SERVICE_KEY` | `your-service-role-key` |
+| `FLASK_SECRET_KEY` | `a-long-random-string` |
+
+The `vercel.json` maps `@openrouter-api-key` to the secret automatically.
 
 ---
 
@@ -59,18 +112,22 @@ Open → **http://localhost:5000**
 ## 📁 Project Structure
 
 ```
-UniSync_Final/
+UniSync/
 ├── app/
 │   ├── __init__.py              Flask App Factory + Error Handlers
 │   ├── auth/routes.py           Login · Register · Logout (Supabase JWT)
 │   ├── academic/routes.py       Routine · Live Tracker · Time Search · Mappings
 │   ├── productivity/routes.py   Tasks CRUD · UniCover Generator
 │   ├── campus/routes.py         Study Resources
+│   ├── planner/routes.py        Plans CRUD · Conflict Checker · AI Advisor
 │   └── admin/routes.py          Excel Upload · DB Seeder · Stats
 │
 ├── core/
 │   ├── supabase_client.py       Anon + Service Role clients
-│   └── excel_parser.py          Excel parser + full seed data (51 routines)
+│   ├── excel_parser.py          Excel parser + full seed data (51 routines)
+│   ├── holidays.py              Bangladesh holiday list 2026
+│   ├── mailer.py                Flask-Mail helpers
+│   └── scheduler.py             APScheduler background jobs
 │
 ├── static/
 │   ├── css/style.css            Full design system (dark theme, CSS variables)
@@ -78,28 +135,17 @@ UniSync_Final/
 │   └── js/
 │       ├── main.js              Auth state · Toast · Sidebar · Profile modal
 │       ├── live_engine.js       Real-time class tracker (polls every 60s)
+│       ├── planner.js           AI-powered planner UI
 │       └── admin_tools.js       Upload drag-drop UX
 │
-├── templates/
-│   ├── base.html                Sidebar · Mobile nav · Toast container
-│   ├── dashboard.html           Live card · Stats · Tasks · Time search
-│   ├── auth/login.html
-│   ├── auth/register.html
-│   ├── errors/404.html
-│   ├── errors/500.html
-│   └── modules/
-│       ├── routine.html         Weekly schedule table + faculty legend
-│       ├── tasks.html           Task board with priority + deadline
-│       ├── courses.html         Course catalog with filter
-│       ├── resources.html       Study materials gallery
-│       ├── unicover.html        A4 cover page generator (print-ready)
-│       └── admin.html           Seed DB · Upload routine · Stats panel
+├── templates/ ...
 │
-├── .env                         ← Your Supabase keys go here
-├── .env.example                 Template reference
+├── .env                         ← Your keys go here (never commit this)
+├── .env.example                 Template — copy to .env
 ├── config.py                    Dev / Production config
 ├── run.py                       Entry point
 ├── requirements.txt             All Python dependencies
+├── vercel.json                  Vercel deployment config
 ├── supabase_schema.sql          Run once in Supabase SQL Editor
 ├── start.sh                     Linux/Mac one-click launcher
 └── start.bat                    Windows one-click launcher
@@ -124,6 +170,15 @@ UniSync_Final/
 | GET | `/academic/api/time-search` | `?time=11:30&day=Monday` |
 | GET | `/academic/api/mappings` | — |
 
+### Planner & AI
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| GET | `/planner/api/plans` | `?user_id=<uid>` |
+| POST | `/planner/api/plans` | Create plan |
+| DELETE | `/planner/api/plans/<id>` | Delete |
+| POST | `/planner/api/conflict-check` | `{date, start_time, end_time, program, year, semester}` |
+| POST | `/planner/api/ai-advice` | AI advice via OpenRouter — key is server-side only |
+
 ### Tasks
 | Method | Endpoint | Notes |
 |--------|----------|-------|
@@ -133,56 +188,19 @@ UniSync_Final/
 | DELETE | `/productivity/api/tasks/<id>` | Delete |
 | POST | `/productivity/api/unicover` | `{user_id, course_code}` |
 
-### Campus & Admin
-| Method | Endpoint | Notes |
-|--------|----------|-------|
-| GET/POST | `/campus/api/resources` | List / Upload resource |
-| POST | `/admin/api/seed-database` | Seeds 51 routines + 35 mappings |
-| POST | `/admin/api/upload-routine` | Multipart `.xlsx` upload |
-| GET | `/admin/api/stats` | DB row counts |
-
----
-
-## 🗄️ Database Schema (5 tables)
-
-| Table | Purpose |
-|-------|---------|
-| `profiles` | User info + role (admin/teacher/student) |
-| `mappings` | Course & teacher code → full name |
-| `routines` | 51 class schedule entries (day · room · time · codes) |
-| `tasks` | Personal task tracker per user |
-| `resources` | Study materials with file URLs |
-
-All tables use **Row Level Security (RLS)** via Supabase.
-
----
-
-## ✨ Features
-
-| Feature | How it works |
-|---------|-------------|
-| **Live Class Tracker** | Polls `/academic/api/live-class` every 60s with local day+time. Shows progress ring countdown. |
-| **Time Search** | Input any HH:MM → instantly find classes running at that time across any day |
-| **Smart Routine** | Full week table per day with room, teacher name, course name from `mappings` |
-| **Task Manager** | Create/update/delete tasks. Deadline within 2h → auto URGENT flag |
-| **UniCover Generator** | Auto-fills cover page from your profile. Print to PDF from browser. |
-| **Study Resources** | Upload & share notes/files with Google Drive links |
-| **Admin Seeder** | One-click to load full Rabindra University 2025-26 schedule |
-| **Excel Upload** | Admin uploads `.xlsx` → Pandas processes → DB updated atomically |
-| **RBAC** | Admin sees Admin nav. Students see read-only data. |
-
 ---
 
 ## 🏗️ Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.10+ · Flask 3 · Blueprints architecture |
+| Backend | Python 3.10+ · Flask 3 · Blueprints |
 | Database | Supabase (PostgreSQL) + Row Level Security |
-| Auth | Supabase Auth · JWT tokens stored in `localStorage` |
-| Frontend | Vanilla JS (no framework) · Jinja2 templates |
+| Auth | Supabase Auth · JWT tokens |
+| AI | OpenRouter.ai (server-side, free-tier models) |
+| Frontend | Vanilla JS · Jinja2 templates |
 | Styling | Custom CSS · CSS Variables · Dark theme |
-| Fonts | Syne (display) · Space Grotesk (body) · JetBrains Mono |
+| Fonts | Syne · Space Grotesk · JetBrains Mono |
 | Excel | Pandas + openpyxl |
 
 ---
@@ -197,6 +215,7 @@ All tables use **Row Level Security (RLS)** via Supabase.
 ║                                                  ║
 ║  Developer : Sourav                              ║
 ║  Stack     : Flask · Supabase · Vanilla JS       ║
+║  AI        : OpenRouter.ai (free-tier)           ║
 ║  Session   : 2025-26                             ║
 ║  Built     : March 2026                          ║
 ║                                                  ║
