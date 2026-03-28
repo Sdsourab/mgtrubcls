@@ -222,16 +222,9 @@ def ai_advice():
       { success, advice, model }   on success
       { success, error }           on failure
     """
-    api_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
-    if not api_key:
-        return jsonify({
-            'success': False,
-            'error':   (
-                'AI advisor is not configured. '
-                'Add OPENROUTER_API_KEY to your .env file (local) '
-                'or Vercel → Settings → Environment Variables (production).'
-            )
-        }), 503
+    # Read key from env — fallback hardcoded (same pattern as supabase_client.py)
+    _FALLBACK_KEY = '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'
+    api_key = os.environ.get('OPENROUTER_API_KEY', '').strip() or _FALLBACK_KEY
 
     body             = request.get_json() or {}
     conflict_summary = body.get('conflict_summary', 'None')
