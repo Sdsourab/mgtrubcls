@@ -223,7 +223,7 @@ def ai_advice():
       { success, error }           on failure
     """
     # Read key from env — fallback hardcoded (same pattern as supabase_client.py)
-    _FALLBACK_KEY = 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
+    _FALLBACK_KEY = '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'
     api_key = os.environ.get('OPENROUTER_API_KEY', '').strip() or _FALLBACK_KEY
 
     body             = request.get_json() or {}
