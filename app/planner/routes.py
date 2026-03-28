@@ -28,19 +28,21 @@ import json as _json
 
 planner_bp = Blueprint('planner', __name__)
 
-# ── Groq API Key (read at module load — most reliable on Vercel) ──
-_GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-
 # ── Groq config ───────────────────────────────────────────────
 GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions'
 
 # Free-tier model waterfall — tried in order until one succeeds.
+# NOTE: mixtral-8x7b-32768 removed — deprecated by Groq as of 2025.
 GROQ_MODELS = [
     'llama-3.3-70b-versatile',   # Llama 3.3 70B  — best quality, very fast on Groq
     'llama-3.1-8b-instant',      # Llama 3.1 8B   — ultra-fast fallback
     'gemma2-9b-it',              # Gemma 2 9B     — reliable fallback
-    'mixtral-8x7b-32768',        # Mixtral 8x7B   — last resort
+    'llama3-70b-8192',           # Llama 3 70B    — last resort
 ]
+
+def _get_groq_key():
+    """Read GROQ_API_KEY at request-time (not module load) for Vercel compatibility."""
+    return os.environ.get('GROQ_API_KEY', '').strip()
 
 
 # ── Page ──────────────────────────────────────────────────────
@@ -206,7 +208,7 @@ def conflict_check():
 def ai_advice():
     """
     Calls Groq API with a free-model waterfall.
-    Key is read server-side from GROQ_API_KEY env var.
+    Key is read server-side from GROQ_API_KEY env var at request-time.
 
     Request body (JSON):
       conflict_summary  : str
@@ -217,7 +219,7 @@ def ai_advice():
       { success, advice, model }   on success
       { success, error, details }  on failure
     """
-    api_key = _GROQ_API_KEY.strip()
+    api_key = _get_groq_key()
 
     if not api_key:
         return jsonify({

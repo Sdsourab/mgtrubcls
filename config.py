@@ -15,6 +15,9 @@ class Config:
     SUPABASE_ANON_KEY   = os.environ.get('SUPABASE_ANON_KEY', '')
     SUPABASE_SERVICE_KEY= os.environ.get('SUPABASE_SERVICE_KEY', '')
 
+    # Groq AI
+    GROQ_API_KEY        = os.environ.get('GROQ_API_KEY', '')
+
     # Flask-Mail
     MAIL_SERVER         = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT           = int(os.environ.get('MAIL_PORT', 587))
