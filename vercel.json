@@ -1,34 +1,17 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "150mb",
-        "includeFiles": [
-          "requirements.txt",
-          "templates/**",
-          "static/**",
-          "app/**",
-          "core/**",
-          "config.py"
-        ]
-      }
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30,
+      "includeFiles": "requirements.txt,templates/**,static/**,app/**,core/**,config.py"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",
       "dest": "api/index.py"
     }
   ],
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "runtime": "python3.12"
-    }
-  },
   "env": {
     "FLASK_ENV": "production"
   }
