@@ -22,8 +22,5 @@
       "src": "/(.*)",
       "dest": "api/index.py"
     }
-  ],
-  "env": {
-    "OPENROUTER_API_KEY": "@openrouter-api-key"
-  }
+  ]
 }
