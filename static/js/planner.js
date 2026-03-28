@@ -1,15 +1,12 @@
 /**
- * UniSync — AI Personal Planner  v3.0
+ * UniSync — AI Personal Planner  v4.0
  * ─────────────────────────────────────────────────────────────
- * TRUE WATERFALL AI — quota/rate-limit ALWAYS falls through:
- *
- *   AIza…  → Gemini (all models) → Grok → OpenAI
- *   xai-…  → Grok  (all models) → Gemini → OpenAI
- *   sk-…   → OpenAI (all models) → Gemini → Grok
- *   other  → Gemini → Grok → OpenAI
- *
- *  429 quota / rate-limit → ALWAYS continues to next provider.
- *  401/403 auth errors    → skip that provider, try next.
+ * KEY CHANGES:
+ *  1. No user API key needed — AI powered by server-side DeepSeek
+ *  2. Conflict checker BUG FIXED — year/semester=0 handled correctly
+ *  3. Semester persists in localStorage across reload + re-login
+ *  4. Conflict result shows full day schedule alongside conflicts
+ *  5. AI advice includes full semester context
  */
 
 'use strict';
@@ -18,9 +15,13 @@ let allPlans = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof UniSync !== 'undefined') UniSync.requireAuth();
-  loadPlans();
-  loadSemesterCourses();
-  loadSavedKey();
+
+  // Sync user profile from DB on every load to keep semester fresh
+  syncProfileFromDB().then(() => {
+    loadPlans();
+    loadSemesterCourses();
+  });
+
   const today = new Date().toISOString().split('T')[0];
   ['cc_date', 'p_date'].forEach(id => {
     const el = document.getElementById(id);
@@ -29,303 +30,42 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ================================================================
-   AI KEY MANAGEMENT
-   ================================================================ */
-
-function detectProvider(key) {
-  if (!key) return null;
-  const k = (key || '').trim();
-  if (k.startsWith('AIza'))  return 'gemini';
-  if (k.startsWith('xai-'))  return 'grok';
-  if (k.startsWith('sk-'))   return 'openai';
-  return 'unknown';
-}
-
-function loadSavedKey() {
-  const key = localStorage.getItem('us_ai_key') || '';
-  const inp = document.getElementById('aiKeyInput');
-  if (inp) inp.value = key;
-  refreshKeyStatus(key);
-}
-
-function onAiKeyInput(val) {
-  const trimmed = (val || '').trim();
-  if (trimmed) localStorage.setItem('us_ai_key', trimmed);
-  else         localStorage.removeItem('us_ai_key');
-  refreshKeyStatus(trimmed);
-}
-
-function refreshKeyStatus(key) {
-  const el = document.getElementById('aiKeyStatus');
-  if (!el) return;
-  const p = detectProvider(key);
-  const map = {
-    gemini:  '🟢 Gemini key — auto-tries all models, then Grok → OpenAI on quota',
-    grok:    '🟢 Grok (xAI) key — free tier, then Gemini → OpenAI as fallback',
-    openai:  '🟢 OpenAI key — then Gemini → Grok as fallback',
-    unknown: '🟡 Key saved — tries Gemini → Grok → OpenAI in order',
-  };
-  el.textContent = key ? (map[p] || map.unknown) : '⚪ No key — paste any Gemini / Grok / OpenAI API key';
-  el.style.color = !key ? 'var(--text-muted)' : p === 'unknown' ? 'var(--amber)' : 'var(--green)';
-}
-
-function clearAiKey() {
-  localStorage.removeItem('us_ai_key');
-  const inp = document.getElementById('aiKeyInput');
-  if (inp) inp.value = '';
-  refreshKeyStatus('');
-  if (typeof UniSync !== 'undefined') UniSync.toast('API key cleared', 'success');
-}
-
-function toggleAiKeyVis() {
-  const inp = document.getElementById('aiKeyInput');
-  const btn = document.getElementById('toggleKeyBtn');
-  if (!inp) return;
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  if (btn) btn.textContent = inp.type === 'text' ? 'Hide' : 'Show';
-}
-
-/* ================================================================
-   WATERFALL AI ENGINE
+   PROFILE SYNC — keeps semester persistent and up-to-date
    ================================================================ */
 
 /**
- * tryGemini — tries every Gemini model in order.
- * 429 quota / 503 overload / 404 model-not-found → continue to next model.
- * 401/403 auth error → return { fatal, error }.
- * Returns { text, model } on success, null when all models exhausted.
+ * On every page load, fetches the latest profile from the DB
+ * and merges it into localStorage. This ensures:
+ *  - semester persists across browser reload
+ *  - semester survives re-login (login always writes fresh profile)
+ *  - if user updates profile on another device, it syncs here
  */
-async function tryGemini(apiKey, prompt) {
-  const MODELS = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-  ];
-  for (const model of MODELS) {
-    try {
-      const url  = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const resp = await fetch(url, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.72, maxOutputTokens: 600 },
-        }),
-      });
-      const json = await resp.json();
+async function syncProfileFromDB() {
+  const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+  if (!user || !user.id) return;
 
-      if (resp.ok) {
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (text) return { text, model: `Gemini / ${model}` };
-        continue; // empty → try next model
-      }
-
-      const status = resp.status;
-      const msg    = json?.error?.message || `HTTP ${status}`;
-
-      // Auth failure — abort Gemini entirely
-      if (status === 401 || status === 403)
-        return { fatal: true, error: `Gemini auth error: ${msg}` };
-
-      // Quota / overload / model not found → try next model
-      console.warn(`[Gemini] ${model} skipped (${status}): ${msg}`);
-    } catch (e) {
-      console.warn(`[Gemini] ${model} network error: ${e.message}`);
-      // network error → try next model
+  // If we already have valid year/semester locally, we're good
+  // Still sync in background to catch profile changes
+  try {
+    const res  = await fetch(`/auth/api/profile?user_id=${user.id}`);
+    const data = await res.json();
+    if (data.success && data.data) {
+      const profile = data.data;
+      // Merge DB values into local user object
+      const merged = {
+        ...user,
+        full_name: profile.full_name || user.full_name,
+        role:      profile.role      || user.role,
+        dept:      profile.dept      || user.dept,
+        program:   profile.program   || user.program  || 'BBA',
+        year:      profile.year      || user.year     || 1,
+        semester:  profile.semester  || user.semester || 1,
+      };
+      localStorage.setItem('us_user', JSON.stringify(merged));
     }
-  }
-  return null; // all Gemini models exhausted
-}
-
-/**
- * tryGrok — tries xAI Grok models in order (free-tier first).
- */
-async function tryGrok(apiKey, prompt) {
-  const MODELS = [
-    'grok-3-mini',
-    'grok-3-mini-fast',
-    'grok-beta',
-    'grok-2-mini',
-    'grok-2-latest',
-  ];
-  for (const model of MODELS) {
-    try {
-      const resp = await fetch('https://api.x.ai/v1/chat/completions', {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages:    [{ role: 'user', content: prompt }],
-          max_tokens:  600,
-          temperature: 0.72,
-        }),
-      });
-      const json = await resp.json();
-
-      if (resp.ok) {
-        const text = json?.choices?.[0]?.message?.content || '';
-        if (text) return { text, model: `Grok / ${model}` };
-        continue;
-      }
-
-      const status = resp.status;
-      const msg    = json?.error?.message || `HTTP ${status}`;
-      if (status === 401 || status === 403)
-        return { fatal: true, error: `Grok auth error: ${msg}` };
-      console.warn(`[Grok] ${model} skipped (${status}): ${msg}`);
-    } catch (e) {
-      console.warn(`[Grok] ${model} network error: ${e.message}`);
-    }
-  }
-  return null;
-}
-
-/**
- * tryOpenAI — tries OpenAI models in order.
- */
-async function tryOpenAI(apiKey, prompt) {
-  const MODELS = ['gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4o'];
-  for (const model of MODELS) {
-    try {
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages:    [{ role: 'user', content: prompt }],
-          max_tokens:  600,
-          temperature: 0.72,
-        }),
-      });
-      const json = await resp.json();
-
-      if (resp.ok) {
-        const text = json?.choices?.[0]?.message?.content || '';
-        if (text) return { text, model: `OpenAI / ${model}` };
-        continue;
-      }
-
-      const status = resp.status;
-      const msg    = json?.error?.message || `HTTP ${status}`;
-      if (status === 401 || status === 403)
-        return { fatal: true, error: `OpenAI auth error: ${msg}` };
-      console.warn(`[OpenAI] ${model} skipped (${status}): ${msg}`);
-    } catch (e) {
-      console.warn(`[OpenAI] ${model} network error: ${e.message}`);
-    }
-  }
-  return null;
-}
-
-/**
- * callAI — TRUE WATERFALL ROUTER
- *
- * Builds a 3-provider chain ordered by detected key type.
- * If any provider returns null (exhausted) it moves to the next one.
- * Updates the spinner label live so the user can see what's happening.
- */
-async function callAI(apiKey, conflictSummary, date, start, end, day, user) {
-  const textEl    = document.getElementById('aiSuggText');
-  const spinnerEl = document.getElementById('aiSpinner');
-  const spinLabel = document.getElementById('aiSpinLabel');
-
-  const prompt =
-    `I am a student at Rabindra University Bangladesh, Department of Management.\n` +
-    `Program: ${user?.program || 'BBA'}, Year ${user?.year || 1}, Semester ${user?.semester || 1}.\n` +
-    `I have a personal commitment on ${day} ${date} from ${start} to ${end}.\n` +
-    `This conflicts with these university classes: ${conflictSummary}.\n\n` +
-    `Give me 4-5 short, practical bullet points on:\n` +
-    `- Which commitment to prioritise and why\n` +
-    `- How to catch up on any missed class material\n` +
-    `- A concrete time management tip for this situation\n` +
-    `Be concise, friendly and encouraging. Start each bullet with a relevant emoji.`;
-
-  /* Build provider chain — primary first, fallbacks after */
-  const ALL = {
-    gemini: [
-      { name: 'Gemini', fn: () => tryGemini(apiKey, prompt) },
-      { name: 'Grok',   fn: () => tryGrok(apiKey, prompt)   },
-      { name: 'OpenAI', fn: () => tryOpenAI(apiKey, prompt) },
-    ],
-    grok: [
-      { name: 'Grok',   fn: () => tryGrok(apiKey, prompt)   },
-      { name: 'Gemini', fn: () => tryGemini(apiKey, prompt) },
-      { name: 'OpenAI', fn: () => tryOpenAI(apiKey, prompt) },
-    ],
-    openai: [
-      { name: 'OpenAI', fn: () => tryOpenAI(apiKey, prompt) },
-      { name: 'Gemini', fn: () => tryGemini(apiKey, prompt) },
-      { name: 'Grok',   fn: () => tryGrok(apiKey, prompt)   },
-    ],
-    unknown: [
-      { name: 'Gemini', fn: () => tryGemini(apiKey, prompt) },
-      { name: 'Grok',   fn: () => tryGrok(apiKey, prompt)   },
-      { name: 'OpenAI', fn: () => tryOpenAI(apiKey, prompt) },
-    ],
-  };
-
-  const chain    = ALL[detectProvider(apiKey)] || ALL.unknown;
-  let resultText = '';
-  let usedModel  = '';
-  let lastError  = 'All AI providers exhausted.';
-
-  for (const step of chain) {
-    if (spinLabel) spinLabel.textContent = `Trying ${step.name}…`;
-
-    const res = await step.fn();
-
-    if (!res) {
-      // Provider exhausted (quota / all models failed) → waterfall continues
-      lastError = `${step.name} quota/unavailable — trying next provider…`;
-      continue;
-    }
-    if (res.fatal) {
-      // Auth error for this provider → skip it, try next
-      lastError = res.error;
-      continue;
-    }
-    if (res.text) {
-      resultText = res.text;
-      usedModel  = res.model;
-      break;
-    }
-  }
-
-  /* ── Render ── */
-  if (spinnerEl) spinnerEl.remove();
-
-  if (!textEl) return;
-
-  if (resultText) {
-    const lines = resultText.split('\n').filter(l => l.trim());
-    textEl.innerHTML =
-      lines.map(line =>
-        `<div style="margin-bottom:8px;line-height:1.6;">${escHtml(line)}</div>`
-      ).join('') +
-      `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
-                   border-top:1px solid var(--border);padding-top:6px;">
-         ✦ Powered by ${escHtml(usedModel)}
-       </div>`;
-  } else {
-    textEl.innerHTML = `
-      <div style="color:var(--red);margin-bottom:8px;">⚠️ ${escHtml(lastError)}</div>
-      <div style="font-size:0.78rem;color:var(--text-muted);line-height:1.7;">
-        <strong>Supported key formats:</strong><br>
-        <code style="color:var(--accent-light);">AIza…</code> → Gemini &nbsp;·&nbsp;
-        <code style="color:var(--accent-light);">xai-…</code> → Grok (free) &nbsp;·&nbsp;
-        <code style="color:var(--accent-light);">sk-…</code> → OpenAI<br>
-        <span style="display:block;margin-top:4px;">
-          If one provider's quota is exceeded, the others are tried automatically.
-        </span>
-      </div>`;
+  } catch (e) {
+    // Network error — use cached local data, no problem
+    console.warn('Profile sync failed, using cached data:', e.message);
   }
 }
 
@@ -334,7 +74,7 @@ async function callAI(apiKey, conflictSummary, date, start, end, day, user) {
    ================================================================ */
 
 async function loadSemesterCourses() {
-  const user      = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+  const user      = getUser();
   const container = document.getElementById('semesterCoursesBox');
   if (!container) return;
 
@@ -342,25 +82,25 @@ async function loadSemesterCourses() {
     container.innerHTML = '<div class="ts-empty">Please log in to see your schedule.</div>';
     return;
   }
-  container.innerHTML = '<div class="ts-loading">Loading your semester schedule…</div>';
+
+  const prog = user.program  || 'BBA';
+  const yr   = user.year     || 1;
+  const sem  = user.semester || 1;
+
+  container.innerHTML = `<div class="ts-loading">Loading ${prog} Year ${yr} Sem ${sem} schedule…</div>`;
 
   try {
-    const params = new URLSearchParams({
-      program:  user.program  || 'BBA',
-      year:     user.year     || 1,
-      semester: user.semester || 1,
-    });
-    const res  = await fetch(`/academic/api/routine?${params}`);
-    const data = await res.json();
+    const params = new URLSearchParams({ program: prog, year: yr, semester: sem });
+    const res    = await fetch(`/academic/api/routine?${params}`);
+    const data   = await res.json();
 
     if (!data.success || !data.data?.length) {
       container.innerHTML = `
         <div class="ts-empty" style="text-align:center;padding:20px;">
-          No classes found for
-          <strong>${user.program || 'BBA'} · Year ${user.year || 1} · Sem ${user.semester || 1}</strong>.<br>
-          <span style="font-size:0.78rem;color:var(--text-muted);">
-            Update your profile if your year/semester is wrong.
-          </span>
+          No classes found for <strong>${prog} · Year ${yr} · Sem ${sem}</strong>.<br>
+          <a href="/auth/profile" style="color:var(--accent-light);font-size:0.8rem;">
+            Update your profile →
+          </a>
         </div>`;
       return;
     }
@@ -383,9 +123,8 @@ async function loadSemesterCourses() {
             `<span class="sem-chip" title="${name}">${code}</span>`).join('')}
         </div>
         <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">
-          ${Object.keys(uniqueCourses).length} course(s) ·
-          ${data.data.length} class slot(s) ·
-          <em>${user.program} Year ${user.year} Sem ${user.semester}</em>
+          ${Object.keys(uniqueCourses).length} course(s) · ${data.data.length} slot(s) ·
+          <em>${prog} Year ${yr} Sem ${sem}</em>
         </div>
       </div>
       <div class="sem-day-grid">`;
@@ -406,7 +145,7 @@ async function loadSemesterCourses() {
         </div>`;
     });
 
-    html += `</div>`;
+    html += '</div>';
     container.innerHTML = html;
 
   } catch (e) {
@@ -415,11 +154,228 @@ async function loadSemesterCourses() {
 }
 
 /* ================================================================
+   CONFLICT CHECKER (BUG FIXED)
+   ================================================================ */
+
+async function checkConflict() {
+  const date  = (document.getElementById('cc_date')  || {}).value || '';
+  const start = (document.getElementById('cc_start') || {}).value || '';
+  const end   = (document.getElementById('cc_end')   || {}).value || '';
+  const user  = getUser();
+
+  if (!date || !start || !end) {
+    toast('Please fill date, start and end time', 'warning'); return;
+  }
+  if (start >= end) {
+    toast('Start time must be before end time', 'warning'); return;
+  }
+
+  const btn = document.getElementById('conflictBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+
+  const resultDiv = document.getElementById('conflictResult');
+  if (resultDiv) {
+    resultDiv.innerHTML = '<div class="ts-loading">Checking conflicts against your semester schedule…</div>';
+    resultDiv.classList.remove('hidden');
+  }
+
+  // ── CRITICAL FIX: use real values, default to 0 only if truly missing ──
+  const prog = user?.program  || 'BBA';
+  const yr   = parseInt(user?.year     || 0);
+  const sem  = parseInt(user?.semester || 0);
+
+  try {
+    const res  = await fetch('/planner/api/conflict-check', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        date,
+        start_time: start,
+        end_time:   end,
+        program:    prog,
+        year:       yr,
+        semester:   sem,
+      }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      resultDiv.innerHTML =
+        `<div class="ts-empty">⚠️ Check failed: ${esc(data.error || 'Unknown error')}. Try again.</div>`;
+      return;
+    }
+
+    // Weekend / holiday
+    if (data.message) {
+      resultDiv.innerHTML = `
+        <div style="padding:14px;background:rgba(52,211,153,0.08);
+                    border:1px solid rgba(52,211,153,0.25);border-radius:var(--radius-sm);">
+          <div style="color:var(--green);font-weight:700;">✅ ${esc(data.message)}</div>
+        </div>`;
+      return;
+    }
+
+    const conflicts       = data.conflicts       || [];
+    const semesterClasses = data.semester_classes || [];
+    const dayLabel        = data.day || '';
+
+    // ── Build result HTML ───────────────────────────────────
+    let html = '';
+
+    // -- Full day schedule strip ---
+    if (semesterClasses.length) {
+      html += `
+      <div style="margin-bottom:14px;padding:12px 14px;background:var(--bg-elevated);
+                  border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;
+                    text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">
+          📅 Your classes on ${dayLabel}
+        </div>
+        ${semesterClasses.map(c => `
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 0;
+                      border-bottom:1px solid var(--border);font-size:0.82rem;">
+            <span style="color:var(--accent-light);font-weight:700;min-width:42px;">
+              ${c.time_start}
+            </span>
+            <span style="flex:1;">${esc(c.course_name || c.course_code)}</span>
+            <span style="color:var(--text-muted);font-size:0.75rem;">
+              Rm ${c.room_no}
+            </span>
+          </div>`).join('')}
+      </div>`;
+    } else {
+      html += `
+      <div style="margin-bottom:14px;padding:11px;background:var(--bg-elevated);
+                  border:1px solid var(--border);border-radius:var(--radius-sm);
+                  font-size:0.82rem;color:var(--text-muted);">
+        ℹ️ No classes found for <strong>${prog} Year ${yr} Sem ${sem}</strong> on ${dayLabel}.
+        <a href="/auth/profile" style="color:var(--accent-light);">Check your profile →</a>
+      </div>`;
+    }
+
+    // -- Conflict / no-conflict result ---
+    if (!conflicts.length) {
+      html += `
+      <div style="padding:14px;background:rgba(52,211,153,0.08);
+                  border:1px solid rgba(52,211,153,0.25);border-radius:var(--radius-sm);">
+        <div style="color:var(--green);font-weight:700;margin-bottom:4px;">✅ No Conflicts!</div>
+        <div style="font-size:0.84rem;color:var(--text-muted);">
+          Your plan ${start}–${end} on <strong>${dayLabel}</strong>
+          does not overlap with any of your semester's classes.
+        </div>
+      </div>`;
+    } else {
+      html += `
+      <div class="conflict-box" style="margin-bottom:12px;">
+        <div class="conflict-title">⚠️ ${conflicts.length} Conflict(s) on ${dayLabel}</div>
+        ${conflicts.map(c => `
+          <div class="conflict-item">
+            📚 <strong>${esc(c.course_code)}</strong> — ${esc(c.course_name || c.course_code)}
+            <span style="color:var(--text-muted);font-size:0.8rem;">
+              &nbsp;|&nbsp; ${c.time_start}–${c.time_end}
+              &nbsp;|&nbsp; Room ${c.room_no}
+              ${c.teacher_name ? `&nbsp;|&nbsp; ${esc(c.teacher_name)}` : ''}
+            </span>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    // -- AI advice block (always shown) ---
+    html += `
+    <div class="ai-suggestion-box" style="margin-top:4px;">
+      <div class="ai-suggestion-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>🤖 DeepSeek AI — Smart Advice</span>
+        <span id="aiSpinner" style="display:inline-flex;align-items:center;gap:5px;
+              font-size:0.74rem;color:var(--text-muted);font-weight:400;">
+          <span style="width:10px;height:10px;border:2px solid var(--text-muted);
+                       border-top-color:var(--accent);border-radius:50%;display:inline-block;
+                       animation:spin 0.75s linear infinite;"></span>
+          OpenRouter AI analysing your schedule…
+        </span>
+      </div>
+      <div class="ai-suggestion-text" id="aiSuggText">
+        Generating personalised advice via OpenRouter.ai…
+      </div>
+    </div>`;
+
+    resultDiv.innerHTML = html;
+
+    // -- Trigger AI advice ---
+    const conflictSummary = conflicts.length
+      ? conflicts.map(c => `${c.course_code} (${c.course_name || c.course_code}) ${c.time_start}–${c.time_end}`).join('; ')
+      : 'None';
+
+    await fetchAIAdvice({
+      conflict_summary:  conflictSummary,
+      day:               dayLabel,
+      date,
+      start,
+      end,
+      program:           prog,
+      year:              yr,
+      semester:          sem,
+      semester_classes:  semesterClasses,
+    });
+
+  } catch (e) {
+    resultDiv.innerHTML = `<div class="ts-empty">Error: ${esc(e.message)}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Check Conflicts'; }
+  }
+}
+
+/* ================================================================
+   DEEPSEEK AI ADVICE — server-side call
+   ================================================================ */
+
+async function fetchAIAdvice(payload) {
+  const textEl    = document.getElementById('aiSuggText');
+  const spinnerEl = document.getElementById('aiSpinner');
+
+  try {
+    const res  = await fetch('/planner/api/ai-advice', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (spinnerEl) spinnerEl.remove();
+
+    if (!textEl) return;
+
+    if (data.success && data.advice) {
+      const lines = data.advice.split('\n').filter(l => l.trim());
+      textEl.innerHTML =
+        lines.map(line =>
+          `<div style="margin-bottom:9px;line-height:1.65;">${esc(line)}</div>`
+        ).join('') +
+        `<div style="margin-top:10px;font-size:0.69rem;color:var(--text-muted);
+                     border-top:1px solid var(--border);padding-top:6px;">
+           🤖 Powered by OpenRouter.ai — model: ${esc(data.model || 'openrouter')}
+         </div>`;
+    } else {
+      textEl.innerHTML = `
+        <div style="color:var(--amber);">⚠️ ${esc(data.error || 'AI advice unavailable.')}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">
+          The conflict analysis above is still accurate and complete.
+        </div>`;
+    }
+  } catch (e) {
+    if (spinnerEl) spinnerEl.remove();
+    if (textEl) textEl.innerHTML = `
+      <div style="color:var(--text-muted);font-size:0.82rem;">
+        AI advice unavailable (network error). The conflict data above is still accurate.
+      </div>`;
+  }
+}
+
+/* ================================================================
    PLANS CRUD
    ================================================================ */
 
 async function loadPlans() {
-  const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+  const user = getUser();
   if (!user) return;
   try {
     const res  = await fetch(`/planner/api/plans?user_id=${user.id}`);
@@ -438,35 +394,29 @@ function renderPlans() {
   const typeColor = {
     personal: 'var(--accent-light)',
     tuition:  'var(--amber)',
-    work:     'var(--cyan)',
+    work:     'var(--cyan, #22d3ee)',
     other:    'var(--text-muted)',
   };
   list.innerHTML = allPlans.map(p => `
   <div class="plan-item">
-    <div class="plan-type-dot ${p.type}" style="background:${typeColor[p.type] || 'var(--text-muted)'};"></div>
-    <div class="plan-info">
-      <div class="plan-title">${escHtml(p.title)}</div>
+    <div class="plan-type-dot" style="background:${typeColor[p.type] || 'var(--text-muted)'};
+         width:8px;height:8px;border-radius:50%;flex-shrink:0;"></div>
+    <div class="plan-info" style="flex:1;min-width:0;">
+      <div class="plan-title">${esc(p.title)}</div>
       <div class="plan-meta">
         ${p.date} · ${p.start_time}–${p.end_time}
         · <span style="text-transform:capitalize">${p.type}</span>
       </div>
-      ${p.note ? `<div class="plan-meta" style="font-style:italic">${escHtml(p.note)}</div>` : ''}
+      ${p.note ? `<div class="plan-meta" style="font-style:italic;">${esc(p.note)}</div>` : ''}
     </div>
-    <button class="btn-sm btn-danger" onclick="deletePlan('${p.id}')">✕</button>
+    <button class="btn-sm btn-danger" onclick="deletePlan('${p.id}')"
+            style="flex-shrink:0;">✕</button>
   </div>`).join('');
-}
-
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 async function submitPlan(e) {
   e.preventDefault();
-  const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+  const user = getUser();
   if (!user) return;
   const payload = {
     user_id:    user.id,
@@ -484,16 +434,14 @@ async function submitPlan(e) {
     });
     const data = await res.json();
     if (data.success) {
-      UniSync?.toast('Plan saved!', 'success');
+      toast('Plan saved!', 'success');
       document.getElementById('addPlanModal').classList.add('hidden');
       e.target.reset();
       loadPlans();
     } else {
-      UniSync?.toast(data.error || 'Error saving plan', 'error');
+      toast(data.error || 'Error saving plan', 'error');
     }
-  } catch {
-    UniSync?.toast('Connection error', 'error');
-  }
+  } catch { toast('Connection error', 'error'); }
 }
 
 async function deletePlan(id) {
@@ -502,10 +450,8 @@ async function deletePlan(id) {
     await fetch(`/planner/api/plans/${id}`, { method: 'DELETE' });
     allPlans = allPlans.filter(p => p.id !== id);
     renderPlans();
-    UniSync?.toast('Deleted', 'success');
-  } catch {
-    UniSync?.toast('Error deleting', 'error');
-  }
+    toast('Plan deleted.', 'success');
+  } catch { toast('Error deleting', 'error'); }
 }
 
 function openAddPlan() {
@@ -513,143 +459,7 @@ function openAddPlan() {
 }
 
 /* ================================================================
-   CONFLICT CHECKER
-   ================================================================ */
-
-async function checkConflict() {
-  const date  = (document.getElementById('cc_date')  || {}).value || '';
-  const start = (document.getElementById('cc_start') || {}).value || '';
-  const end   = (document.getElementById('cc_end')   || {}).value || '';
-  const user  = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
-
-  if (!date || !start || !end) {
-    UniSync?.toast('Please fill date, start and end time', 'warning'); return;
-  }
-  if (start >= end) {
-    UniSync?.toast('Start time must be before end time', 'warning'); return;
-  }
-
-  const btn = document.getElementById('conflictBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
-
-  const resultDiv = document.getElementById('conflictResult');
-  if (resultDiv) {
-    resultDiv.innerHTML = '<div class="ts-loading">Checking conflicts against your semester schedule…</div>';
-    resultDiv.classList.remove('hidden');
-  }
-
-  try {
-    const res  = await fetch('/planner/api/conflict-check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date,
-        start_time: start,
-        end_time:   end,
-        program:  user?.program  || 'BBA',
-        year:     user?.year     || 1,
-        semester: user?.semester || 1,
-      }),
-    });
-    const data = await res.json();
-
-    if (!data.success) {
-      resultDiv && (resultDiv.innerHTML =
-        `<div class="ts-empty">⚠️ Check failed: ${data.error || 'Unknown error'}. Try again.</div>`);
-      return;
-    }
-
-    if (data.message) {
-      resultDiv && (resultDiv.innerHTML = `
-        <div style="padding:14px;background:rgba(52,211,153,0.08);
-                    border:1px solid rgba(52,211,153,0.25);border-radius:var(--radius-sm);">
-          <div style="color:var(--green);font-weight:700;">✅ ${data.message}</div>
-        </div>`);
-      return;
-    }
-
-    if (!data.conflicts?.length) {
-      const dayLabel = data.day ? `<strong>${data.day}</strong>` : '';
-      resultDiv && (resultDiv.innerHTML = `
-        <div style="padding:16px;background:rgba(52,211,153,0.08);
-                    border:1px solid rgba(52,211,153,0.25);border-radius:var(--radius-sm);">
-          <div style="color:var(--green);font-weight:700;margin-bottom:4px;">✅ No Conflicts!</div>
-          <div style="font-size:0.84rem;color:var(--text-muted);">
-            Your plan on ${dayLabel} ${start}–${end} is free of your semester's classes.
-          </div>
-        </div>`);
-      return;
-    }
-
-    /* Build conflict list */
-    let html = `
-    <div class="conflict-box">
-      <div class="conflict-title">⚠️ ${data.conflicts.length} Conflict(s) Found on ${data.day || ''}</div>`;
-    data.conflicts.forEach(c => {
-      html += `
-      <div class="conflict-item">
-        📚 <strong>${c.course_code}</strong> — ${c.course_name || c.course_code}
-        <span style="color:var(--text-muted);font-size:0.8rem;">
-          &nbsp;|&nbsp; ${c.time_start}–${c.time_end}
-          &nbsp;|&nbsp; Room ${c.room_no}
-          ${c.teacher_name ? `&nbsp;|&nbsp; ${c.teacher_name}` : ''}
-        </span>
-      </div>`;
-    });
-    html += `</div>`;
-
-    const aiKey = localStorage.getItem('us_ai_key');
-    if (aiKey) {
-      const pName = { gemini:'Gemini', grok:'Grok', openai:'OpenAI', unknown:'AI' }[detectProvider(aiKey)] || 'AI';
-
-      html += `
-      <div class="ai-suggestion-box" style="margin-top:12px;">
-        <div class="ai-suggestion-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ✨ AI Smart Balance Suggestion
-          <span id="aiSpinner" style="display:inline-flex;align-items:center;gap:5px;
-                font-size:0.74rem;color:var(--text-muted);font-weight:400;">
-            <span style="width:10px;height:10px;border:2px solid var(--text-muted);
-                         border-top-color:var(--accent);border-radius:50%;
-                         display:inline-block;animation:spin 0.75s linear infinite;"></span>
-            <span id="aiSpinLabel">Trying ${pName}…</span>
-          </span>
-        </div>
-        <div class="ai-suggestion-text" id="aiSuggText">
-          Connecting — will fall back across all providers if quota is exceeded…
-        </div>
-      </div>`;
-
-      if (resultDiv) resultDiv.innerHTML = html;
-
-      const summary = data.conflicts.map(c =>
-        `${c.course_code} (${c.course_name || c.course_code}) ${c.time_start}–${c.time_end}`
-      ).join('; ');
-
-      await callAI(aiKey, summary, date, start, end, data.day || '', user);
-
-    } else {
-      html += `
-      <div style="margin-top:10px;padding:13px;background:var(--bg-elevated);
-                  border:1px solid var(--border);border-radius:var(--radius-sm);
-                  font-size:0.82rem;color:var(--text-muted);line-height:1.7;">
-        💡 Add a Gemini <code>(AIza…)</code>, Grok <code>(xai-…)</code>,
-        or OpenAI <code>(sk-…)</code> API key above to get AI-powered advice.<br>
-        <span style="font-size:0.75rem;">
-          Quota exceeded? No problem — the other providers are tried automatically.
-        </span>
-      </div>`;
-      if (resultDiv) resultDiv.innerHTML = html;
-    }
-
-  } catch (e) {
-    resultDiv && (resultDiv.innerHTML = `<div class="ts-empty">Error: ${e.message}</div>`);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Check Conflicts'; }
-  }
-}
-
-/* ================================================================
-   DURATION SEARCH — ADVANCED ML SUGGESTION RENDERER
+   DURATION SEARCH — ADVANCED ML SUGGESTIONS
    ================================================================ */
 
 async function runDurationSearch() {
@@ -657,20 +467,21 @@ async function runDurationSearch() {
   const to     = document.getElementById('dsTo').value;
   const day    = document.getElementById('dsDay').value;
   const resDiv = document.getElementById('dsResults');
-  const _user  = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+  const user   = getUser();
 
-  if (!from || !to) { UniSync?.toast('Select both From and To time', 'warning'); return; }
-  if (from >= to)   { UniSync?.toast('From must be before To', 'warning');        return; }
+  if (!from || !to) { toast('Select both From and To time', 'warning'); return; }
+  if (from >= to)   { toast('From must be before To', 'warning');        return; }
 
   resDiv.innerHTML = '<div class="ts-loading">Searching your schedule…</div>';
   resDiv.classList.remove('hidden');
 
   try {
-    const params = new URLSearchParams({ from, to });
-    if (day)              params.set('day',      day);
-    if (_user?.program)   params.set('program',  _user.program);
-    if (_user?.year)      params.set('year',      _user.year);
-    if (_user?.semester)  params.set('semester',  _user.semester);
+    const prog = user?.program  || 'BBA';
+    const yr   = user?.year     || 1;
+    const sem  = user?.semester || 1;
+
+    const params = new URLSearchParams({ from, to, program: prog, year: yr, semester: sem });
+    if (day) params.set('day', day);
 
     const res  = await fetch(`/academic/api/duration-search?${params}`);
     const data = await res.json();
@@ -684,19 +495,19 @@ async function runDurationSearch() {
 
     let html = data.data.map(c => `
     <div class="ts-result-item">
-      <div class="ts-result-code">${c.course_code}</div>
+      <div class="ts-result-code">${esc(c.course_code)}</div>
       <div class="ts-result-info">
-        <div class="ts-result-name">${c.course_name || c.course_code}</div>
-        <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name || c.teacher_code} · ${c.day}</div>
+        <div class="ts-result-name">${esc(c.course_name || c.course_code)}</div>
+        <div class="ts-result-meta">Room ${c.room_no} · ${esc(c.teacher_name || c.teacher_code)} · ${c.day}</div>
       </div>
       <div class="ts-result-time">${c.time_slot}</div>
     </div>`).join('');
 
-    /* ── Advanced ML Suggestions Block ── */
+    // Advanced ML suggestions
     if (data.ml?.suggestions?.length) {
       const sessionEmoji = {
-        morning_peak:   '🌅', mid_morning: '☀️',
-        post_lunch_dip: '😴', afternoon:   '🌤️', off_hours: '🌙',
+        morning_peak: '🌅', mid_morning: '☀️',
+        post_lunch_dip: '😴', afternoon: '🌤️', off_hours: '🌙',
       }[data.ml.session_type] || '🧠';
 
       const sessionLabel = {
@@ -723,9 +534,7 @@ async function runDurationSearch() {
         const pct = Math.round((s.urgency_score || 0) * 100);
         const barColor = pct >= 70 ? 'var(--red)' : pct >= 45 ? 'var(--amber)' : 'var(--green)';
         const fatigueNote = (s.fatigue_factor != null && s.fatigue_factor < 0.9)
-          ? `<span style="color:var(--amber);font-size:0.68rem;">
-               ⚡ Fatigue ${Math.round((1 - s.fatigue_factor) * 100)}%
-             </span>`
+          ? `<span style="color:var(--amber);font-size:0.68rem;">⚡ Fatigue ${Math.round((1 - s.fatigue_factor) * 100)}%</span>`
           : '';
 
         html += `
@@ -734,15 +543,13 @@ async function runDurationSearch() {
                     border-radius:0 var(--radius-sm) var(--radius-sm) 0;">
           <div style="display:flex;align-items:center;justify-content:space-between;
                       gap:6px;margin-bottom:5px;flex-wrap:wrap;">
-            <span style="font-weight:600;font-size:0.82rem;">#${s.rank || ''} ${s.priority || ''}</span>
+            <span style="font-weight:600;font-size:0.82rem;">#${s.rank || ''} ${esc(s.priority || '')}</span>
             <div style="display:flex;align-items:center;gap:8px;">
               ${fatigueNote}
               <span style="font-size:0.69rem;color:var(--text-muted);">Urgency ${pct}%</span>
             </div>
           </div>
-          <div style="font-size:0.83rem;margin-bottom:6px;line-height:1.5;">
-            ${escHtml(s.suggestion)}
-          </div>
+          <div style="font-size:0.83rem;margin-bottom:6px;line-height:1.5;">${esc(s.suggestion)}</div>
           <div style="height:3px;background:var(--bg-elevated);border-radius:3px;margin:6px 0;">
             <div style="height:3px;width:${pct}%;background:${barColor};
                         border-radius:3px;transition:width 0.7s ease;"></div>
@@ -750,23 +557,43 @@ async function runDurationSearch() {
           ${s.context_tip ? `
           <div style="font-size:0.75rem;color:var(--text-muted);font-style:italic;
                       border-top:1px solid var(--border);padding-top:5px;margin-top:4px;">
-            💡 ${escHtml(s.context_tip)}
+            💡 ${esc(s.context_tip)}
           </div>` : ''}
         </div>`;
       });
 
       html += `
         <div style="font-size:0.68rem;color:var(--text-muted);text-align:right;margin-top:4px;">
-          ML ${escHtml(data.ml.ml_version || '2.0')} ·
-          ${data.ml.total_classes || 0} class(es) analysed ·
-          Query ${escHtml(data.ml.query_time || '')}
+          ML ${esc(data.ml.ml_version || '2.0')} · ${data.ml.total_classes || 0} class(es) analysed
         </div>
       </div>`;
     }
 
     resDiv.innerHTML = html;
-
   } catch (e) {
     resDiv.innerHTML = '<div class="ts-empty">Connection error. Check server.</div>';
   }
+}
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+
+function getUser() {
+  try {
+    const u = localStorage.getItem('us_user');
+    return u ? JSON.parse(u) : null;
+  } catch { return null; }
+}
+
+function toast(msg, type) {
+  if (typeof UniSync !== 'undefined') UniSync.toast(msg, type);
+}
+
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

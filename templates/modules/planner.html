@@ -8,7 +8,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">AI Personal Planner</h1>
-      <p class="page-sub">Manage personal plans · View your semester schedule · Detect class conflicts with AI advice</p>
+      <p class="page-sub">Manage personal plans · Detect class conflicts · Get AI-powered advice</p>
     </div>
     <button class="btn-primary" onclick="openAddPlan()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
@@ -18,29 +18,22 @@
     </button>
   </div>
 
-  <!-- AI Key Setup -->
-  <div class="planner-card" style="margin-bottom:18px;">
-    <h3 style="font-size:0.9rem;margin-bottom:4px;">🔑 Your AI API Key</h3>
-    <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:12px;">
-      Saved only in your browser — never sent to our server.<br>
-      Supports: <strong>Gemini</strong> (key starts with AIza…) · <strong>OpenAI</strong> (key starts with sk-…)
-    </p>
-    <div class="ai-key-row">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"
-          style="color:var(--text-muted);flex-shrink:0;">
-        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-      </svg>
-      <input type="password" id="aiKeyInput"
-             placeholder="Paste Gemini (AIza…) or OpenAI (sk-…) key here"
-             oninput="onAiKeyInput(this.value)">
-      <!-- FIX: was toggleAiKey() — correct function is toggleAiKeyVis() -->
-      <button class="btn-sm btn-accent" id="toggleKeyBtn" onclick="toggleAiKeyVis()">Show</button>
-      <button class="btn-sm btn-danger" onclick="clearAiKey()">Clear</button>
-    </div>
-    <div id="aiKeyStatus" style="font-size:0.75rem;margin-top:6px;color:var(--text-muted);">⚪ No key saved</div>
+  <!-- AI Status Badge -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;padding:10px 16px;
+              background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.22);
+              border-radius:var(--radius-sm);flex-wrap:wrap;">
+    <span style="width:8px;height:8px;background:var(--green);border-radius:50%;
+                 box-shadow:0 0 6px var(--green);animation:pulse-green 1.8s infinite;
+                 flex-shrink:0;"></span>
+    <span style="font-size:0.82rem;color:var(--green);font-weight:600;">
+      OpenRouter AI Active
+    </span>
+    <span style="font-size:0.78rem;color:var(--text-muted);">
+      — Powered by OpenRouter.ai · Free-tier models · No API key needed from you.
+    </span>
   </div>
 
-  <!-- My Semester Schedule (NEW) -->
+  <!-- My Semester Schedule -->
   <div class="planner-card" style="margin-bottom:18px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <h3 style="margin:0;">🗓️ My Semester Schedule</h3>
@@ -50,6 +43,7 @@
     </div>
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">
       Your current semester's university classes. Conflict checker uses this schedule.
+      Semester is saved and persists across sessions.
     </p>
     <div id="semesterCoursesBox">
       <div class="skeleton-block" style="height:50px;margin-bottom:8px;"></div>
@@ -71,7 +65,8 @@
     <div class="planner-card">
       <h3>⚡ Conflict Checker</h3>
       <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;">
-        Enter a time slot to check if it conflicts with <strong>your semester's</strong> university classes.
+        Enter a time slot to check if it overlaps with <strong>your semester's</strong> classes.
+        AI advice is generated automatically.
       </p>
       <div class="modal-form" style="gap:12px;">
         <div class="form-group">
@@ -88,12 +83,10 @@
             <input type="time" id="cc_end">
           </div>
         </div>
-        <!-- FIX: added id="conflictBtn" so JS can disable it during loading -->
         <button id="conflictBtn" class="btn-primary btn-full" onclick="checkConflict()">
           Check Conflicts
         </button>
       </div>
-
       <div id="conflictResult" class="hidden" style="margin-top:14px;"></div>
     </div>
   </div>
@@ -102,7 +95,8 @@
 <!-- Add Plan Modal -->
 <div class="modal-overlay hidden" id="addPlanModal">
   <div class="modal-box">
-    <button class="modal-close" onclick="document.getElementById('addPlanModal').classList.add('hidden')">✕</button>
+    <button class="modal-close"
+            onclick="document.getElementById('addPlanModal').classList.add('hidden')">✕</button>
     <h3>New Personal Plan</h3>
     <form onsubmit="submitPlan(event)" class="modal-form">
       <div class="form-group">
@@ -140,12 +134,11 @@
     </form>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_css %}
 <style>
-/* ── Semester Schedule Styles ────────────────────────────── */
+/* Semester schedule styles */
 .sem-course-summary {
   margin-bottom: 14px;
   padding: 10px 14px;
@@ -153,11 +146,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
-.sem-course-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.sem-course-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sem-chip {
   display: inline-block;
   padding: 3px 10px;
@@ -195,28 +184,12 @@
   font-size: 0.78rem;
 }
 .sem-class-item:last-child { border-bottom: none; }
-.sem-class-time {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  margin-bottom: 2px;
-}
-.sem-class-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.3;
-  margin-bottom: 2px;
-}
-.sem-class-meta {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-.sem-class-teacher {
-  font-size: 0.69rem;
-  color: var(--accent);
-  margin-top: 2px;
-}
+.sem-class-time  { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
+.sem-class-name  { font-weight: 600; color: var(--text-primary); line-height: 1.3; margin-bottom: 2px; }
+.sem-class-meta  { font-size: 0.7rem; color: var(--text-muted); }
+.sem-class-teacher { font-size: 0.69rem; color: var(--accent); margin-top: 2px; }
 
-/* ── Conflict Box ─────────────────────────────────────── */
+/* Conflict styles */
 .conflict-item {
   padding: 8px 12px;
   margin-top: 6px;
@@ -226,6 +199,41 @@
   font-size: 0.83rem;
   line-height: 1.5;
 }
+
+/* AI suggestion box */
+.ai-suggestion-box {
+  background: rgba(124,111,255,0.06);
+  border: 1px solid rgba(124,111,255,0.2);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-top: 10px;
+}
+.ai-suggestion-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  margin-bottom: 10px;
+}
+.ai-suggestion-text {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Plan item */
+.plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-item:last-child { border-bottom: none; }
+.plan-title { font-weight: 600; font-size: 0.87rem; margin-bottom: 2px; }
+.plan-meta  { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 600px) {
   .sem-day-grid { grid-template-columns: 1fr 1fr; }

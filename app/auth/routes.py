@@ -1,3 +1,11 @@
+"""
+app/auth/routes.py
+──────────────────
+FIXED: api_login now always reads the full profile from `profiles` table
+and returns it so the frontend can persist year/semester/program correctly.
+This ensures semester settings survive browser reload and re-login.
+"""
+
 from flask import Blueprint, jsonify, request, render_template
 from core.supabase_client import get_supabase, get_supabase_admin
 
@@ -25,16 +33,16 @@ def api_login():
 
     try:
         sb   = get_supabase()
-        resp = sb.auth.sign_in_with_password(
-            {"email": email, "password": password}
-        )
+        resp = sb.auth.sign_in_with_password({"email": email, "password": password})
         user = resp.user
         sess = resp.session
 
-        # Get or create profile with safe fallbacks
+        # Always fetch the full profile from DB so year/semester/program is current
+        profile = {}
         try:
-            profile_resp = sb.table('profiles').select('*')\
-                .eq('id', user.id).single().execute()
+            sb_admin     = get_supabase_admin()
+            profile_resp = sb_admin.table('profiles').select('*') \
+                               .eq('id', user.id).single().execute()
             profile = profile_resp.data or {}
         except Exception:
             profile = {}
@@ -94,7 +102,6 @@ def api_register():
         if not user:
             return jsonify({'error': 'Registration failed. Try again.'}), 400
 
-        # Upsert profile
         try:
             sb.table('profiles').upsert({
                 'id':        user.id,
@@ -106,9 +113,8 @@ def api_register():
                 'year':      year,
                 'semester':  semester,
             }).execute()
-        except Exception as pe:
-            # Profile creation failed — still return success so user can login
-            pass
+        except Exception:
+            pass  # Profile upsert failure is non-fatal
 
         return jsonify({
             'success': True,
@@ -142,15 +148,10 @@ def update_profile():
         return jsonify({'error': 'user_id required'}), 400
 
     allowed = ['full_name', 'year', 'semester', 'program', 'dept']
-    payload = {}
-    for k in allowed:
-        if k in data and data[k] is not None:
-            payload[k] = data[k]
+    payload = {k: data[k] for k in allowed if k in data and data[k] is not None}
 
-    if 'year' in payload:
-        payload['year'] = int(payload['year'])
-    if 'semester' in payload:
-        payload['semester'] = int(payload['semester'])
+    if 'year' in payload:     payload['year']     = int(payload['year'])
+    if 'semester' in payload: payload['semester'] = int(payload['semester'])
 
     if not payload:
         return jsonify({'error': 'Nothing to update'}), 400
