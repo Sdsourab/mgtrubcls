@@ -10,7 +10,7 @@ OpenRouter API:
   Base URL : https://openrouter.ai/api/v1/chat/completions
   Auth     : Bearer OPENROUTER_API_KEY  (set in .env or Vercel → Settings → Env Vars)
   Models   : Free-tier waterfall — tried in order until one succeeds.
-             NO DeepSeek. Uses only Llama, Mistral, Gemma free models.
+             NO DeepSeek. Uses only Llama, Mistral, Phi, Qwen free models.
   Docs     : https://openrouter.ai/docs
 """
 
@@ -32,12 +32,15 @@ OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions'
 
 # Free-tier model waterfall — tried in order until one succeeds.
 # All of these are free on OpenRouter (no per-token charge).
-# DeepSeek has been intentionally excluded.
+# DeepSeek intentionally excluded.
+# FIXED 2026: Removed discontinued google/gemma-2-9b-it:free.
+#             Added microsoft/phi-3-mini and qwen/qwen-2-7b as stable replacements.
 OPENROUTER_MODELS = [
-    'meta-llama/llama-3.3-70b-instruct:free',   # Llama 3.3 70B — best quality
-    'meta-llama/llama-3.1-8b-instruct:free',    # Llama 3.1 8B  — fast fallback
-    'mistralai/mistral-7b-instruct:free',        # Mistral 7B    — reliable fallback
-    'google/gemma-2-9b-it:free',                 # Gemma 2 9B    — last resort
+    'meta-llama/llama-3.3-70b-instruct:free',    # Llama 3.3 70B  — best quality
+    'mistralai/mistral-7b-instruct:free',          # Mistral 7B     — reliable
+    'microsoft/phi-3-mini-128k-instruct:free',     # Phi-3 Mini     — fast & stable
+    'qwen/qwen-2-7b-instruct:free',                # Qwen 2 7B      — solid fallback
+    'meta-llama/llama-3.1-8b-instruct:free',      # Llama 3.1 8B   — last resort
 ]
 
 
@@ -222,11 +225,19 @@ def ai_advice():
       semester_classes  : list  — full day schedule rows
 
     Response (JSON):
-      { success, advice, model }   on success
-      { success, error }           on failure
+      { success, advice, model }           on success
+      { success, error, details }          on failure (details = per-model errors)
     """
     # Use module-level key (read at startup — works reliably on Vercel serverless)
     api_key = _OPENROUTER_API_KEY.strip()
+
+    # ── Guard: no API key configured ──────────────────────────
+    if not api_key:
+        return jsonify({
+            'success': False,
+            'error':   'OPENROUTER_API_KEY is not set. '
+                       'Add it in Vercel → Settings → Environment Variables.'
+        }), 503
 
     body             = request.get_json() or {}
     conflict_summary = body.get('conflict_summary', 'None')
@@ -268,7 +279,8 @@ def ai_advice():
         f"Start each bullet with a relevant emoji."
     )
 
-    last_error = 'All OpenRouter models failed. Please try again later.'
+    # ── Waterfall: try each model until one succeeds ───────────
+    all_errors = []   # collect per-model errors for debugging
 
     for model in OPENROUTER_MODELS:
         payload = {
@@ -284,8 +296,8 @@ def ai_advice():
             headers = {
                 'Content-Type':  'application/json',
                 'Authorization': f'Bearer {api_key}',
-                'HTTP-Referer':  'https://unisync.vercel.app',   # shown in OpenRouter dashboard
-                'X-Title':       'UniSync - Rabindra University',   # plain hyphen: urllib encodes headers as latin-1
+                'HTTP-Referer':  'https://unisync.vercel.app',
+                'X-Title':       'UniSync - Rabindra University',
             },
             method = 'POST',
         )
@@ -296,24 +308,24 @@ def ai_advice():
 
                 # Check for API-level error inside a 200 response (OpenRouter quirk)
                 if 'error' in result:
-                    last_error = f"{model}: {result['error'].get('message', str(result['error']))}"
+                    err_msg = result['error'].get('message', str(result['error']))
+                    all_errors.append(f'{model}: {err_msg}')
                     continue
 
                 choices = result.get('choices', [])
                 if not choices:
-                    last_error = f'{model}: empty choices'
+                    all_errors.append(f'{model}: empty choices')
                     continue
 
                 text = choices[0].get('message', {}).get('content', '').strip()
                 if not text:
-                    last_error = f'{model}: empty content'
+                    all_errors.append(f'{model}: empty content')
                     continue
 
-                used_model = result.get('model', model)
                 return jsonify({
                     'success': True,
                     'advice':  text,
-                    'model':   used_model,
+                    'model':   result.get('model', model),
                 })
 
         except urllib.error.HTTPError as he:
@@ -325,21 +337,26 @@ def ai_advice():
             except Exception:
                 msg = f'HTTP {status}'
 
-            last_error = f'{model}: {msg}'
+            all_errors.append(f'{model}: {msg}')
 
             # 401/403 = bad key → abort immediately, no point trying other models
             if status in (401, 403):
                 return jsonify({
                     'success': False,
-                    'error':   f'OpenRouter auth error: {msg}. Check your OPENROUTER_API_KEY.'
+                    'error':   f'OpenRouter auth error: {msg}. Check your OPENROUTER_API_KEY.',
+                    'details': all_errors,
                 }), 401
 
             # 429 rate limit / 503 overload → try next model
             continue
 
         except Exception as ex:
-            last_error = f'{model}: {ex}'
+            all_errors.append(f'{model}: {ex}')
             continue
 
-    # All models exhausted
-    return jsonify({'success': False, 'error': last_error}), 502
+    # All models exhausted — return every error for easier debugging
+    return jsonify({
+        'success': False,
+        'error':   'All OpenRouter models failed. Please try again later.',
+        'details': all_errors,
+    }), 502

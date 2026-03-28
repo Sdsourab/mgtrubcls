@@ -1,7 +1,11 @@
 /**
- * UniSync — AI Personal Planner  v4.0
+ * UniSync — AI Personal Planner  v4.1
  * ─────────────────────────────────────────────────────────────
- * KEY CHANGES:
+ * KEY CHANGES v4.1:
+ *  1. fetchAIAdvice now shows per-model error details when all models fail
+ *  2. Cleaner error UI with amber warning + collapsible debug details
+ *
+ * KEY CHANGES v4.0:
  *  1. No user API key needed — AI powered by server-side OpenRouter.ai
  *  2. Conflict checker BUG FIXED — year/semester=0 handled correctly
  *  3. Semester persists in localStorage across reload + re-login
@@ -44,14 +48,11 @@ async function syncProfileFromDB() {
   const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
   if (!user || !user.id) return;
 
-  // If we already have valid year/semester locally, we're good
-  // Still sync in background to catch profile changes
   try {
     const res  = await fetch(`/auth/api/profile?user_id=${user.id}`);
     const data = await res.json();
     if (data.success && data.data) {
       const profile = data.data;
-      // Merge DB values into local user object
       const merged = {
         ...user,
         full_name: profile.full_name || user.full_name,
@@ -64,7 +65,6 @@ async function syncProfileFromDB() {
       localStorage.setItem('us_user', JSON.stringify(merged));
     }
   } catch (e) {
-    // Network error — use cached local data, no problem
     console.warn('Profile sync failed, using cached data:', e.message);
   }
 }
@@ -325,7 +325,7 @@ async function checkConflict() {
 }
 
 /* ================================================================
-   OPENROUTER AI ADVICE — server-side call
+   OPENROUTER AI ADVICE — server-side call  (v4.1 — better errors)
    ================================================================ */
 
 async function fetchAIAdvice(payload) {
@@ -341,10 +341,10 @@ async function fetchAIAdvice(payload) {
     const data = await res.json();
 
     if (spinnerEl) spinnerEl.remove();
-
     if (!textEl) return;
 
     if (data.success && data.advice) {
+      // ── Success: render advice lines ──────────────────────
       const lines = data.advice.split('\n').filter(l => l.trim());
       textEl.innerHTML =
         lines.map(line =>
@@ -354,13 +354,35 @@ async function fetchAIAdvice(payload) {
                      border-top:1px solid var(--border);padding-top:6px;">
            🤖 Powered by OpenRouter.ai — model: ${esc(data.model || 'openrouter')}
          </div>`;
+
     } else {
+      // ── Failure: show error + optional per-model details ──
+      const errorMsg  = data.error   || 'AI advice unavailable.';
+      const details   = data.details || [];   // array of per-model error strings
+
+      let detailsHtml = '';
+      if (details.length) {
+        const rows = details.map(d => `<div style="margin-bottom:3px;">• ${esc(d)}</div>`).join('');
+        detailsHtml = `
+          <details style="margin-top:8px;">
+            <summary style="font-size:0.75rem;color:var(--text-muted);cursor:pointer;
+                            user-select:none;">🔍 Show model error details</summary>
+            <div style="margin-top:6px;padding:8px 10px;background:var(--bg-elevated);
+                        border-radius:var(--radius-sm);font-size:0.72rem;
+                        color:var(--text-muted);line-height:1.6;font-family:monospace;">
+              ${rows}
+            </div>
+          </details>`;
+      }
+
       textEl.innerHTML = `
-        <div style="color:var(--amber);">⚠️ ${esc(data.error || 'AI advice unavailable.')}</div>
+        <div style="color:var(--amber);">⚠️ ${esc(errorMsg)}</div>
         <div style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">
           The conflict analysis above is still accurate and complete.
-        </div>`;
+        </div>
+        ${detailsHtml}`;
     }
+
   } catch (e) {
     if (spinnerEl) spinnerEl.remove();
     if (textEl) textEl.innerHTML = `
