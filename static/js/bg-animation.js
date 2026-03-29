@@ -1,164 +1,154 @@
 /**
- * UniSync — Organic Background Animation
- * Earthy palette: FCF5E8 · CDA96A · BC6F37 · 8E8946 · 6A632B
- * Slowly morphing SVG blobs + floating orbs — 60 fps, GPU-accelerated
+ * UniSync — Warm Organic Background v2.0
+ * Base: #FCF5E8 · Accents: #BC6F37 · #CDA96A · #8E8946 · #6A632B
+ * Technique: SMIL SVG blob morphing + canvas drifting radial orbs
  */
-
 (function () {
   'use strict';
 
   const BLOBS = [
     {
-      color: 'rgba(142, 137, 70, 0.13)',   // olive
-      size: 520,
-      x: -8, y: -6,
-      duration: 28,
-      delay: 0,
+      fill: 'rgba(188,111,55,0.11)',
+      size: 680, cx: -14, cy: -10,
+      dur: 26, delay: 0,
       paths: [
-        'M421.7,294.2C393.1,357.8,322.3,394.5,257.1,402.6C191.9,410.8,131.8,390.4,91.3,349.4C50.7,308.3,29.5,246.5,43.8,192.2C58.1,137.9,108,91.1,163.5,63.7C219,36.4,280.2,28.4,336.2,50.1C392.2,71.8,443,123.2,456.4,183.5C469.9,243.9,450.4,230.6,421.7,294.2Z',
-        'M398.5,278.5C368.9,345.2,294.5,391.4,227.8,401.5C161.1,411.6,101.9,385.6,63.8,341.1C25.7,296.7,9.6,233.9,26.7,178.8C43.8,123.7,94.4,76.2,153.8,53.2C213.2,30.2,281.4,31.7,337.1,57.8C392.8,83.9,436,134.6,447.6,193.2C459.2,251.8,428.1,211.7,398.5,278.5Z',
-        'M440.2,308.9C408.3,374.1,333.2,407.8,263.7,412.5C194.2,417.3,130.3,393.1,86.5,350.5C42.7,307.9,19.1,246.9,30.8,191.9C42.5,136.9,89.4,88,144.3,59.2C199.2,30.4,262.1,21.7,321.1,45.1C380.1,68.5,435.1,123.9,455.3,187.4C475.6,250.9,472.2,243.8,440.2,308.9Z',
+        'M460,290C430,360,350,405,275,412C200,419,130,390,85,345C40,300,20,240,38,185C56,130,115,80,180,57C245,34,318,38,380,68C442,98,490,150,500,205C510,260,490,220,460,290Z',
+        'M445,278C412,352,330,398,254,407C178,416,108,387,68,340C28,293,14,232,33,176C52,120,110,70,175,49C240,28,314,34,372,66C430,98,474,155,482,213C490,271,478,204,445,278Z',
+        'M472,302C440,374,358,416,280,420C202,424,128,395,84,347C40,299,24,235,44,178C64,121,126,72,194,51C262,30,336,42,395,76C454,110,496,168,502,227C508,286,504,230,472,302Z',
       ],
     },
     {
-      color: 'rgba(188, 111, 55, 0.10)',   // terracotta
-      size: 460,
-      x: 55, y: 48,
-      duration: 34,
-      delay: -12,
+      fill: 'rgba(205,169,106,0.09)',
+      size: 560, cx: 52, cy: 44,
+      dur: 33, delay: -11,
       paths: [
-        'M388.5,272.4C358.7,338.7,285.4,381.8,218.7,389.6C151.9,397.5,91.6,369.9,54.3,323.8C17,277.7,2.6,212.9,20.8,157.4C39,101.9,90.6,55.8,149.8,33C209,10.2,275.8,10.7,331.1,38.2C386.4,65.7,430.1,120.2,442.7,180.7C455.3,241.2,418.4,206.1,388.5,272.4Z',
-        'M410.3,288.1C381.5,351.3,310.8,391.5,246.2,402.6C181.7,413.8,123.4,395.9,83.2,358.2C43,320.5,20.9,263,32.1,208.4C43.3,153.8,87.7,102.2,140.6,70.3C193.5,38.4,255,26.2,312,44.5C369,62.8,421.5,111.6,437.6,168.5C453.7,225.4,439.1,224.9,410.3,288.1Z',
-        'M375.2,261.7C344.8,329.2,272.3,374.4,205.6,385.8C138.9,397.2,78,375,40.3,333.3C2.6,291.6,-11.7,230.3,8.3,174.8C28.3,119.3,82,69.5,143.4,44.9C204.7,20.3,273.7,21,333,50.8C392.3,80.6,442,139.4,451.9,200.5C461.8,261.5,405.6,194.1,375.2,261.7Z',
+        'M405,270C376,338,304,382,238,392C172,402,112,375,74,330C36,285,22,225,40,170C58,115,108,68,166,46C224,24,290,26,345,54C400,82,440,136,452,194C464,252,434,202,405,270Z',
+        'M418,281C388,351,314,393,246,401C178,409,116,380,78,335C40,290,28,228,48,172C68,116,120,70,180,50C240,30,308,34,364,64C420,94,458,150,468,210C478,270,448,211,418,281Z',
+        'M392,258C362,328,290,374,223,385C156,396,95,369,57,324C19,279,8,218,28,163C48,108,100,62,160,42C220,22,288,28,344,58C400,88,440,144,450,203C460,262,422,188,392,258Z',
       ],
     },
     {
-      color: 'rgba(106, 99, 43, 0.09)',    // dark olive
-      size: 400,
-      x: 30, y: 60,
-      duration: 40,
-      delay: -20,
+      fill: 'rgba(142,137,70,0.08)',
+      size: 480, cx: 60, cy: 54,
+      dur: 38, delay: -19,
       paths: [
-        'M356.2,240.8C329.3,302.7,259.7,342.1,196.5,351.8C133.3,361.5,76.8,341.5,43.2,302.2C9.6,263,-.9,204.4,16.5,151.9C33.9,99.4,79.2,52.8,132.9,27.8C186.6,2.8,249,-.3,302,24.5C355,49.3,398.4,101.8,410.4,159.1C422.4,216.4,383.1,178.9,356.2,240.8Z',
-        'M371.8,255.2C345.2,315.8,278.1,353.4,216.3,362.8C154.5,372.1,97.8,353.1,63.1,314.5C28.4,275.9,15.6,217.8,31.3,164.7C47,111.6,91.2,63.4,143.9,37.5C196.7,11.5,258,7.8,312.3,31.9C366.6,56,413.8,108,425.5,165.1C437.3,222.3,398.4,194.6,371.8,255.2Z',
-        'M342.1,228.3C314.8,291.4,244.8,333.7,181.2,344.2C117.6,354.7,60.3,333.4,26.4,294.1C-7.5,254.7,-17.2,197.1,0.8,144.7C18.8,92.3,64.9,44.9,118.7,19.8C172.5,-5.2,234,1.6,287.5,27.2C341,52.7,386.3,97.1,400.1,148.4C414,199.7,369.4,165.2,342.1,228.3Z',
+        'M366,244C338,308,268,352,203,362C138,372,80,344,45,300C10,256,-2,198,16,144C34,90,86,46,146,28C206,10,274,16,328,48C382,80,420,136,428,194C436,252,394,180,366,244Z',
+        'M378,255C350,318,282,360,217,370C152,380,93,352,58,308C23,264,12,206,32,152C52,98,106,56,168,40C230,24,298,32,352,66C406,100,442,158,448,218C454,278,406,192,378,255Z',
+        'M354,233C325,298,255,344,189,355C123,366,63,339,28,295C-7,251,-16,192,4,137C24,82,78,38,140,22C202,6,272,14,328,48C384,82,420,140,426,200C432,260,383,168,354,233Z',
+      ],
+    },
+    {
+      fill: 'rgba(106,99,43,0.06)',
+      size: 380, cx: 70, cy: 60,
+      dur: 44, delay: -28,
+      paths: [
+        'M302,200C278,254,218,292,160,300C102,308,50,282,22,242C-6,202,-12,152,8,106C28,60,72,26,122,16C172,6,230,18,276,50C322,82,350,134,354,186C358,238,326,146,302,200Z',
+        'M314,208C290,264,228,300,170,308C112,316,60,290,32,250C4,210,-4,158,16,112C36,66,82,34,134,26C186,18,244,32,290,66C336,100,360,154,362,208C364,262,338,152,314,208Z',
+        'M290,192C266,248,204,286,146,295C88,304,36,279,10,239C-16,199,-20,148,2,102C24,56,70,24,122,16C174,8,234,22,280,56C326,90,350,146,352,200C354,254,314,136,290,192Z',
       ],
     },
   ];
 
-  const ORB_COLORS = [
-    'rgba(188, 111, 55, 0.06)',
-    'rgba(142, 137, 70, 0.07)',
-    'rgba(205, 169, 106, 0.05)',
+  const ORB_CFGS = [
+    { c:[188,111, 55], op:0.08, rMin:90,  rMax:180 },
+    { c:[205,169,106], op:0.06, rMin:70,  rMax:150 },
+    { c:[142,137, 70], op:0.05, rMin:100, rMax:200 },
+    { c:[188,111, 55], op:0.04, rMin:60,  rMax:120 },
+    { c:[106, 99, 43], op:0.05, rMin:80,  rMax:160 },
+    { c:[205,169,106], op:0.04, rMin:50,  rMax:110 },
+    { c:[188,111, 55], op:0.03, rMin:120, rMax:220 },
   ];
 
   function init() {
     const canvas = document.getElementById('bgCanvas');
-    if (!canvas) return;
+    const blobWrap = document.getElementById('bgBlobs');
+    if (!canvas || !blobWrap) return;
 
+    /* Canvas orbs */
     const ctx = canvas.getContext('2d');
-    let W, H, orbs;
+    let W, H, orbs = [];
 
-    function resize() {
+    const resize = () => {
       W = canvas.width  = window.innerWidth;
       H = canvas.height = window.innerHeight;
-      initOrbs();
-    }
-
-    function initOrbs() {
-      orbs = Array.from({ length: 5 }, (_, i) => ({
+      orbs = ORB_CFGS.map(cfg => ({
         x:  Math.random() * W,
         y:  Math.random() * H,
-        r:  80 + Math.random() * 140,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
-        color: ORB_COLORS[i % ORB_COLORS.length],
+        r:  cfg.rMin + Math.random() * (cfg.rMax - cfg.rMin),
+        vx: (Math.random() - 0.5) * 0.20,
+        vy: (Math.random() - 0.5) * 0.20,
+        c:  cfg.c,
+        op: cfg.op,
       }));
-    }
-
+    };
     resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', resize, { passive: true });
 
-    // ── SVG path morphing for blobs ────────────────────────────────────
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const blobContainer = document.getElementById('bgBlobs');
-    if (!blobContainer) return;
-
-    BLOBS.forEach((cfg, bi) => {
-      const svgEl = document.createElementNS(svgNS, 'svg');
-      svgEl.setAttribute('viewBox', '0 0 470 470');
-      svgEl.style.cssText = `
-        position: absolute;
-        width: ${cfg.size}px;
-        height: ${cfg.size}px;
-        left: ${cfg.x}%;
-        top: ${cfg.y}%;
-        opacity: 1;
-        pointer-events: none;
-        will-change: transform;
-      `;
-
-      const path = document.createElementNS(svgNS, 'path');
-      path.setAttribute('fill', cfg.color);
-      path.setAttribute('d', cfg.paths[0]);
-
-      // SMIL animate between paths
-      const animate = document.createElementNS(svgNS, 'animate');
-      animate.setAttribute('attributeName', 'd');
-      animate.setAttribute('dur', `${cfg.duration}s`);
-      animate.setAttribute('repeatCount', 'indefinite');
-      animate.setAttribute('calcMode', 'spline');
-      animate.setAttribute('keySplines', '0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1');
-      animate.setAttribute('values', [...cfg.paths, cfg.paths[0]].join(';'));
-      animate.setAttribute('begin', `${cfg.delay}s`);
-
-      path.appendChild(animate);
-      svgEl.appendChild(path);
-
-      // Float the whole blob slowly
-      const floatAnim = document.createElementNS(svgNS, 'animateTransform');
-      floatAnim.setAttribute('attributeName', 'transform');
-      floatAnim.setAttribute('type', 'translate');
-      floatAnim.setAttribute('dur', `${cfg.duration * 1.4}s`);
-      floatAnim.setAttribute('repeatCount', 'indefinite');
-      floatAnim.setAttribute('calcMode', 'spline');
-      floatAnim.setAttribute('keySplines', '0.45 0 0.55 1; 0.45 0 0.55 1');
-      const dx = 18 + bi * 8, dy = 14 + bi * 6;
-      floatAnim.setAttribute('values', `0,0; ${dx},${dy}; 0,0`);
-      floatAnim.setAttribute('begin', `${cfg.delay * 0.8}s`);
-      svgEl.appendChild(floatAnim);
-
-      blobContainer.appendChild(svgEl);
-    });
-
-    // ── Canvas orbs ────────────────────────────────────────────────────
-    function drawOrbs() {
+    (function tick() {
       ctx.clearRect(0, 0, W, H);
-      orbs.forEach(orb => {
-        orb.x += orb.vx;
-        orb.y += orb.vy;
-        if (orb.x < -orb.r)    orb.x = W + orb.r;
-        if (orb.x > W + orb.r) orb.x = -orb.r;
-        if (orb.y < -orb.r)    orb.y = H + orb.r;
-        if (orb.y > H + orb.r) orb.y = -orb.r;
-
-        const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.r);
-        g.addColorStop(0, orb.color.replace(')', ', 1)').replace('rgba', 'rgba').replace(/, [^,]+\)$/, `, 0.8)`));
-        g.addColorStop(1, orb.color.replace(/[\d.]+\)$/, '0)'));
+      for (const o of orbs) {
+        o.x += o.vx;  o.y += o.vy;
+        if (o.x < -o.r)    o.x = W + o.r;
+        if (o.x > W + o.r) o.x = -o.r;
+        if (o.y < -o.r)    o.y = H + o.r;
+        if (o.y > H + o.r) o.y = -o.r;
+        const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+        g.addColorStop(0,   `rgba(${o.c},${o.op})`);
+        g.addColorStop(0.5, `rgba(${o.c},${o.op * 0.45})`);
+        g.addColorStop(1,   `rgba(${o.c},0)`);
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(orb.x, orb.y, orb.r, 0, Math.PI * 2);
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
         ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    })();
+
+    /* SVG blob morphing */
+    const NS = 'http://www.w3.org/2000/svg';
+    BLOBS.forEach((cfg, i) => {
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 500 500');
+      Object.assign(svg.style, {
+        position: 'absolute', width: cfg.size + 'px', height: cfg.size + 'px',
+        left: cfg.cx + '%', top: cfg.cy + '%',
+        pointerEvents: 'none', willChange: 'transform', overflow: 'visible',
       });
-      requestAnimationFrame(drawOrbs);
-    }
 
-    drawOrbs();
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('fill', cfg.fill);
+      path.setAttribute('d', cfg.paths[0]);
+
+      const aD = document.createElementNS(NS, 'animate');
+      aD.setAttribute('attributeName', 'd');
+      aD.setAttribute('dur', `${cfg.dur}s`);
+      aD.setAttribute('repeatCount', 'indefinite');
+      aD.setAttribute('calcMode', 'spline');
+      aD.setAttribute('keyTimes', '0;0.33;0.66;1');
+      aD.setAttribute('keySplines', '0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1');
+      aD.setAttribute('values', [...cfg.paths, cfg.paths[0]].join(';'));
+      aD.setAttribute('begin', `${cfg.delay}s`);
+      path.appendChild(aD);
+      svg.appendChild(path);
+
+      const aT = document.createElementNS(NS, 'animateTransform');
+      aT.setAttribute('attributeName', 'transform');
+      aT.setAttribute('type', 'translate');
+      aT.setAttribute('dur', `${cfg.dur * 1.7}s`);
+      aT.setAttribute('repeatCount', 'indefinite');
+      aT.setAttribute('calcMode', 'spline');
+      aT.setAttribute('keyTimes', '0;0.5;1');
+      aT.setAttribute('keySplines', '0.42 0 0.58 1;0.42 0 0.58 1');
+      const dx = 14 + i * 6, dy = 10 + i * 5;
+      aT.setAttribute('values', `0,0;${dx},${dy};0,0`);
+      aT.setAttribute('begin', `${cfg.delay * 0.8}s`);
+      svg.appendChild(aT);
+
+      blobWrap.appendChild(svg);
+    });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', init)
+    : init();
 })();

@@ -4,23 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}UniSync{% endblock %} — Rabindra University</title>
-  <meta name="description" content="UniSync — Academic Management Portal, Rabindra University, Bangladesh">
+  <meta name="description" content="UniSync Academic Portal — Rabindra University, Bangladesh, Dept. of Management">
+  <meta name="theme-color" content="#FCF5E8">
 
-  <!-- Fonts: Fraunces (display) + DM Sans (body) + JetBrains Mono -->
+  <!-- Fonts: Playfair Display + Outfit + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;0,9..144,800;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block extra_css %}{% endblock %}
 </head>
+
 <body>
 
-<!-- ═══════════════════════════════════════════════
-     ANIMATED BACKGROUND — fixed behind all content
-     Organic blob morphing + floating orbs
-     Palette: BC6F37 · 8E8946 · CDA96A (earthy dark)
-     ═══════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════
+     ANIMATED BACKGROUND
+     Fixed z-index 0 · cream base · warm blob morphing
+     Canvas orbs drift slowly — terracotta / golden / olive
+     ═══════════════════════════════════════════════════════════ -->
 <div id="bgLayer" aria-hidden="true">
   <canvas id="bgCanvas"></canvas>
   <div id="bgBlobs"></div>
@@ -28,32 +30,32 @@
 
 <div class="app-shell">
 
-  <!-- ════════════════════════════════════════
-       SIDEBAR — Desktop persistent, mobile slide-in
-       Glass effect: rgba dark olive + blur
-       ════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════
+       SIDEBAR  — dark espresso contrast to cream background
+       Glass-dark: rgba(26,20,8,0.95) + warm golden accents
+       ═══════════════════════════════════════════════════════ -->
   <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
 
     <div class="sidebar-header">
+      <!-- Logo mark: terracotta → golden gradient -->
       <div class="logo-mark">
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Outer ring with warm gradient -->
-          <circle cx="20" cy="20" r="18.5" stroke="url(#logoRing)" stroke-width="1.8"/>
-          <!-- University hat shape -->
-          <path d="M10 26 L20 13 L30 26" stroke="url(#logoAccent)" stroke-width="2.6"
+          <circle cx="20" cy="20" r="18.5" stroke="url(#sLgRing)" stroke-width="1.6"/>
+          <path d="M11 27 L20 13 L29 27"
+                stroke="url(#sLgAccent)" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- Central dot -->
-          <circle cx="20" cy="24" r="2.8" fill="url(#logoAccent)"/>
-          <!-- Base line -->
-          <line x1="10" y1="28" x2="30" y2="28" stroke="url(#logoAccent)"
-                stroke-width="1.8" stroke-linecap="round" opacity="0.5"/>
+          <circle cx="20" cy="25" r="2.8" fill="url(#sLgAccent)"/>
+          <line x1="11" y1="29" x2="29" y2="29"
+                stroke="url(#sLgAccent)" stroke-width="1.6"
+                stroke-linecap="round" opacity="0.45"/>
           <defs>
-            <linearGradient id="logoRing" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <linearGradient id="sLgRing" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
               <stop stop-color="#BC6F37"/>
               <stop offset="1" stop-color="#CDA96A"/>
             </linearGradient>
-            <linearGradient id="logoAccent" x1="10" y1="13" x2="30" y2="28" gradientUnits="userSpaceOnUse">
+            <linearGradient id="sLgAccent" x1="11" y1="13" x2="29" y2="29" gradientUnits="userSpaceOnUse">
               <stop stop-color="#DFC084"/>
+              <stop offset="0.55" stop-color="#CDA96A"/>
               <stop offset="1" stop-color="#BC6F37"/>
             </linearGradient>
           </defs>
@@ -66,9 +68,11 @@
     </div><!-- /.sidebar-header -->
 
     <nav class="sidebar-nav">
+
       <div class="nav-section-label">Main</div>
 
-      <a href="/dashboard" class="nav-item {% block nav_home %}{% endblock %}">
+      <a href="/dashboard"
+         class="nav-item {% block nav_home %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
@@ -76,7 +80,8 @@
         <span>Dashboard</span>
       </a>
 
-      <a href="/productivity/tasks" class="nav-item {% block nav_tasks %}{% endblock %}">
+      <a href="/productivity/tasks"
+         class="nav-item {% block nav_tasks %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <rect x="9" y="3" width="13" height="13" rx="2"/>
           <path d="M5 7H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>
@@ -85,17 +90,19 @@
         <span>Tasks</span>
       </a>
 
-      <a href="/academic/routine" class="nav-item {% block nav_routine %}{% endblock %}">
+      <a href="/academic/routine"
+         class="nav-item {% block nav_routine %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <rect x="3" y="4" width="18" height="18" rx="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8"  y1="2" x2="8"  y2="6"/>
+          <line x1="3"  y1="10" x2="21" y2="10"/>
         </svg>
         <span>Class Routine</span>
       </a>
 
-      <a href="/academic/courses" class="nav-item {% block nav_courses %}{% endblock %}">
+      <a href="/academic/courses"
+         class="nav-item {% block nav_courses %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
@@ -105,7 +112,8 @@
 
       <div class="nav-section-label">Tools</div>
 
-      <a href="/campus/resources" class="nav-item {% block nav_resources %}{% endblock %}">
+      <a href="/campus/resources"
+         class="nav-item {% block nav_resources %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="17 8 12 3 7 8"/>
@@ -114,7 +122,8 @@
         <span>Resources</span>
       </a>
 
-      <a href="/productivity/unicover" class="nav-item {% block nav_unicover %}{% endblock %}">
+      <a href="/productivity/unicover"
+         class="nav-item {% block nav_unicover %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
@@ -124,12 +133,13 @@
         <span>UniCover</span>
       </a>
 
-      <a href="/planner/" class="nav-item {% block nav_planner %}{% endblock %}">
+      <a href="/planner/"
+         class="nav-item {% block nav_planner %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <rect x="3" y="4" width="18" height="18" rx="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8"  y1="2" x2="8"  y2="6"/>
+          <line x1="3"  y1="10" x2="21" y2="10"/>
           <path d="m9 16 2 2 4-4"/>
         </svg>
         <span>AI Planner</span>
@@ -137,7 +147,8 @@
 
       <div class="nav-section-label">Account</div>
 
-      <a href="/auth/profile" class="nav-item {% block nav_profile %}{% endblock %}">
+      <a href="/auth/profile"
+         class="nav-item {% block nav_profile %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
@@ -155,7 +166,8 @@
         <span>Guest View</span>
       </a>
 
-      <a href="/admin/" class="nav-item admin-only hidden {% block nav_admin %}{% endblock %}">
+      <a href="/admin/"
+         class="nav-item admin-only hidden {% block nav_admin %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <circle cx="12" cy="8" r="4"/>
           <path d="M20 21a8 8 0 1 0-16 0"/>
@@ -167,19 +179,23 @@
 
     </nav><!-- /.sidebar-nav -->
 
-    <!-- User footer card -->
+    <!-- User footer -->
     <div class="sidebar-footer">
-      <div class="user-card" id="sidebarUserCard"
+      <div class="user-card"
+           id="sidebarUserCard"
            onclick="window.location.href='/auth/profile'"
            role="button" tabindex="0"
-           aria-label="View profile">
+           aria-label="View your profile">
         <div class="user-avatar" id="sidebarAvatar" aria-hidden="true">?</div>
         <div class="user-info">
           <div class="user-name" id="sidebarUserName">Loading…</div>
           <div class="user-role" id="sidebarUserRole">student</div>
         </div>
       </div>
-      <button class="logout-btn" onclick="UniSync.logout()" title="Sign out" aria-label="Sign out">
+      <button class="logout-btn"
+              onclick="UniSync.logout()"
+              title="Sign out"
+              aria-label="Sign out">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
           <polyline points="16 17 21 12 16 7"/>
@@ -190,114 +206,110 @@
 
   </aside><!-- /.sidebar -->
 
-  <!-- ════════════════════════════════════════
-       MOBILE HEADER — sticky top bar
-       ════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════
+       MOBILE HEADER — dark bar matching sidebar
+       ═══════════════════════════════════════════════════════ -->
   <header class="mobile-header" role="banner">
     <button class="mobile-menu-btn"
             onclick="UniSync.toggleSidebar()"
-            aria-label="Open menu"
-            aria-expanded="false"
-            aria-controls="sidebar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
+            aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="3" y1="6"  x2="21" y2="6"/>
         <line x1="3" y1="12" x2="21" y2="12"/>
         <line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
+
     <div class="mobile-logo" aria-label="UniSync">UniSync</div>
+
     <div class="mobile-user-avatar"
          id="mobileAvatar"
          onclick="window.location.href='/auth/profile'"
-         role="button"
-         tabindex="0"
-         aria-label="View profile">?</div>
+         role="button" tabindex="0"
+         aria-label="Profile">?</div>
   </header>
 
-  <!-- Overlay for mobile sidebar -->
+  <!-- Mobile overlay -->
   <div class="sidebar-overlay"
        id="sidebarOverlay"
        onclick="UniSync.toggleSidebar()"
-       role="presentation"
-       aria-hidden="true"></div>
+       aria-hidden="true"
+       role="presentation"></div>
 
-  <!-- ════════════════════════════════════════
-       MAIN CONTENT AREA
-       ════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════════════════ -->
   <main class="main-content" id="mainContent">
 
     {% block content %}{% endblock %}
 
-    <!-- ── Developer Credit ── -->
+    <!-- Developer credit footer -->
     <footer style="
-      text-align: center;
-      padding: 28px 20px 18px;
-      border-top: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.72rem;
-      line-height: 2.0;
-      margin-top: 40px;
+      text-align:center; padding:28px 20px 18px;
+      border-top:1px solid var(--border); color:var(--text-muted);
+      font-size:0.72rem; line-height:2.0; margin-top:44px;
     ">
       <div style="
-        display: inline-flex;
-        align-items: center;
-        gap: 16px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.67rem;
-        background: rgba(188,111,55,0.05);
-        border: 1px solid rgba(188,111,55,0.14);
-        border-radius: 12px;
-        padding: 12px 20px;
-        flex-wrap: wrap;
-        justify-content: center;
+        display:inline-flex; align-items:center; gap:14px;
+        background:rgba(188,111,55,0.06);
+        border:1px solid rgba(188,111,55,0.16);
+        border-radius:12px; padding:12px 22px;
+        font-family:'JetBrains Mono',monospace; font-size:0.66rem;
+        flex-wrap:wrap; justify-content:center;
+        box-shadow:0 2px 10px rgba(106,99,43,0.10);
       ">
+        <!-- Animated warm dot -->
         <span style="
-          width: 8px; height: 8px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, var(--terracotta), var(--golden));
-          display: inline-block;
-          box-shadow: 0 0 8px rgba(188,111,55,0.5);
-          animation: glowPulse 2.5s ease-in-out infinite;
-          flex-shrink: 0;
+          width:7px; height:7px; border-radius:50%; flex-shrink:0;
+          background:linear-gradient(135deg,var(--terra),var(--golden));
+          box-shadow:0 0 8px rgba(188,111,55,0.55);
+          animation:glowFloat 2.8s ease-in-out infinite;
+          display:inline-block;
         "></span>
         <span>
-          <span style="color: var(--accent-light); font-weight: 700;">UniSync</span>
-          <span style="color: var(--text-muted;"> · Rabindra University, Bangladesh · Dept. of Management</span>
+          <span style="color:var(--terra); font-weight:700;">UniSync</span>
+          <span style="color:var(--text-muted);"> · Rabindra University, Bangladesh · Dept. of Management</span>
         </span>
-        <span style="color: var(--border-strong);">|</span>
-        <span>Developer: <span style="color: var(--accent-light); font-weight: 700;">Sourav</span></span>
-        <span style="color: var(--border-strong);">|</span>
-        <span>Flask · Supabase · v8.0 · 2026</span>
+        <span style="color:var(--border-mid);">|</span>
+        <span>Developer:
+          <span style="color:var(--terra); font-weight:700;">Sourav</span>
+        </span>
+        <span style="color:var(--border-mid);">|</span>
+        <span style="color:var(--text-muted);">Flask · Supabase · v9.0 · 2026</span>
       </div>
     </footer>
 
   </main><!-- /.main-content -->
 
-  <!-- ════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════
        MOBILE BOTTOM NAV
-       ════════════════════════════════════════ -->
+       ═══════════════════════════════════════════════════════ -->
   <nav class="mobile-bottom-nav" role="navigation" aria-label="Bottom navigation">
-    <a href="/dashboard" class="mob-nav-item {% block mob_home %}{% endblock %}">
+    <a href="/dashboard"
+       class="mob-nav-item {% block mob_home %}{% endblock %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
       </svg>
       <span>Home</span>
     </a>
-    <a href="/productivity/tasks" class="mob-nav-item {% block mob_tasks %}{% endblock %}">
+    <a href="/productivity/tasks"
+       class="mob-nav-item {% block mob_tasks %}{% endblock %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <rect x="9" y="3" width="13" height="13" rx="2"/>
         <path d="M5 7H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/>
       </svg>
       <span>Tasks</span>
     </a>
-    <a href="/academic/routine" class="mob-nav-item {% block mob_routine %}{% endblock %}">
+    <a href="/academic/routine"
+       class="mob-nav-item {% block mob_routine %}{% endblock %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <rect x="3" y="4" width="18" height="18" rx="2"/>
         <line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
       <span>Routine</span>
     </a>
-    <a href="/planner/" class="mob-nav-item {% block mob_planner %}{% endblock %}">
+    <a href="/planner/"
+       class="mob-nav-item {% block mob_planner %}{% endblock %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M9.5 3h5"/>
         <rect x="4" y="5" width="16" height="16" rx="2"/>
@@ -305,7 +317,8 @@
       </svg>
       <span>Planner</span>
     </a>
-    <a href="/auth/profile" class="mob-nav-item {% block mob_profile %}{% endblock %}">
+    <a href="/auth/profile"
+       class="mob-nav-item {% block mob_profile %}{% endblock %}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
         <circle cx="12" cy="7" r="4"/>
@@ -316,19 +329,18 @@
 
 </div><!-- /.app-shell -->
 
-<!-- ════════════════════════════════════════
-     TOAST CONTAINER — bottom right
-     ════════════════════════════════════════ -->
-<div class="toast-container" id="toastContainer" role="region" aria-label="Notifications" aria-live="polite"></div>
+<!-- Toast notifications -->
+<div class="toast-container" id="toastContainer"
+     role="region" aria-label="Notifications" aria-live="polite"></div>
 
-<!-- ════════════════════════════════════════
-     CORE SCRIPTS
-     ════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════════════════════════ -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/live_engine.js') }}"></script>
+<!-- Background animation: organic blob morphing + floating orbs -->
 <script src="{{ url_for('static', filename='js/bg-animation.js') }}" defer></script>
-<!-- AI preloader: silently warms up Transformers.js model in the background
-     so it is ready by the time the user opens AI Planner -->
+<!-- AI preloader: silently warms Transformers.js MiniLM model in background -->
 <script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
 {% block extra_js %}{% endblock %}
 
