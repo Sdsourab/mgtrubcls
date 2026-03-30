@@ -3,13 +3,15 @@ from core.supabase_client import get_supabase_admin
 
 campus_bp = Blueprint('campus', __name__)
 
+
 @campus_bp.route('/resources')
 def resources_page():
     return render_template('modules/resources.html')
 
+
 @campus_bp.route('/api/resources', methods=['GET'])
 def get_resources():
-    dept = request.args.get('dept', '')
+    dept    = request.args.get('dept', '')
     subject = request.args.get('subject', '')
     sb = get_supabase_admin()
     try:
@@ -23,16 +25,17 @@ def get_resources():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @campus_bp.route('/api/resources', methods=['POST'])
 def upload_resource():
-    data = request.get_json()
+    data = request.get_json() or {}
     sb = get_supabase_admin()
     try:
         payload = {
-            'dept': data.get('dept', 'Management'),
-            'subject': data.get('subject', ''),
-            'file_url': data.get('file_url', ''),
-            'title': data.get('title', ''),
+            'dept':        data.get('dept', 'Management'),
+            'subject':     data.get('subject', ''),
+            'file_url':    data.get('file_url', ''),
+            'title':       data.get('title', ''),
             'uploaded_by': data.get('uploaded_by', ''),
         }
         resp = sb.table('resources').insert(payload).execute()
@@ -40,13 +43,12 @@ def upload_resource():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
 @campus_bp.route('/api/resources/<resource_id>', methods=['DELETE'])
 def delete_resource(resource_id):
-    """Delete a resource by ID. Only the uploader's name is checked client-side; 
-    for production use RLS policies to enforce ownership."""
     sb = get_supabase_admin()
     try:
         sb.table('resources').delete().eq('id', resource_id).execute()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500email

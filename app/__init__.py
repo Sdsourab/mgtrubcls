@@ -1,19 +1,20 @@
 """
 app/__init__.py
-═══════════════
-Flask application factory.
-
-Email scheduling is handled by Vercel Cron Jobs (api/cron_daily.py and
-api/cron_alert.py) — APScheduler is NOT used, making this fully compatible
-with Vercel's serverless architecture.
 """
-
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 from flask_mail import Mail
 from config import config
 import os
 
 mail = Mail()
+
+
+def _fmt12h(t: str) -> str:
+    try:
+        h, m = map(int, t.split(":"))
+        return f"{h % 12 or 12}:{m:02d} {'AM' if h < 12 else 'PM'}"
+    except Exception:
+        return t
 
 
 def create_app(config_name=None):
@@ -27,8 +28,6 @@ def create_app(config_name=None):
         static_folder=os.path.join(_root, "static"),
     )
     app.config.from_object(config[config_name])
-
-    # ── Extensions ────────────────────────────────────────────
     mail.init_app(app)
 
     # ── Blueprints ────────────────────────────────────────────
@@ -57,6 +56,88 @@ def create_app(config_name=None):
     def dashboard():
         return render_template("dashboard.html")
 
+    # ── Vercel Cron: প্রতিদিন রাত ৭টায় email পাঠাবে ─────────
+    @app.route("/api/cron/daily", methods=["GET", "POST"])
+    def cron_daily():
+        from datetime import date, timedelta
+        results = {"sent": 0, "skipped": 0, "errors": []}
+        try:
+            from core.supabase_client import get_supabase_admin
+            from core.holidays       import is_holiday
+            from core.mailer         import send_daily_summary
+
+            tomorrow = date.today() + timedelta(days=1)
+            day_name = tomorrow.strftime("%A")
+            date_str = tomorrow.strftime("%d %b %Y")
+
+            if day_name not in ["Sunday","Monday","Tuesday","Wednesday","Thursday"]:
+                return jsonify({"ok": True, "reason": "weekend"}), 200
+
+            is_hol, _ = is_holiday(tomorrow)
+            sb = get_supabase_admin()
+            users = (sb.table("profiles").select("*").execute().data or [])
+
+            for user in users:
+                email = (user.get("email") or "").strip()
+                if not email:
+                    results["skipped"] += 1
+                    continue
+
+                classes = []
+                if not is_hol:
+                    try:
+                        rows = sb.table("routines").select("*")\
+                            .eq("day",             day_name)\
+                            .eq("program",         user.get("program","BBA"))\
+                            .eq("course_year",     user.get("year",1))\
+                            .eq("course_semester", user.get("semester",1))\
+                            .order("time_start").execute()
+                        classes = rows.data or []
+                    except Exception:
+                        classes = []
+
+                    for cls in classes:
+                        try:
+                            c = sb.table("mappings").select("full_name")\
+                                .eq("code", cls.get("course_code","")).execute()
+                            cls["course_name"] = c.data[0]["full_name"] if c.data else cls.get("course_code","")
+                        except Exception:
+                            cls["course_name"] = cls.get("course_code","")
+                        try:
+                            t = sb.table("mappings").select("full_name")\
+                                .eq("code", cls.get("teacher_code","")).execute()
+                            cls["teacher_name"] = t.data[0]["full_name"] if t.data else cls.get("teacher_code","")
+                        except Exception:
+                            cls["teacher_name"] = cls.get("teacher_code","")
+                        cls["time_start_12h"] = _fmt12h(cls.get("time_start",""))
+                        cls["time_end_12h"]   = _fmt12h(cls.get("time_end",""))
+
+                try:
+                    tasks = sb.table("tasks").select("*")\
+                        .eq("user_id", user["id"])\
+                        .neq("status","done")\
+                        .order("deadline").execute().data or []
+                except Exception:
+                    tasks = []
+
+                ok = send_daily_summary(
+                    to_email  = email,
+                    user_name = user.get("full_name","Student"),
+                    classes   = classes,
+                    tasks     = tasks,
+                    date_str  = f"{day_name}, {date_str}",
+                    app       = app,
+                )
+                if ok:
+                    results["sent"] += 1
+                else:
+                    results["errors"].append(email)
+
+        except Exception as e:
+            results["errors"].append(str(e))
+
+        return jsonify({"ok": True, **results}), 200
+
     # ── Error Handlers ────────────────────────────────────────
     @app.errorhandler(404)
     def not_found(e):
@@ -73,9 +154,5 @@ def create_app(config_name=None):
     @app.errorhandler(403)
     def forbidden(e):
         return jsonify({"error": "Forbidden", "code": 403}), 403
-
-    # ── NOTE: Email scheduling ────────────────────────────────
-    # Handled by Vercel Cron Jobs — see vercel.json and api/cron_*.py
-    # APScheduler is intentionally NOT used here so the app works on Vercel.
 
     return app

@@ -15,48 +15,15 @@
           "config.py"
         ]
       }
-    },
-    {
-      "src": "api/cron_daily.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb",
-        "includeFiles": [
-          "requirements.txt",
-          "templates/**",
-          "app/**",
-          "core/**",
-          "config.py"
-        ]
-      }
-    },
-    {
-      "src": "api/cron_push.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb",
-        "includeFiles": [
-          "requirements.txt",
-          "app/**",
-          "core/**",
-          "config.py"
-        ]
-      }
     }
   ],
   "routes": [
-    { "src": "/api/cron/daily", "dest": "api/cron_daily.py" },
-    { "src": "/api/cron/push",  "dest": "api/cron_push.py"  },
-    { "src": "/(.*)",           "dest": "api/index.py"      }
+    { "src": "/(.*)", "dest": "api/index.py" }
   ],
   "crons": [
     {
       "path": "/api/cron/daily",
       "schedule": "0 13 * * 0-4"
-    },
-    {
-      "path": "/api/cron/push",
-      "schedule": "*/5 3-11 * * 0-4"
     }
   ],
   "env": {

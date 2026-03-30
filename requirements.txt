@@ -1,30 +1,7 @@
-# ══════════════════════════════════════════════════════════════
-#  UniSync — Python Dependencies
-#  Install locally:  pip install -r requirements.txt
-#  Vercel installs these automatically on deploy.
-# ══════════════════════════════════════════════════════════════
-
-# ── Core Framework ─────────────────────────────────────────────
 Flask==3.0.3
 Werkzeug==3.0.3
-
-# ── Environment (local dev only — Vercel uses its own env vars) ─
 python-dotenv==1.0.1
-
-# ── Database ───────────────────────────────────────────────────
 supabase==2.5.3
-
-# ── Email ──────────────────────────────────────────────────────
 Flask-Mail==0.10.0
-
-# ── Web Push Notifications ─────────────────────────────────────
-pywebpush==2.0.0
-
-# ── Excel Parsing (lazy import — only loaded by admin upload) ──
 pandas==2.2.2
 openpyxl==3.1.3
-
-# NOTE: Flask-APScheduler intentionally removed.
-# Email scheduling is handled by Vercel Cron Jobs (api/cron_daily.py,
-# api/cron_alert.py) which run as serverless functions — no persistent
-# process is needed.
