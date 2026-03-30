@@ -6,111 +6,180 @@
 <title>Welcome to UniSync</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F5EDD8; padding: 24px 16px; }
-  .wrapper { max-width: 560px; margin: 0 auto; }
-  .header {
-    background: linear-gradient(135deg, #1A1408 0%, #2C1E08 60%, #1A1408 100%);
-    border-radius: 18px 18px 0 0;
-    padding: 36px 36px 30px;
-    text-align: center; position: relative; overflow: hidden;
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #F5EDD8;
+    padding: 24px 12px;
+    color: #1C1608;
   }
-  .header-accent {
+  .wrap { max-width: 560px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1A1408 0%, #2C1E08 100%);
+    border-radius: 18px 18px 0 0;
+    padding: 36px 32px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header-stripe {
     position: absolute; top: 0; left: 0; right: 0; height: 3px;
     background: linear-gradient(90deg, transparent, #CDA96A, #BC6F37, #CDA96A, transparent);
   }
-  .welcome-emoji { font-size: 3rem; margin-bottom: 14px; display: block; }
-  .header h1 { font-size: 1.55rem; font-weight: 700; color: #F5EAD2; letter-spacing: -0.02em; margin-bottom: 6px; }
-  .header p { font-size: 0.90rem; color: rgba(245,234,210,0.65); }
-  .body { background: #FFFBEF; padding: 32px 36px; }
-  .greeting { font-size: 1.10rem; font-weight: 600; color: #1C1608; margin-bottom: 14px; }
-  .text { font-size: 0.90rem; color: #5A4418; line-height: 1.7; margin-bottom: 18px; }
-  .feature-list { margin: 20px 0; }
-  .feature-item {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid rgba(188,111,55,0.10);
+  .logo-text {
+    font-size: 1.1rem; font-weight: 800; color: #DFC087;
+    letter-spacing: 0.05em; margin-bottom: 16px;
   }
-  .feature-item:last-child { border-bottom: none; }
-  .feature-icon {
-    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-    background: rgba(188,111,55,0.10); border: 1px solid rgba(188,111,55,0.20);
-    display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+  .emoji { font-size: 2.8rem; margin-bottom: 12px; display: block; }
+  .header h1 {
+    font-size: 1.55rem; font-weight: 700;
+    color: #F5EAD2; margin-bottom: 6px;
   }
-  .feature-info .title { font-size: 0.88rem; font-weight: 700; color: #1C1608; }
-  .feature-info .desc  { font-size: 0.78rem; color: #9A7D4A; margin-top: 2px; }
-  .cta-wrap { text-align: center; padding: 26px 0 8px; }
+  .header p { font-size: 0.88rem; color: rgba(245,234,210,0.60); }
+
+  /* Body */
+  .body { background: #FFFBEF; padding: 28px 32px; }
+
+  .greeting {
+    font-size: 1.05rem; font-weight: 700;
+    color: #1C1608; margin-bottom: 12px;
+  }
+  .text {
+    font-size: 0.88rem; color: #5A4418;
+    line-height: 1.72; margin-bottom: 20px;
+  }
+
+  /* Feature list */
+  .features { margin: 0 0 22px; }
+  .feat {
+    display: flex; align-items: flex-start; gap: 13px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(188,111,55,0.10);
+  }
+  .feat:last-child { border-bottom: none; }
+  .feat-icon {
+    width: 38px; height: 38px; flex-shrink: 0;
+    background: rgba(188,111,55,0.09);
+    border: 1px solid rgba(188,111,55,0.20);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+  }
+  .feat-title { font-size: 0.88rem; font-weight: 700; color: #1C1608; }
+  .feat-desc  { font-size: 0.76rem; color: #9A7D4A; margin-top: 2px; line-height: 1.5; }
+
+  /* Alert box */
+  .alert-box {
+    background: rgba(188,111,55,0.07);
+    border: 1px solid rgba(188,111,55,0.22);
+    border-radius: 10px; padding: 13px 15px;
+    font-size: 0.84rem; color: #7A4A18; line-height: 1.6;
+    margin-bottom: 22px;
+  }
+  .alert-box strong { color: #BC6F37; }
+
+  /* CTA */
+  .cta { text-align: center; padding: 4px 0 6px; }
   .cta-btn {
-    display: inline-block; background: linear-gradient(135deg, #BC6F37, #9A5A2C);
+    display: inline-block;
+    background: linear-gradient(135deg, #BC6F37, #9A5A2C);
     color: #fff !important; text-decoration: none;
-    padding: 14px 36px; border-radius: 12px;
+    padding: 13px 36px; border-radius: 12px;
     font-size: 0.95rem; font-weight: 700;
-    box-shadow: 0 4px 18px rgba(188,111,55,0.40);
+    box-shadow: 0 4px 16px rgba(188,111,55,0.38);
   }
+
+  /* Footer */
   .footer {
-    background: #1A1408; border-radius: 0 0 18px 18px;
-    padding: 18px 36px; text-align: center;
-    font-size: 0.72rem; color: rgba(205,169,106,0.55); line-height: 1.8;
+    background: #1A1408;
+    border-radius: 0 0 18px 18px;
+    padding: 16px 32px;
+    text-align: center;
+    font-size: 0.70rem;
+    color: rgba(205,169,106,0.50);
+    line-height: 1.9;
   }
   .footer strong { color: #CDA96A; }
+
+  @media (max-width: 480px) {
+    .body { padding: 22px 18px; }
+    .header { padding: 28px 18px 22px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrapper">
+<div class="wrap">
 
   <div class="header">
-    <div class="header-accent"></div>
-    <span class="welcome-emoji">🎓</span>
+    <div class="header-stripe"></div>
+    <div class="logo-text">📚 UniSync</div>
+    <span class="emoji">🎓</span>
     <h1>Welcome to UniSync!</h1>
     <p>Rabindra University, Bangladesh · Dept. of Management</p>
   </div>
 
   <div class="body">
-    <div class="greeting">Hi {{ user_name }}, you're all set! 🎉</div>
+
+    <div class="greeting">Hi {{ user_name }}, স্বাগতম! 🎉</div>
+
     <p class="text">
-      Your UniSync account is ready. Please verify your email by clicking the link sent by Supabase, then sign in to access your personal academic portal.
+      আপনার UniSync account সফলভাবে তৈরি হয়েছে।
+      Email verify করার জন্য Supabase থেকে একটি আলাদা email আসবে —
+      সেটা confirm করলেই login করতে পারবেন।
     </p>
 
-    <div class="feature-list">
-      <div class="feature-item">
-        <div class="feature-icon">📅</div>
-        <div class="feature-info">
-          <div class="title">Class Routine</div>
-          <div class="desc">Your semester's live schedule with real-time class tracking</div>
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">📅</div>
+        <div>
+          <div class="feat-title">Class Routine</div>
+          <div class="feat-desc">আপনার semester অনুযায়ী live class schedule। ২৫ মার্চ ২০২৬ থেকে কার্যকর নতুন রুটিন।</div>
         </div>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">✅</div>
-        <div class="feature-info">
-          <div class="title">Task Manager</div>
-          <div class="desc">Track assignments, deadlines and study goals</div>
+      <div class="feat">
+        <div class="feat-icon">✅</div>
+        <div>
+          <div class="feat-title">Task Manager</div>
+          <div class="feat-desc">Assignment ও deadline track করুন — priority সহ।</div>
         </div>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">📧</div>
-        <div class="feature-info">
-          <div class="title">Daily Email Summary</div>
-          <div class="desc">Every evening at 7 PM — tomorrow's classes + pending tasks sent to this email</div>
+      <div class="feat">
+        <div class="feat-icon">📧</div>
+        <div>
+          <div class="feat-title">Daily Email Summary</div>
+          <div class="feat-desc">প্রতিদিন সন্ধ্যা ৭টায় আগামীকালের class ও pending tasks এর summary আসবে এই email এ।</div>
         </div>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">📁</div>
-        <div class="feature-info">
-          <div class="title">Study Resources</div>
-          <div class="desc">Upload and share notes, files and study materials</div>
+      <div class="feat">
+        <div class="feat-icon">📁</div>
+        <div>
+          <div class="feat-title">Study Resources</div>
+          <div class="feat-desc">Notes ও study materials upload ও share করুন।</div>
         </div>
       </div>
     </div>
 
-    <div class="cta-wrap">
-      <a href="https://unisync.example.com/auth/login" class="cta-btn">
-        Sign In Now →
+    <div class="alert-box">
+      ⚡ <strong>গুরুত্বপূর্ণ:</strong> Login করার পরে আপনার Dashboard এ সরাসরি
+      <strong>{{ user_name }}</strong> এর semester এর routine দেখাবে —
+      আলাদা কিছু setup করতে হবে না।
+    </div>
+
+    <div class="cta">
+      <a href="https://mgtrubcls.vercel.app/auth/login" class="cta-btn">
+        Login করুন →
       </a>
     </div>
+
   </div>
 
   <div class="footer">
     <strong>UniSync</strong> · Rabindra University, Bangladesh<br>
     Department of Management · Academic Portal<br>
-    <span style="font-size:0.65rem;">You registered with this email. If this wasn't you, please ignore.</span>
+    <span style="font-size:0.62rem;">
+      আপনি এই email পাচ্ছেন কারণ এই address দিয়ে UniSync account তৈরি হয়েছে।
+    </span>
   </div>
 
 </div>

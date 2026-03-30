@@ -72,41 +72,55 @@
 
 {% block extra_js %}
 <script>
-const ROOMS       = ['101','201','100'];
-const ROOM_LABELS = {'101':'Room 101','201':'Room 201','100':'Computer Lab'};
-const TEACHER_MAP = {
-  FA:'Prof. Dr. Feroz Ahmed',HR:'Habibur Rahaman',MK:'Malina Khatun',
-  PKP:'Prashanta Kumar Podder',TI:'Md. Tarequl Islam',AH:'Alamgir Hossain',
-  KHR:'Md. Kazi Hafizur Rahman',THT:'Tamima Hasan Taishi'
+// ── FIX: Room 1001 (Computer Lab) — was wrongly '100', now '1001' ──
+const ROOMS = ['101', '201', '1001'];
+const ROOM_LABELS = {
+  '101':  'Room 101',
+  '201':  'Room 201',
+  '1001': 'Computer Lab (1001)',
 };
 
-let mappings = {};
+const TEACHER_MAP = {
+  FA:  'Prof. Dr. Feroz Ahmed',
+  HR:  'Habibur Rahaman',
+  MK:  'Malina Khatun',
+  PKP: 'Prashanta Kumar Podder',
+  TI:  'Md. Tarequl Islam',
+  AH:  'Alamgir Hossain',
+  KHR: 'Md. Kazi Hafizur Rahman',
+  THT: 'Tamima Hasan Taishi',
+};
+
+let mappings    = {};
 let userProfile = null;
-let allRoutineData = []; // all rows for this user's semester
 
 document.addEventListener('DOMContentLoaded', async () => {
   UniSync.requireAuth();
   userProfile = UniSync.getUser();
 
   if (userProfile) {
-    const prog = userProfile.program || 'BBA';
-    const yr   = userProfile.year    || 1;
-    const sem  = userProfile.semester|| 1;
-    document.getElementById('programTag').textContent = `${prog} · Year ${yr} · Semester ${sem}`;
+    const prog = userProfile.program  || 'BBA';
+    const yr   = userProfile.year     || 1;
+    const sem  = userProfile.semester || 1;
+
+    document.getElementById('programTag').textContent =
+      `${prog} · Year ${yr} · Semester ${sem}`;
+
+    // FIX: show effective date in subtitle
     document.getElementById('routineSubtitle').textContent =
-      `${prog} Year ${yr} Sem ${sem} — Rabindra University`;
+      `${prog} Y${yr} S${sem} · Effective: 25 March 2026`;
   }
 
   await loadMappings();
   await checkHoliday();
 
-  // Auto-select today
-  const days    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const today   = days[new Date().getDay()];
-  const valid   = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-  const activeD = valid.includes(today) ? today : 'Sunday';
-  const tab     = document.querySelector(`[data-day="${activeD}"]`);
-  if (tab) loadRoutine(activeD, tab);
+  // Auto-select today (or Sunday if weekend)
+  const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const VALID = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+  const today = DAYS[new Date().getDay()];
+  const activeDay = VALID.includes(today) ? today : 'Sunday';
+  const tab = document.querySelector(`[data-day="${activeDay}"]`);
+  if (tab) loadRoutine(activeDay, tab);
   else     loadRoutine('Sunday', document.querySelector('[data-day="Sunday"]'));
 
   await loadMyCourses();
@@ -162,7 +176,9 @@ async function loadRoutine(day, btn) {
       <div style="padding:28px;text-align:center;color:var(--text-muted);">
         <div style="font-size:1.5rem;margin-bottom:8px;">📭</div>
         <div style="font-weight:600;margin-bottom:4px;">No classes on ${day}</div>
-        <div style="font-size:0.82rem;">for ${userProfile.program} Year ${userProfile.year} Sem ${userProfile.semester}</div>
+        <div style="font-size:0.82rem;">
+          for ${userProfile.program} Year ${userProfile.year} Sem ${userProfile.semester}
+        </div>
       </div>`;
     }
   } catch(e) {
@@ -173,24 +189,28 @@ async function loadRoutine(day, btn) {
 function renderRoutine(rows, day) {
   const content = document.getElementById('routineContent');
 
-  // Build lookup: room_no → time_slot → row
+  // room_no → time_slot → row
   const lookup = {};
   rows.forEach(r => {
     if (!lookup[r.room_no]) lookup[r.room_no] = {};
     lookup[r.room_no][r.time_slot] = r;
   });
 
-  // Only show rooms that have at least 1 class
+  // Only rooms that actually have a class today
   const activeRooms = ROOMS.filter(r => lookup[r] && Object.keys(lookup[r]).length > 0);
   if (!activeRooms.length) {
-    content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);">No classes scheduled for ${day} in your semester.</div>`;
+    content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);">
+      No classes scheduled for ${day} in your semester.
+    </div>`;
     return;
   }
 
   let html = `
   <div class="routine-day-title">
     ${day}
-    <span class="routine-program-tag">${userProfile.program} Y${userProfile.year} S${userProfile.semester}</span>
+    <span class="routine-program-tag">
+      ${userProfile.program} Y${userProfile.year} S${userProfile.semester}
+    </span>
   </div>
   <div class="routine-table-wrap">
   <table class="routine-table">
@@ -200,7 +220,7 @@ function renderRoutine(rows, day) {
         <th>9:00–10:30 AM</th>
         <th>10:30 AM–12:00 PM</th>
         <th>12:00–1:30 PM</th>
-        <th style="width:70px;font-size:0.6rem;">Lunch</th>
+        <th style="width:68px;font-size:0.58rem;">Prayer &amp;<br>Lunch</th>
         <th>2:00–3:30 PM</th>
         <th>3:30–5:00 PM</th>
       </tr>
@@ -210,12 +230,12 @@ function renderRoutine(rows, day) {
   activeRooms.forEach(room => {
     const rd = lookup[room] || {};
     html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
-    ['9:00-10:30','10:30-12:00','12:00-1:30'].forEach(slot => {
+    ['9:00-10:30', '10:30-12:00', '12:00-1:30'].forEach(slot => {
       const e = rd[slot];
       html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
     html += `<td class="lunch-cell"><div class="lunch-label">PRAYER &<br>LUNCH</div></td>`;
-    ['2:00-3:30','3:30-5:00'].forEach(slot => {
+    ['2:00-3:30', '3:30-5:00'].forEach(slot => {
       const e = rd[slot];
       html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
@@ -226,31 +246,30 @@ function renderRoutine(rows, day) {
   content.innerHTML = html;
 }
 
-
 function to12h(t24) {
   if (!t24) return '';
   const [h, m] = t24.split(':').map(Number);
   const period = h < 12 ? 'AM' : 'PM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${period}`;
 }
 
 function buildCell(e) {
   const name  = mappings[e.course_code] || e.course_name || e.course_code;
-  const short = name.length > 24 ? name.substring(0,24)+'…' : name;
+  const short = name.length > 24 ? name.substring(0, 24) + '…' : name;
   return `
   <div class="class-badge">
     <div class="class-code">${e.course_code}</div>
     <div class="class-name" title="${name}">${short}</div>
     <div class="class-teacher">${e.teacher_code}</div>
-    <div class="class-teacher" style="font-size:0.58rem;opacity:0.75;margin-top:1px;">${to12h(e.time_start)}–${to12h(e.time_end)}</div>
+    <div class="class-teacher" style="font-size:0.58rem;opacity:0.72;margin-top:1px;">
+      ${to12h(e.time_start)}–${to12h(e.time_end)}
+    </div>
   </div>`;
 }
 
 async function loadMyCourses() {
   if (!userProfile) return;
   try {
-    // Get all days to find unique courses for this semester
     const params = new URLSearchParams({
       program:  userProfile.program  || 'BBA',
       year:     userProfile.year     || 1,
@@ -258,52 +277,48 @@ async function loadMyCourses() {
     });
     const res  = await fetch(`/academic/api/routine?${params}`);
     const data = await res.json();
-
     if (!data.success) return;
 
-    // Unique courses
-    const seen = new Set();
+    const seen    = new Set();
     const courses = [];
     data.data.forEach(r => {
       if (!seen.has(r.course_code)) {
         seen.add(r.course_code);
         courses.push({
-          code: r.course_code,
-          name: mappings[r.course_code] || r.course_name || r.course_code,
-          teacher: mappings[r.teacher_code] || r.teacher_name || r.teacher_code,
+          code:    r.course_code,
+          name:    mappings[r.course_code]  || r.course_name    || r.course_code,
+          teacher: mappings[r.teacher_code] || r.teacher_name   || r.teacher_code,
         });
       }
     });
 
     document.getElementById('courseCountLabel').textContent = `(${courses.length} courses)`;
-
     const grid = document.getElementById('myCoursesGrid');
+
     if (!courses.length) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No courses found. Ask admin to seed the database.</p></div>';
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>No courses found for your semester.</p></div>';
       return;
     }
 
     const colors = ['purple','blue','green','orange','gray'];
-    grid.innerHTML = courses.map((c, i) => {
-      const color = colors[i % colors.length];
-      return `
+    grid.innerHTML = courses.map((c, i) => `
       <div class="course-card">
-        <div class="course-card-header ${color}">
+        <div class="course-card-header ${colors[i % colors.length]}">
           <span class="course-code-badge">${c.code}</span>
         </div>
         <div class="course-card-body">
           <div class="course-name">${c.name}</div>
           <div class="course-dept" style="margin-top:4px;">👤 ${c.teacher}</div>
         </div>
-      </div>`;
-    }).join('');
+      </div>`
+    ).join('');
   } catch(e) { console.error(e); }
 }
 
 function renderLegend() {
   document.getElementById('legendGrid').innerHTML =
-    Object.entries(TEACHER_MAP).map(([code, name]) =>
-      `<div class="legend-item">
+    Object.entries(TEACHER_MAP).map(([code, name]) => `
+      <div class="legend-item">
         <span class="legend-code">${code}</span>
         <span class="legend-name">${name}</span>
       </div>`
