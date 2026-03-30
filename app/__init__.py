@@ -56,26 +56,84 @@ def create_app(config_name=None):
     def dashboard():
         return render_template("dashboard.html")
 
-    # ── Vercel Cron: প্রতিদিন রাত ৭টায় email পাঠাবে ─────────
+    # ══════════════════════════════════════════════════════════
+    # EMAIL TEST ENDPOINT
+    # Browser এ যান: https://আপনার-সাইট.vercel.app/api/test-email?to=আপনার@gmail.com
+    # এটা একটা test welcome email পাঠাবে।
+    # কাজ করলে browser এ দেখাবে: {"ok": true, "sent_to": "..."}
+    # না করলে দেখাবে error message — কী সমস্যা সেটা বুঝতে পারবেন।
+    # ══════════════════════════════════════════════════════════
+    @app.route("/api/test-email", methods=["GET"])
+    def test_email():
+        to = request.args.get("to", "").strip()
+        if not to:
+            return jsonify({
+                "ok": False,
+                "error": "?to= parameter required",
+                "example": "/api/test-email?to=your@gmail.com"
+            }), 400
+
+        # Check mail config
+        mail_user = app.config.get("MAIL_USERNAME", "")
+        mail_pass = app.config.get("MAIL_PASSWORD", "")
+        if not mail_user or not mail_pass:
+            return jsonify({
+                "ok": False,
+                "error": "MAIL_USERNAME বা MAIL_PASSWORD Vercel এ set করা নেই।",
+                "fix": "Vercel Dashboard → Settings → Environment Variables এ MAIL_USERNAME এবং MAIL_PASSWORD দিন।"
+            }), 500
+
+        try:
+            from core.mailer import send_welcome
+            ok = send_welcome(to_email=to, user_name="Test User")
+            if ok:
+                return jsonify({
+                    "ok": True,
+                    "sent_to": to,
+                    "from": mail_user,
+                    "message": f"✅ Email sent! '{to}' এর inbox চেক করুন (spam ও দেখুন)।"
+                })
+            else:
+                return jsonify({
+                    "ok": False,
+                    "error": "Email send failed। Vercel Logs দেখুন।"
+                }), 500
+        except Exception as e:
+            return jsonify({
+                "ok": False,
+                "error": str(e),
+                "tip": "Gmail App Password ঠিক আছে কিনা চেক করুন।"
+            }), 500
+
+    # ══════════════════════════════════════════════════════════
+    # VERCEL CRON — প্রতিদিন রাত ৭ PM (Bangladesh time)
+    # Schedule: "0 13 * * 0-4"  (UTC 13:00 = BST 19:00)
+    # ══════════════════════════════════════════════════════════
     @app.route("/api/cron/daily", methods=["GET", "POST"])
     def cron_daily():
-        from datetime import date, timedelta
-        results = {"sent": 0, "skipped": 0, "errors": []}
+        from datetime import datetime, timedelta, timezone
+
+        # FIX: Bangladesh Standard Time = UTC+6
+        BST      = timezone(timedelta(hours=6))
+        now_bst  = datetime.now(BST)
+        tomorrow = (now_bst + timedelta(days=1)).date()
+        day_name = tomorrow.strftime("%A")
+        date_str = tomorrow.strftime("%d %b %Y")
+
+        results = {"sent": 0, "skipped": 0, "errors": [], "day_checked": day_name}
+
+        # শুধু academic days
+        if day_name not in ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]:
+            return jsonify({"ok": True, "reason": f"tomorrow is {day_name} — weekend", **results}), 200
+
         try:
             from core.supabase_client import get_supabase_admin
             from core.holidays       import is_holiday
             from core.mailer         import send_daily_summary
 
-            tomorrow = date.today() + timedelta(days=1)
-            day_name = tomorrow.strftime("%A")
-            date_str = tomorrow.strftime("%d %b %Y")
-
-            if day_name not in ["Sunday","Monday","Tuesday","Wednesday","Thursday"]:
-                return jsonify({"ok": True, "reason": "weekend"}), 200
-
             is_hol, _ = is_holiday(tomorrow)
             sb = get_supabase_admin()
-            users = (sb.table("profiles").select("*").execute().data or [])
+            users = sb.table("profiles").select("*").execute().data or []
 
             for user in users:
                 email = (user.get("email") or "").strip()
@@ -83,14 +141,18 @@ def create_app(config_name=None):
                     results["skipped"] += 1
                     continue
 
+                program  = user.get("program",  "BBA")
+                year     = user.get("year",     1)
+                semester = user.get("semester", 1)
+
                 classes = []
                 if not is_hol:
                     try:
-                        rows = sb.table("routines").select("*")\
-                            .eq("day",             day_name)\
-                            .eq("program",         user.get("program","BBA"))\
-                            .eq("course_year",     user.get("year",1))\
-                            .eq("course_semester", user.get("semester",1))\
+                        rows = sb.table("routines").select("*") \
+                            .eq("day",             day_name) \
+                            .eq("program",         program) \
+                            .eq("course_year",     year) \
+                            .eq("course_semester", semester) \
                             .order("time_start").execute()
                         classes = rows.data or []
                     except Exception:
@@ -98,35 +160,34 @@ def create_app(config_name=None):
 
                     for cls in classes:
                         try:
-                            c = sb.table("mappings").select("full_name")\
-                                .eq("code", cls.get("course_code","")).execute()
-                            cls["course_name"] = c.data[0]["full_name"] if c.data else cls.get("course_code","")
+                            c = sb.table("mappings").select("full_name") \
+                                .eq("code", cls.get("course_code", "")).execute()
+                            cls["course_name"] = c.data[0]["full_name"] if c.data else cls.get("course_code", "")
                         except Exception:
-                            cls["course_name"] = cls.get("course_code","")
+                            cls["course_name"] = cls.get("course_code", "")
                         try:
-                            t = sb.table("mappings").select("full_name")\
-                                .eq("code", cls.get("teacher_code","")).execute()
-                            cls["teacher_name"] = t.data[0]["full_name"] if t.data else cls.get("teacher_code","")
+                            t = sb.table("mappings").select("full_name") \
+                                .eq("code", cls.get("teacher_code", "")).execute()
+                            cls["teacher_name"] = t.data[0]["full_name"] if t.data else cls.get("teacher_code", "")
                         except Exception:
-                            cls["teacher_name"] = cls.get("teacher_code","")
-                        cls["time_start_12h"] = _fmt12h(cls.get("time_start",""))
-                        cls["time_end_12h"]   = _fmt12h(cls.get("time_end",""))
+                            cls["teacher_name"] = cls.get("teacher_code", "")
+                        cls["time_start_12h"] = _fmt12h(cls.get("time_start", ""))
+                        cls["time_end_12h"]   = _fmt12h(cls.get("time_end",   ""))
 
                 try:
-                    tasks = sb.table("tasks").select("*")\
-                        .eq("user_id", user["id"])\
-                        .neq("status","done")\
+                    tasks = sb.table("tasks").select("*") \
+                        .eq("user_id", user["id"]) \
+                        .neq("status", "done") \
                         .order("deadline").execute().data or []
                 except Exception:
                     tasks = []
 
                 ok = send_daily_summary(
                     to_email  = email,
-                    user_name = user.get("full_name","Student"),
+                    user_name = user.get("full_name", "Student"),
                     classes   = classes,
                     tasks     = tasks,
                     date_str  = f"{day_name}, {date_str}",
-                    app       = app,
                 )
                 if ok:
                     results["sent"] += 1
