@@ -1,34 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Alert — UniSync</title>
 <style>
-  body { font-family: 'Segoe UI', sans-serif; background: #f4f4f8; margin: 0; padding: 20px; }
-  .card { background: #fff; border-radius: 16px; max-width: 480px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-  .header { background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 24px 28px; color: #fff; }
-  .header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
-  .body { padding: 24px 28px; }
-  .info-row { display:flex; gap:12px; padding: 8px 0; border-bottom: 1px solid #f0f0f5; }
-  .info-label { font-size:0.78rem; font-weight:700; color:#888; min-width:90px; }
-  .info-val   { font-size:0.88rem; color:#1a1a2e; font-weight:600; }
-  .alert-msg  { background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; padding:14px; margin-top:16px; font-size:0.88rem; color:#92400e; }
-  .footer { padding:12px 28px; background:#f9f9fc; text-align:center; font-size:0.72rem; color:#aaa; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F5EDD8; padding: 24px 16px; }
+  .wrapper { max-width: 520px; margin: 0 auto; }
+  .header {
+    background: linear-gradient(135deg, #7A3010 0%, #B03A2A 60%, #7A3010 100%);
+    border-radius: 18px 18px 0 0;
+    padding: 28px 32px;
+    position: relative; overflow: hidden;
+  }
+  .header-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #F5A97A, #E07060, #F5A97A, transparent);
+  }
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px; padding: 4px 12px; font-size: 0.70rem; font-weight: 700;
+    letter-spacing: 0.10em; text-transform: uppercase; color: #fff;
+    margin-bottom: 12px;
+  }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #FFD0C0;
+    animation: pulse 1.5s infinite;
+  }
+  .header h1 { font-size: 1.35rem; font-weight: 700; color: #fff; margin-bottom: 5px; }
+  .header p  { font-size: 0.88rem; color: rgba(255,255,255,0.72); }
+
+  .body { background: #FFFBEF; padding: 26px 32px; }
+  .info-row {
+    display: flex; gap: 14px; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid rgba(188,111,55,0.10);
+  }
+  .info-row:last-of-type { border-bottom: none; }
+  .info-label {
+    font-size: 0.70rem; font-weight: 800; letter-spacing: 0.10em;
+    text-transform: uppercase; color: #9A7D4A; min-width: 80px;
+  }
+  .info-val { font-size: 0.90rem; color: #1C1608; font-weight: 600; }
+
+  .alert-box {
+    margin-top: 18px;
+    background: rgba(176,58,42,0.07); border: 1px solid rgba(176,58,42,0.22);
+    border-radius: 12px; padding: 16px 18px;
+    font-size: 0.88rem; color: #7A3010; line-height: 1.60;
+  }
+  .cta-wrap { text-align: center; padding: 20px 0 4px; }
+  .cta-btn {
+    display: inline-block; background: linear-gradient(135deg, #BC6F37, #9A5A2C);
+    color: #fff !important; text-decoration: none;
+    padding: 12px 28px; border-radius: 10px;
+    font-size: 0.88rem; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(188,111,55,0.35);
+  }
+  .footer {
+    background: #1A1408; border-radius: 0 0 18px 18px;
+    padding: 14px 32px; text-align: center;
+    font-size: 0.70rem; color: rgba(205,169,106,0.50); line-height: 1.8;
+  }
+  .footer strong { color: #CDA96A; }
 </style>
 </head>
 <body>
-<div class="card">
+<div class="wrapper">
+
   <div class="header">
-    <h1>⏰ Class Started 30 Minutes Ago</h1>
+    <div class="header-accent"></div>
+    <div class="header-badge">
+      <span class="pulse-dot"></span> Class Alert
+    </div>
+    <h1>⏰ Class Started 30 Min Ago</h1>
+    <p>Hi <strong style="color:#FFD0B0;">{{ user_name }}</strong> — a class is currently in progress</p>
   </div>
+
   <div class="body">
-    <p style="color:#555;font-size:0.9rem;margin-top:0;">Hi {{ user_name }}, a class started 30 minutes ago:</p>
-    <div class="info-row"><div class="info-label">Course</div><div class="info-val">{{ class_info.course_code }} — {{ class_info.course_name }}</div></div>
-    <div class="info-row"><div class="info-label">Teacher</div><div class="info-val">{{ class_info.teacher_name }}</div></div>
-    <div class="info-row"><div class="info-label">Room</div><div class="info-val">Room {{ class_info.room_no }}</div></div>
-    <div class="info-row"><div class="info-label">Time</div><div class="info-val">{{ class_info.time_slot }}</div></div>
-    <div class="alert-msg">📌 The class is still ongoing. You can still join for the core lecture session!</div>
+
+    <div class="info-row">
+      <div class="info-label">Course</div>
+      <div class="info-val">
+        {{ class_info.course_code }}
+        {% if class_info.course_name and class_info.course_name != class_info.course_code %}
+        — {{ class_info.course_name }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Teacher</div>
+      <div class="info-val">{{ class_info.teacher_name | default(class_info.teacher_code) }}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Room</div>
+      <div class="info-val">Room {{ class_info.room_no }}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Time</div>
+      <div class="info-val">
+        {{ class_info.time_start_12h | default(class_info.time_slot) }}
+        {% if class_info.time_end_12h %}
+        → {{ class_info.time_end_12h }}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="alert-box">
+      📌 The class is still ongoing — you can still join! Even partial attendance counts. Head to <strong>Room {{ class_info.room_no }}</strong> now.
+    </div>
+
+    <div class="cta-wrap">
+      <a href="https://unisync.example.com/academic/routine" class="cta-btn">
+        View Today's Routine →
+      </a>
+    </div>
+
   </div>
-  <div class="footer">UniSync · Rabindra University</div>
+
+  <div class="footer">
+    <strong>UniSync</strong> · Rabindra University, Bangladesh<br>
+    Department of Management
+  </div>
+
 </div>
 </body>
 </html>

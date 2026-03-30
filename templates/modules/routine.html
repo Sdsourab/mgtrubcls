@@ -39,7 +39,7 @@
   </div>
 
   <!-- Routine Table -->
-  <div class="routine-card">
+  <div class="routine-card scroll-reveal">
     <div id="routineContent">
       <div class="routine-loading">
         <div class="skeleton-block"></div>
@@ -54,7 +54,7 @@
     <div class="section-header">
       <h2>My Courses This Semester</h2>
     </div>
-    <div class="courses-grid" id="myCoursesGrid">
+    <div class="courses-grid scroll-stagger" id="myCoursesGrid">
       <div class="skeleton-block course-skeleton"></div>
       <div class="skeleton-block course-skeleton"></div>
       <div class="skeleton-block course-skeleton"></div>
@@ -62,7 +62,7 @@
   </section>
 
   <!-- Legend -->
-  <div class="routine-legend">
+  <div class="routine-legend scroll-reveal">
     <div class="legend-title">Faculty Legend</div>
     <div class="legend-grid" id="legendGrid"></div>
   </div>
@@ -197,12 +197,12 @@ function renderRoutine(rows, day) {
     <thead>
       <tr>
         <th>Room</th>
-        <th>9:00–10:30</th>
-        <th>10:30–12:00</th>
-        <th>12:00–1:30</th>
+        <th>9:00–10:30 AM</th>
+        <th>10:30 AM–12:00 PM</th>
+        <th>12:00–1:30 PM</th>
         <th style="width:70px;font-size:0.6rem;">Lunch</th>
-        <th>2:00–3:30</th>
-        <th>3:30–5:00</th>
+        <th>2:00–3:30 PM</th>
+        <th>3:30–5:00 PM</th>
       </tr>
     </thead>
     <tbody>`;
@@ -226,6 +226,15 @@ function renderRoutine(rows, day) {
   content.innerHTML = html;
 }
 
+
+function to12h(t24) {
+  if (!t24) return '';
+  const [h, m] = t24.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+
 function buildCell(e) {
   const name  = mappings[e.course_code] || e.course_name || e.course_code;
   const short = name.length > 24 ? name.substring(0,24)+'…' : name;
@@ -233,7 +242,8 @@ function buildCell(e) {
   <div class="class-badge">
     <div class="class-code">${e.course_code}</div>
     <div class="class-name" title="${name}">${short}</div>
-    <div class="class-teacher">${e.teacher_code} · Rm ${e.room_no}</div>
+    <div class="class-teacher">${e.teacher_code}</div>
+    <div class="class-teacher" style="font-size:0.58rem;opacity:0.75;margin-top:1px;">${to12h(e.time_start)}–${to12h(e.time_end)}</div>
   </div>`;
 }
 

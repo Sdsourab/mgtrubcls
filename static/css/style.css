@@ -313,7 +313,7 @@ button, input, select, textarea { font-family:var(--font-body); outline:none; }
   color:var(--golden-lt);
   letter-spacing:-0.02em;
 }
-.logo-sub { font-size:0.58rem; color:rgba(205,169,106,0.45); letter-spacing:0.05em; margin-top:1px; }
+.logo-sub { font-size:0.60rem; color:rgba(230,200,140,0.82); letter-spacing:0.05em; margin-top:1px; }
 
 /* Sidebar nav */
 .sidebar-nav {
@@ -433,6 +433,7 @@ button, input, select, textarea { font-family:var(--font-body); outline:none; }
 }
 .mobile-menu-btn { background:none; border:none; color:var(--golden-lt); cursor:pointer; padding:8px; border-radius:var(--radius-sm); }
 .mobile-menu-btn svg { width:21px; height:21px; }
+/* mobile logo */
 .mobile-logo {
   font-family:var(--font-display); font-size:1.18rem; font-weight:700;
   background:linear-gradient(90deg,var(--golden-lt),var(--terra-lt));
@@ -1426,3 +1427,42 @@ body.auth-body {
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
 }
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR TEXT VISIBILITY FIXES
+   ════════════════════════════════════════════════════════════════ */
+
+/* UniSync title in sidebar — bright warm gold */
+.logo-name {
+  font-family: var(--font-display) !important;
+  font-size: 1.22rem !important; font-weight: 700 !important;
+  color: #DFC087 !important;        /* golden-lt — always visible */
+  -webkit-text-fill-color: #DFC087 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* "Rabindra University" subtitle — readable */
+.logo-sub {
+  font-size: 0.60rem !important;
+  color: rgba(230,200,140,0.82) !important;
+  -webkit-text-fill-color: rgba(230,200,140,0.82) !important;
+  letter-spacing: 0.04em !important;
+  margin-top: 1px !important;
+  line-height: 1.4 !important;
+}
+
+/* Mobile header "UniSync" text */
+.mobile-logo {
+  font-family: var(--font-display) !important;
+  font-size: 1.18rem !important; font-weight: 700 !important;
+  background: linear-gradient(90deg, var(--golden-lt), var(--terra-lt)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   12-HOUR TIME DISPLAY HELPERS
+   ════════════════════════════════════════════════════════════════ */
+.time-12h     { font-variant-numeric: tabular-nums; }
+.time-period  { font-size: 0.65em; font-weight: 700; opacity: 0.75; margin-left: 1px; }

@@ -94,8 +94,29 @@ const UniSync = (() => {
     }
   }
 
+
+  // ── Scroll-reveal ─────────────────────────────────────────
+  function initScrollReveal() {
+    const els = document.querySelectorAll('.scroll-reveal');
+    if (!els.length) return;
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(el => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('is-visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
+    els.forEach(el => io.observe(el));
+  }
+
   // Close sidebar on mobile nav click
   document.addEventListener('DOMContentLoaded', () => {
+    initScrollReveal();
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
         if (window.innerWidth < 769) {
@@ -130,11 +151,52 @@ const UniSync = (() => {
     }, duration);
   }
 
+
+  // ── 12-Hour Time Utilities ────────────────────────────────
+
+  /**
+   * Convert 24h "HH:MM" → 12h "12:00 PM"
+   */
+  function to12h(t24) {
+    if (!t24) return '';
+    const parts = String(t24).split(':');
+    if (parts.length < 2) return t24;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return t24;
+    const period = h < 12 ? 'AM' : 'PM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  }
+
+  /**
+   * Format a datetime string's time portion to 12h.
+   * Handles "HH:MM", "HH:MM:SS", ISO strings.
+   */
+  function formatTime12h(val) {
+    if (!val) return '';
+    // If it looks like an ISO or datetime, grab HH:MM
+    const match = String(val).match(/(\d{1,2}):(\d{2})/);
+    if (match) return to12h(`${match[1].padStart(2,'0')}:${match[2]}`);
+    return val;
+  }
+
+  // ── Update localStorage user profile ─────────────────────
+  function updateStoredUser(patch) {
+    try {
+      const user = getUser() || {};
+      const updated = { ...user, ...patch };
+      localStorage.setItem('us_user', JSON.stringify(updated));
+      hydrateUI();
+    } catch(e) {}
+  }
+
   // ── Public API ────────────────────────────────────────────
 
   return {
     getUser, getToken, isLoggedIn, requireAuth,
-    logout, hydrateUI, showProfile, toggleSidebar, toast
+    logout, hydrateUI, showProfile, toggleSidebar, toast,
+    to12h, formatTime12h, updateStoredUser
   };
 
 })();

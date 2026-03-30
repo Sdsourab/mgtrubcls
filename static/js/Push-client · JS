@@ -1,0 +1,129 @@
+/**
+ * UniSync — Push Notification Client (push-client.js)
+ * ═════════════════════════════════════════════════════
+ * Registers Service Worker, asks for notification permission,
+ * saves subscription to Supabase so the server can push notifications.
+ *
+ * Called from base.html after user is authenticated.
+ */
+
+(function () {
+  'use strict';
+
+  // VAPID public key — set this to your VAPID_PUBLIC_KEY from Vercel env
+  // This is safe to expose (public key only).
+  const VAPID_PUBLIC_KEY = window.__VAPID_PUBLIC_KEY || '';
+
+  // ── Utility: base64url → Uint8Array ──────────────────────────
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw     = atob(base64);
+    const output  = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  // ── Register Service Worker ───────────────────────────────────
+  async function registerSW() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('[Push] Not supported in this browser.');
+      return;
+    }
+
+    try {
+      const reg = await navigator.serviceWorker.register('/static/js/sw.js', {
+        scope: '/',
+      });
+      console.log('[Push] Service Worker registered:', reg.scope);
+      return reg;
+    } catch (err) {
+      console.warn('[Push] SW registration failed:', err);
+    }
+  }
+
+  // ── Request permission + subscribe ───────────────────────────
+  async function subscribeToPush(reg) {
+    if (!VAPID_PUBLIC_KEY) {
+      console.warn('[Push] VAPID_PUBLIC_KEY not set. Push disabled.');
+      return;
+    }
+
+    try {
+      // Check existing subscription
+      let sub = await reg.pushManager.getSubscription();
+
+      if (!sub) {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.log('[Push] Permission denied by user.');
+          return;
+        }
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly:      true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      // Save subscription to server
+      const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+      if (!user) return;
+
+      await fetch('/campus/api/push-subscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          user_id:      user.id,
+          subscription: sub.toJSON(),
+        }),
+      });
+
+      console.log('[Push] Subscription saved.');
+    } catch (err) {
+      console.warn('[Push] Subscription failed:', err);
+    }
+  }
+
+  // ── Show a toast when permission is first granted ─────────────
+  function showPermissionToast() {
+    if (typeof UniSync !== 'undefined' && UniSync.toast) {
+      UniSync.toast('🔔 Class notifications enabled!', 'success');
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  async function init() {
+    // Only run for logged-in users
+    const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
+    if (!user) return;
+
+    const reg = await registerSW();
+    if (!reg) return;
+
+    // Wait for SW to be ready
+    await navigator.serviceWorker.ready;
+
+    // Ask for permission if not already decided
+    const currentPerm = Notification.permission;
+    if (currentPerm === 'default') {
+      // Small delay so it doesn't popup immediately on page load
+      setTimeout(async () => {
+        const prevPerm = Notification.permission;
+        await subscribeToPush(reg);
+        if (prevPerm === 'default' && Notification.permission === 'granted') {
+          showPermissionToast();
+        }
+      }, 3000);
+    } else if (currentPerm === 'granted') {
+      await subscribeToPush(reg);
+    }
+  }
+
+  // Run after page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();

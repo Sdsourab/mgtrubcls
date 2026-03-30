@@ -1,66 +1,204 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UniSync — Tomorrow's Schedule</title>
 <style>
-  body { font-family: 'Segoe UI', sans-serif; background: #f4f4f8; margin: 0; padding: 20px; }
-  .card { background: #fff; border-radius: 16px; max-width: 560px; margin: 0 auto; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-  .header { background: linear-gradient(135deg, #7c6fff, #ec4899); padding: 28px 32px; color: #fff; }
-  .header h1 { margin: 0; font-size: 1.4rem; font-weight: 700; }
-  .header p  { margin: 6px 0 0; opacity: 0.85; font-size: 0.9rem; }
-  .body { padding: 28px 32px; }
-  .section-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #888; margin: 20px 0 10px; }
-  .class-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f0f0f5; }
-  .class-time { font-size: 0.78rem; color: #7c6fff; font-weight: 700; min-width: 90px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #F5EDD8;
+    margin: 0; padding: 24px 16px;
+    color: #1C1608;
+  }
+  .wrapper { max-width: 580px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1A1408 0%, #2C1E08 60%, #1A1408 100%);
+    border-radius: 18px 18px 0 0;
+    padding: 32px 36px 28px;
+    position: relative; overflow: hidden;
+  }
+  .header-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #CDA96A, #BC6F37, #CDA96A, transparent);
+  }
+  .header-logo {
+    font-size: 1.0rem; font-weight: 800; letter-spacing: -0.02em;
+    color: #DFC087; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .header h1 {
+    font-size: 1.5rem; font-weight: 700; color: #F5EAD2;
+    margin-bottom: 6px; letter-spacing: -0.02em;
+  }
+  .header p { font-size: 0.90rem; color: rgba(245,234,210,0.65); }
+
+  /* Body */
+  .body {
+    background: #FFFBEF;
+    padding: 28px 36px;
+  }
+
+  /* Section title */
+  .section-title {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #9A7D4A;
+    margin: 24px 0 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(188,111,55,0.25), transparent);
+  }
+
+  /* Class row */
+  .class-row {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(188,111,55,0.10);
+  }
+  .class-row:last-child { border-bottom: none; }
+  .class-time {
+    font-size: 0.80rem; font-weight: 700;
+    color: #BC6F37; min-width: 105px; flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
   .class-info { flex: 1; }
-  .class-code { font-weight: 700; font-size: 0.88rem; color: #1a1a2e; }
-  .class-meta { font-size: 0.78rem; color: #888; margin-top: 2px; }
-  .task-item { padding: 8px 0; border-bottom: 1px solid #f0f0f5; font-size: 0.88rem; color: #333; }
-  .task-priority { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; margin-left: 8px; }
-  .high   { background: #fee2e2; color: #dc2626; }
-  .medium { background: #dbeafe; color: #2563eb; }
-  .low    { background: #dcfce7; color: #16a34a; }
-  .empty  { color: #aaa; font-size: 0.88rem; font-style: italic; }
-  .footer { padding: 16px 32px; background: #f9f9fc; text-align: center; font-size: 0.75rem; color: #aaa; }
+  .class-code {
+    font-weight: 700; font-size: 0.92rem;
+    color: #1C1608; margin-bottom: 3px;
+  }
+  .class-meta { font-size: 0.78rem; color: #9A7D4A; }
+  .room-badge {
+    display: inline-block; background: rgba(188,111,55,0.10);
+    border: 1px solid rgba(188,111,55,0.22);
+    color: #BC6F37; font-size: 0.70rem; font-weight: 700;
+    padding: 1px 7px; border-radius: 10px; margin-left: 6px;
+  }
+
+  /* Task item */
+  .task-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(188,111,55,0.10);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-title { font-size: 0.88rem; color: #1C1608; font-weight: 500; }
+  .task-deadline { font-size: 0.75rem; color: #9A7D4A; }
+  .priority-badge {
+    display: inline-block; padding: 2px 9px;
+    border-radius: 20px; font-size: 0.65rem; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  }
+  .high   { background: rgba(176,58,42,0.10);  color: #B03A2A; border: 1px solid rgba(176,58,42,0.25); }
+  .medium { background: rgba(42,106,154,0.10); color: #2A6A9A; border: 1px solid rgba(42,106,154,0.25); }
+  .low    { background: rgba(74,140,74,0.10);  color: #4A8C4A; border: 1px solid rgba(74,140,74,0.25); }
+
+  .empty {
+    color: #9A7D4A; font-size: 0.88rem; font-style: italic;
+    padding: 10px 0;
+  }
+
+  /* CTA Button */
+  .cta-wrap { text-align: center; padding: 24px 0 8px; }
+  .cta-btn {
+    display: inline-block; background: linear-gradient(135deg, #BC6F37, #9A5A2C);
+    color: #fff !important; text-decoration: none;
+    padding: 13px 32px; border-radius: 12px;
+    font-size: 0.90rem; font-weight: 700; letter-spacing: 0.01em;
+    box-shadow: 0 4px 16px rgba(188,111,55,0.35);
+  }
+
+  /* Footer */
+  .footer {
+    background: #1A1408; border-radius: 0 0 18px 18px;
+    padding: 18px 36px;
+    text-align: center; font-size: 0.72rem; color: rgba(205,169,106,0.55);
+    line-height: 1.8;
+  }
+  .footer strong { color: #CDA96A; }
 </style>
 </head>
 <body>
-<div class="card">
+<div class="wrapper">
+
   <div class="header">
-    <h1>📚 Tomorrow's Schedule</h1>
-    <p>Hello {{ user_name }} — here's your plan for {{ date_str }}</p>
+    <div class="header-accent"></div>
+    <div class="header-logo">
+      <span>📚</span> UniSync
+    </div>
+    <h1>Tomorrow's Schedule</h1>
+    <p>Hello <strong style="color:#DFC087;">{{ user_name }}</strong> — here's your plan for <strong style="color:#DFC087;">{{ date_str }}</strong></p>
   </div>
+
   <div class="body">
 
+    <!-- Classes -->
     <div class="section-title">Classes</div>
     {% if classes %}
       {% for cls in classes %}
       <div class="class-row">
-        <div class="class-time">{{ cls.time_slot }}</div>
+        <div class="class-time">
+          {{ cls.time_start_12h | default(cls.time_slot) }}
+          {% if cls.time_end_12h %}
+          <br><span style="font-weight:400;color:#9A7D4A;font-size:0.72rem;">→ {{ cls.time_end_12h }}</span>
+          {% endif %}
+        </div>
         <div class="class-info">
-          <div class="class-code">{{ cls.course_code }} — {{ cls.course_name }}</div>
-          <div class="class-meta">{{ cls.teacher_name }} · Room {{ cls.room_no }}</div>
+          <div class="class-code">
+            {{ cls.course_code }}
+            {% if cls.course_name and cls.course_name != cls.course_code %}
+            — {{ cls.course_name }}
+            {% endif %}
+          </div>
+          <div class="class-meta">
+            {{ cls.teacher_name | default(cls.teacher_code) }}
+            <span class="room-badge">Room {{ cls.room_no }}</span>
+          </div>
         </div>
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty">No classes scheduled tomorrow 🎉</div>
+      <div class="empty">🎉 No classes scheduled — enjoy your day!</div>
     {% endif %}
 
+    <!-- Pending Tasks -->
     <div class="section-title">Pending Tasks</div>
     {% if tasks %}
       {% for task in tasks %}
       <div class="task-item">
-        {{ task.title }}
-        <span class="task-priority {{ task.priority }}">{{ task.priority|upper }}</span>
+        <div>
+          <div class="task-title">{{ task.title }}</div>
+          {% if task.deadline %}
+          <div class="task-deadline">Due: {{ task.deadline[:10] if task.deadline else '' }}</div>
+          {% endif %}
+        </div>
+        {% if task.priority %}
+        <span class="priority-badge {{ task.priority }}">{{ task.priority }}</span>
+        {% endif %}
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty">No pending tasks — you're all clear!</div>
+      <div class="empty">✅ No pending tasks — you're all caught up!</div>
     {% endif %}
 
+    <div class="cta-wrap">
+      <a href="https://unisync.example.com/dashboard" class="cta-btn">
+        Open UniSync →
+      </a>
+    </div>
+
   </div>
-  <div class="footer">UniSync · Rabindra University · Department of Management</div>
+
+  <div class="footer">
+    <strong>UniSync</strong> · Rabindra University, Bangladesh<br>
+    Department of Management · Academic Portal<br>
+    <span style="font-size:0.65rem;">You're receiving this because you have a UniSync account. Effective from 25 March 2026.</span>
+  </div>
+
 </div>
 </body>
 </html>

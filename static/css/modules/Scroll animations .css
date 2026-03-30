@@ -1,0 +1,103 @@
+/* ══════════════════════════════════════════════════════════════
+   UniSync — Smooth Scroll + Scroll-Triggered Animations
+   Works via IntersectionObserver (no JS framework needed).
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Smooth scroll everywhere ──────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar — warm tone */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(188,111,55,0.30);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(188,111,55,0.55); }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: rgba(188,111,55,0.30) transparent; }
+
+/* ── Scroll-reveal base state ──────────────────────────────── */
+/* Elements that will animate when scrolled into view */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity  0.55s cubic-bezier(0.34,1.56,0.64,1),
+    transform 0.55s cubic-bezier(0.34,1.56,0.64,1);
+  will-change: opacity, transform;
+}
+.scroll-reveal.scroll-from-left {
+  transform: translateX(-28px);
+}
+.scroll-reveal.scroll-from-right {
+  transform: translateX(28px);
+}
+.scroll-reveal.scroll-scale {
+  transform: scale(0.93);
+}
+
+/* Visible state — added by JS IntersectionObserver */
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+/* Stagger children */
+.scroll-stagger > *:nth-child(1)  { transition-delay: 0.04s; }
+.scroll-stagger > *:nth-child(2)  { transition-delay: 0.09s; }
+.scroll-stagger > *:nth-child(3)  { transition-delay: 0.14s; }
+.scroll-stagger > *:nth-child(4)  { transition-delay: 0.19s; }
+.scroll-stagger > *:nth-child(5)  { transition-delay: 0.24s; }
+.scroll-stagger > *:nth-child(6)  { transition-delay: 0.29s; }
+.scroll-stagger > *:nth-child(7)  { transition-delay: 0.34s; }
+.scroll-stagger > *:nth-child(8)  { transition-delay: 0.39s; }
+.scroll-stagger > *:nth-child(n+9){ transition-delay: 0.44s; }
+
+/* ── Page transition ────────────────────────────────────────── */
+/* Entire page fades/slides in on load */
+.page-wrapper {
+  animation: pageEnter 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card hover micro-lift (global) ────────────────────────── */
+.glass-card,
+.stat-card,
+.task-card,
+.course-card,
+.resource-card,
+.planner-card,
+.admin-card,
+.routine-card {
+  transition:
+    transform    0.25s cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow   0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* ── Section header animate-in ─────────────────────────────── */
+.section-header {
+  animation: fadeUp 0.4s var(--ease) both;
+}
+
+/* ── Mobile: disable heavy animations for performance ──────── */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .scroll-reveal.scroll-from-left,
+  .scroll-reveal.scroll-from-right,
+  .scroll-reveal.scroll-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .page-wrapper { animation: none; }
+  html { scroll-behavior: auto; }
+}

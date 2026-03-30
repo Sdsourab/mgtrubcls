@@ -215,3 +215,63 @@ ALTER TABLE public.routines
     CHECK (program IN ('BBA','MBA','ALL'));
 
 UPDATE public.routines SET program = 'ALL' WHERE program IS NULL;
+
+-- ============================================================
+-- sent_alerts TABLE  (Vercel Cron dedup — prevents double-sending)
+-- Run this once in Supabase SQL Editor
+-- ============================================================
+create table if not exists public.sent_alerts (
+    id         uuid primary key default gen_random_uuid(),
+    alert_key  text unique not null,   -- "YYYY-MM-DD_classid_HH:MM_userid"
+    user_id    uuid references public.profiles(id) on delete cascade,
+    sent_at    timestamptz default now()
+);
+
+-- Auto-delete old records after 7 days to keep table small
+create index if not exists idx_sent_alerts_key     on public.sent_alerts(alert_key);
+create index if not exists idx_sent_alerts_sent_at on public.sent_alerts(sent_at);
+
+-- Service role can manage (Cron jobs use service key)
+alter table public.sent_alerts enable row level security;
+
+drop policy if exists "Service role manages sent_alerts" on public.sent_alerts;
+create policy "Service role manages sent_alerts"
+    on public.sent_alerts for all
+    using (true);
+
+
+-- ============================================================
+-- push_subscriptions TABLE  (Web Push — browser notification)
+-- ============================================================
+create table if not exists public.push_subscriptions (
+    id                uuid primary key default gen_random_uuid(),
+    user_id           uuid references public.profiles(id) on delete cascade,
+    endpoint          text not null,
+    subscription_json text not null,   -- full JSON from browser PushSubscription
+    created_at        timestamptz default now(),
+    unique(user_id, endpoint)
+);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "Service role manages push_subscriptions"
+    on public.push_subscriptions for all using (true);
+
+create index if not exists idx_push_subs_user on public.push_subscriptions(user_id);
+
+-- ============================================================
+-- sent_push_alerts TABLE  (dedup — never double-send push)
+-- ============================================================
+create table if not exists public.sent_push_alerts (
+    id        uuid primary key default gen_random_uuid(),
+    alert_key text unique not null,
+    user_id   uuid references public.profiles(id) on delete cascade,
+    sent_at   timestamptz default now()
+);
+
+alter table public.sent_push_alerts enable row level security;
+
+create policy "Service role manages sent_push_alerts"
+    on public.sent_push_alerts for all using (true);
+
+create index if not exists idx_sent_push_key on public.sent_push_alerts(alert_key);

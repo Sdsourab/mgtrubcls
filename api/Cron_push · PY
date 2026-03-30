@@ -1,0 +1,237 @@
+"""
+api/cron_push.py
+════════════════
+Vercel Cron — runs every 5 minutes during class hours (BST 9 AM–5 PM, Sun–Thu).
+Schedule: "*/5 3-11 * * 0-4"   (UTC 3–11 = BST 9–17)
+
+For each 5-minute tick:
+  1. Find classes that start in exactly 30 minutes (±2.5 min window)
+  2. Find all students whose semester matches that class
+  3. Send a Web Push notification to every matching student
+     (works even when their browser is closed)
+
+Requires VAPID keys — generate once, add to Vercel env vars.
+"""
+
+import os, sys, json
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from datetime import datetime, timedelta, timezone
+
+BST = timezone(timedelta(hours=6))   # Bangladesh Standard Time
+
+
+def _fmt12h(t: str) -> str:
+    try:
+        h, m = map(int, t.split(':'))
+        return f"{h % 12 or 12}:{m:02d} {'AM' if h < 12 else 'PM'}"
+    except Exception:
+        return t
+
+
+def _send_push(subscription_info: dict, payload: dict, vapid_private: str, vapid_claims: dict) -> bool:
+    """Send a single Web Push notification using pywebpush."""
+    try:
+        from pywebpush import webpush, WebPushException
+        webpush(
+            subscription_info = subscription_info,
+            data              = json.dumps(payload),
+            vapid_private_key = vapid_private,
+            vapid_claims      = vapid_claims,
+        )
+        return True
+    except Exception as e:
+        print(f'[Push] send failed: {e}')
+        return False
+
+
+def handler(request, response):
+    results = {'sent': 0, 'skipped': 0, 'errors': []}
+
+    # ── VAPID keys from Vercel environment variables ──────────
+    vapid_private = os.environ.get('VAPID_PRIVATE_KEY', '')
+    vapid_public  = os.environ.get('VAPID_PUBLIC_KEY',  '')
+    mail_user     = os.environ.get('MAIL_USERNAME', 'noreply@example.com')
+
+    if not vapid_private or not vapid_public:
+        response.status_code = 200
+        response.body = json.dumps({'ok': False, 'reason': 'VAPID keys not configured'})
+        return response
+
+    vapid_claims = {'sub': f'mailto:{mail_user}'}
+
+    try:
+        from core.supabase_client import get_supabase_admin
+        from core.holidays import is_holiday
+    except Exception as e:
+        response.status_code = 500
+        response.body = json.dumps({'ok': False, 'error': str(e)})
+        return response
+
+    now_bst  = datetime.now(BST)
+    day_name = now_bst.strftime('%A')
+
+    if day_name not in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']:
+        response.status_code = 200
+        response.body = json.dumps({'ok': True, 'reason': 'weekend'})
+        return response
+
+    is_hol, _ = is_holiday(now_bst.date())
+    if is_hol:
+        response.status_code = 200
+        response.body = json.dumps({'ok': True, 'reason': 'holiday'})
+        return response
+
+    # Target: classes starting in ~30 minutes (±2.5 min window)
+    target     = now_bst + timedelta(minutes=30)
+    low_dt     = target - timedelta(minutes=2, seconds=30)
+    high_dt    = target + timedelta(minutes=2, seconds=30)
+    low_str    = low_dt.strftime('%H:%M')
+    high_str   = high_dt.strftime('%H:%M')
+
+    sb = get_supabase_admin()
+
+    # Find classes in window
+    try:
+        cls_rows = sb.table('routines').select('*') \
+            .eq('day', day_name) \
+            .gte('time_start', low_str) \
+            .lte('time_start', high_str) \
+            .execute()
+        classes = cls_rows.data or []
+    except Exception as e:
+        response.status_code = 200
+        response.body = json.dumps({'ok': False, 'error': str(e)})
+        return response
+
+    if not classes:
+        response.status_code = 200
+        response.body = json.dumps({'ok': True, 'reason': 'no classes in 30-min window'})
+        return response
+
+    # Enrich class names
+    for cls in classes:
+        try:
+            c = sb.table('mappings').select('full_name') \
+                .eq('code', cls.get('course_code', '')).execute()
+            cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
+        except Exception:
+            cls['course_name'] = cls.get('course_code', '')
+
+        try:
+            t = sb.table('mappings').select('full_name') \
+                .eq('code', cls.get('teacher_code', '')).execute()
+            cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
+        except Exception:
+            cls['teacher_name'] = cls.get('teacher_code', '')
+
+    # Get all push subscriptions with their user profiles
+    try:
+        subs_resp = sb.table('push_subscriptions').select('*, profiles(*)').execute()
+        subscriptions = subs_resp.data or []
+    except Exception:
+        # Fallback: get subscriptions without join
+        try:
+            subs_resp = sb.table('push_subscriptions').select('*').execute()
+            subscriptions = subs_resp.data or []
+        except Exception as e:
+            response.status_code = 200
+            response.body = json.dumps({'ok': False, 'error': f'push_subscriptions: {e}'})
+            return response
+
+    today_str = now_bst.strftime('%Y-%m-%d')
+
+    for cls in classes:
+        cls_program = cls.get('program', 'ALL')
+        cls_year    = cls.get('course_year', 0)
+        cls_sem     = cls.get('course_semester', 0)
+        start_12h   = _fmt12h(cls.get('time_start', ''))
+        end_12h     = _fmt12h(cls.get('time_end', ''))
+
+        # Dedup key
+        cls_key = f"push_{today_str}_{cls.get('id', '')}_{cls.get('time_start', '')}"
+
+        for sub_row in subscriptions:
+            # Get profile — either nested or from separate query
+            profile = sub_row.get('profiles') or {}
+            if not profile:
+                try:
+                    p = sb.table('profiles').select('*') \
+                        .eq('id', sub_row.get('user_id', '')).single().execute()
+                    profile = p.data or {}
+                except Exception:
+                    profile = {}
+
+            user_program = profile.get('program', 'BBA')
+            user_year    = profile.get('year', 0)
+            user_sem     = profile.get('semester', 0)
+            user_id      = sub_row.get('user_id', '')
+
+            # Match semester
+            if cls_program not in [user_program, 'ALL']:
+                results['skipped'] += 1
+                continue
+            if cls_year and cls_year != user_year:
+                results['skipped'] += 1
+                continue
+            if cls_sem and cls_sem != user_sem:
+                results['skipped'] += 1
+                continue
+
+            # Dedup — skip if already sent for this class+user today
+            alert_key = f"{cls_key}_{user_id}"
+            try:
+                already = sb.table('sent_push_alerts').select('id') \
+                    .eq('alert_key', alert_key).execute()
+                if already.data:
+                    results['skipped'] += 1
+                    continue
+            except Exception:
+                pass
+
+            # Build push payload
+            push_payload = {
+                'title': f'⏰ Class in 30 min — {cls.get("course_code", "")}',
+                'body':  (
+                    f'{cls["course_name"]}\n'
+                    f'🕐 {start_12h} – {end_12h}  |  Room {cls.get("room_no", "")}\n'
+                    f'👤 {cls["teacher_name"]}'
+                ),
+                'tag':   f'class-{cls.get("id", "")}',
+                'url':   '/academic/routine',
+            }
+
+            # Parse subscription JSON
+            try:
+                sub_info = json.loads(sub_row.get('subscription_json', '{}'))
+            except Exception:
+                sub_info = sub_row.get('subscription_json', {})
+
+            if not isinstance(sub_info, dict) or 'endpoint' not in sub_info:
+                results['skipped'] += 1
+                continue
+
+            ok = _send_push(sub_info, push_payload, vapid_private, vapid_claims)
+
+            if ok:
+                results['sent'] += 1
+                # Record sent
+                try:
+                    sb.table('sent_push_alerts').insert({
+                        'alert_key': alert_key,
+                        'user_id':   user_id,
+                        'sent_at':   now_bst.isoformat(),
+                    }).execute()
+                except Exception:
+                    pass
+            else:
+                results['errors'].append(f"sub_{sub_row.get('id', '')}")
+
+    response.status_code = 200
+    response.headers['Content-Type'] = 'application/json'
+    response.body = json.dumps({'ok': True, **results})
+    return response

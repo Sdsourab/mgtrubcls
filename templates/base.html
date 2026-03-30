@@ -13,10 +13,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/scroll-animations.css') }}">
   {% block extra_css %}{% endblock %}
 </head>
 
 <body>
+
+<!-- VAPID public key for Web Push (injected server-side) -->
+<script>
+  window.__VAPID_PUBLIC_KEY = '{{ config.VAPID_PUBLIC_KEY | default("") }}';
+</script>
 
 <!-- ═══════════════════════════════════════════════════════════
      ANIMATED BACKGROUND
@@ -342,6 +348,24 @@
 <script src="{{ url_for('static', filename='js/bg-animation.js') }}" defer></script>
 <!-- AI preloader: silently warms Transformers.js MiniLM model in background -->
 <script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/push-client.js') }}" defer></script>
+
+<!-- Scroll-reveal IntersectionObserver -->
+<script>
+(function(){
+  const els = document.querySelectorAll('.scroll-reveal');
+  if(!els.length) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        e.target.classList.add('is-visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.10, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(el => io.observe(el));
+})();
+</script>
 {% block extra_js %}{% endblock %}
 
 </body>

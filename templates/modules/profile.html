@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-wrapper">
 
-  <div class="page-header">
+  <div class="page-header scroll-reveal">
     <div>
       <h1 class="page-title">My Profile</h1>
       <p class="page-sub">Update your name, year &amp; semester — changes apply instantly</p>
@@ -15,7 +15,7 @@
   <!-- Profile Header Card -->
   <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;"
        class="anim-fade-up">
-    <div id="bigAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;flex-shrink:0;">?</div>
+    <div id="bigAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--golden));display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;flex-shrink:0;">?</div>
     <div style="flex:1;min-width:200px;">
       <div id="profileDisplayName" style="font-size:1.3rem;font-weight:700;margin-bottom:4px;">—</div>
       <div id="profileDisplayEmail" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;">—</div>
@@ -44,6 +44,8 @@
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">🎓 Academic Info</h3>
       <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">
         Changing your year/semester instantly updates your class routine and all features.
+        <br><span style="color:var(--terra);font-weight:600;">💡</span>
+        Registration এর সময় দেওয়া Program/Year/Semester স্বয়ংক্রিয়ভাবে সেভ আছে।
       </p>
 
       <div id="acadMsg" class="hidden" style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
@@ -74,6 +76,21 @@
     </div>
 
   </div>
+  <!-- Notification Info Card -->
+  <div style="background:rgba(188,111,55,0.06);border:1px solid rgba(188,111,55,0.18);border-radius:var(--radius-lg);
+              padding:20px 22px;margin-top:16px;max-width:760px;" class="scroll-reveal">
+    <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">
+      📧 Email Notifications
+    </h3>
+    <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.65;">
+      প্রতিদিন <strong style="color:var(--terra);">সন্ধ্যা ৭টায়</strong> তোমার রেজিস্টার্ড ইমেইলে পাঠানো হবে:<br>
+      • <strong>আগামীকালের ক্লাস সিডিউল</strong> (12-ঘন্টা ফরম্যাটে সময় সহ)<br>
+      • <strong>পেন্ডিং টাস্কের তালিকা</strong><br><br>
+      ক্লাস শুরুর <strong style="color:var(--terra);">৩০ মিনিট পরে</strong> যদি তুমি এখনো join না করো, তাহলে একটি class alert email যাবে।<br>
+      <em style="font-size:0.75rem;">ব্রাউজার বন্ধ থাকলেও এই ইমেইল যাবে।</em>
+    </p>
+  </div>
+
 </div>
 {% endblock %}
 
@@ -174,11 +191,11 @@ async function saveAcademic() {
 
 function showMsg(el, msg, type) {
   el.textContent = msg;
-  el.style.background = type === 'success' ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)';
-  el.style.color      = type === 'success' ? 'var(--green)' : 'var(--red)';
-  el.style.border     = `1px solid ${type === 'success' ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'}`;
+  el.style.background = type === 'success' ? 'var(--success-bg)' : 'var(--danger-bg)';
+  el.style.color      = type === 'success' ? 'var(--success)' : 'var(--danger)';
+  el.style.border     = `1px solid ${type === 'success' ? 'rgba(74,140,74,0.28)' : 'rgba(176,58,42,0.28)'}`;
   el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 5000);
+  setTimeout(() => el.classList.add('hidden'), 5500);
 }
 </script>
 {% endblock %}

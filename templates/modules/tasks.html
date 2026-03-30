@@ -25,7 +25,7 @@
     </div>
 
     <!-- Tasks Board -->
-    <div class="tasks-board" id="tasksBoard">
+    <div class="tasks-board scroll-stagger" id="tasksBoard">
         <div class="task-skeleton"><div class="skeleton-block"></div><div class="skeleton-block"></div></div>
     </div>
 </div>
@@ -47,7 +47,25 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Deadline</label>
-                    <input type="datetime-local" id="t_deadline">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <input type="date" id="t_deadline_date" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;color:var(--text-primary);font-size:0.875rem;font-family:var(--font-body);">
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:5px;">
+                      <select id="t_deadline_hour" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 8px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                        <option value="">-- Hour --</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                      </select>
+                      <select id="t_deadline_min" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 8px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                        <option value="00">:00</option><option value="15">:15</option>
+                        <option value="30">:30</option><option value="45">:45</option>
+                      </select>
+                      <select id="t_deadline_period" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 8px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                        <option value="AM">AM</option><option value="PM">PM</option>
+                      </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Priority</label>
@@ -95,7 +113,21 @@ function renderTasks(tasks) {
     }
     board.innerHTML = tasks.map(t => {
         const dl = t.deadline ? new Date(t.deadline) : null;
-        const dlStr = dl ? dl.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : 'No deadline';
+        let dlStr = 'No deadline';
+        if (dl) {
+          const dateStr = dl.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+          // Only show time if time is not midnight
+          const hasTime = dl.getHours() !== 0 || dl.getMinutes() !== 0;
+          if (hasTime) {
+            const h = dl.getHours(), m = dl.getMinutes();
+            const period = h < 12 ? 'AM' : 'PM';
+            const h12 = h % 12 || 12;
+            const timeStr = `${h12}:${String(m).padStart(2,'0')} ${period}`;
+            dlStr = `${dateStr} · ${timeStr}`;
+          } else {
+            dlStr = dateStr;
+          }
+        }
         const isUrgent = t.urgent_flag;
         const isDone = t.status === 'done';
         const prio = t.priority || 'medium';
@@ -130,6 +162,22 @@ function filterTasks(filter, btn) {
     else renderTasks(allTasks.filter(t => t.status === filter));
 }
 
+
+function buildDeadline() {
+  const dateEl   = document.getElementById('t_deadline_date');
+  const hourEl   = document.getElementById('t_deadline_hour');
+  const minEl    = document.getElementById('t_deadline_min');
+  const periodEl = document.getElementById('t_deadline_period');
+  if (!dateEl || !dateEl.value) return null;
+  if (!hourEl.value) return dateEl.value + 'T00:00:00';
+  let h = parseInt(hourEl.value, 10);
+  const period = periodEl.value;
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  const m = minEl.value || '00';
+  return `${dateEl.value}T${String(h).padStart(2,'0')}:${m}:00`;
+}
+
 async function submitTask(e) {
     e.preventDefault();
     const user = UniSync.getUser();
@@ -137,7 +185,7 @@ async function submitTask(e) {
         user_id: user.id,
         title: document.getElementById('t_title').value,
         description: document.getElementById('t_desc').value,
-        deadline: document.getElementById('t_deadline').value || null,
+        deadline: buildDeadline(),
         priority: document.getElementById('t_priority').value,
         course_code: document.getElementById('t_course').value,
     };

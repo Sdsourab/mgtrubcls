@@ -5,6 +5,14 @@
 
 const LiveEngine = (() => {
 
+  function _t12h(t24) {
+    if (!t24) return '';
+    const [h, m] = String(t24).split(':').map(Number);
+    if (isNaN(h)) return t24;
+    const period = h < 12 ? 'AM' : 'PM';
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${period}`;
+  }
+
   const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
   function getNow() {
@@ -106,6 +114,12 @@ const LiveEngine = (() => {
             <circle cx="12" cy="7" r="4"/>
           </svg>
           ${cls.teacher_name || cls.teacher_code}
+        </div>
+        <div class="live-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          ${_t12h(cls.time_start)} – ${_t12h(cls.time_end)}
         </div>
       </div>
       <div class="live-timer-wrap">

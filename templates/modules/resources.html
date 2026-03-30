@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-wrapper">
-    <div class="page-header">
+    <div class="page-header scroll-reveal">
         <div>
             <h1 class="page-title">Study Resources</h1>
             <p class="page-sub">Notes, files and study materials</p>
@@ -19,7 +19,7 @@
         <input type="text" id="resourceSearch" placeholder="Search by subject..." class="filter-search" oninput="loadResources()">
     </div>
 
-    <div class="resources-grid" id="resourcesGrid">
+    <div class="resources-grid scroll-stagger" id="resourcesGrid">
         <div class="resource-skeleton"></div>
         <div class="resource-skeleton"></div>
     </div>
@@ -97,19 +97,29 @@ async function loadResources() {
                 <div class="resource-info">
                     <div class="resource-title">${r.title || 'Untitled'}</div>
                     <div class="resource-subject">${r.subject || r.dept}</div>
-                    <div class="resource-uploader">Shared by ${r.uploaded_by || 'Anonymous'}</div>
+                    ${r.created_at ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
+                    <div class="resource-uploader" style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11" style="color:var(--terra);flex-shrink:0;">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <span style="font-size:0.70rem;color:var(--text-muted);">
+                        ${r.uploaded_by && r.uploaded_by !== 'Anonymous'
+                          ? `<strong style="color:var(--text-secondary);font-weight:600;">${r.uploaded_by}</strong>`
+                          : 'Anonymous'}
+                      </span>
+                      ${isOwner ? '<span style="font-size:0.58rem;background:rgba(188,111,55,0.10);color:var(--terra);border:1px solid rgba(188,111,55,0.22);border-radius:10px;padding:1px 6px;font-weight:700;letter-spacing:0.05em;">You</span>' : ''}
+                    </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                     ${r.file_url ? `<a href="${r.file_url}" target="_blank" class="btn-sm resource-download">Open →</a>` : ''}
                     ${isOwner ? `
-                    <button class="btn-sm" onclick="deleteResource('${r.id}')"
+                    <button class="btn-sm btn-danger" onclick="deleteResource('${r.id}')"
                         title="Delete this resource"
-                        style="background:rgba(248,113,113,0.1);color:var(--red);border:1px solid rgba(248,113,113,0.3);
-                               padding:5px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:0.78rem;
-                               font-weight:600;transition:all 0.18s;"
-                        onmouseover="this.style.background='rgba(248,113,113,0.22)'"
-                        onmouseout="this.style.background='rgba(248,113,113,0.1)'">
-                        🗑 Delete
+                        style="display:flex;align-items:center;gap:4px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      </svg>
+                      Delete
                     </button>` : ''}
                 </div>
             </div>`;
