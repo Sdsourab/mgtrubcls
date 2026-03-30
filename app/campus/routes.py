@@ -51,4 +51,4 @@ def delete_resource(resource_id):
         sb.table('resources').delete().eq('id', resource_id).execute()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500email
+        return jsonify({'success': False, 'error': str(e)}), 500
