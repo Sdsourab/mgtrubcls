@@ -78,11 +78,39 @@
         <div class="form-row">
           <div class="form-group">
             <label>Start Time</label>
-            <input type="time" id="cc_start">
+            <div style="display:flex;gap:4px;">
+              <select id="cc_start_h" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="">Hr</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+              </select>
+              <select id="cc_start_m" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="00">:00</option><option value="30">:30</option>
+              </select>
+              <select id="cc_start_p" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="AM">AM</option><option value="PM" selected>PM</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label>End Time</label>
-            <input type="time" id="cc_end">
+            <div style="display:flex;gap:4px;">
+              <select id="cc_end_h" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="">Hr</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+              </select>
+              <select id="cc_end_m" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="00">:00</option><option value="30">:30</option>
+              </select>
+              <select id="cc_end_p" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+                <option value="AM">AM</option><option value="PM" selected>PM</option>
+              </select>
+            </div>
           </div>
         </div>
         <button id="conflictBtn" class="btn-primary btn-full" onclick="checkConflict()">
@@ -121,11 +149,39 @@
       <div class="form-row">
         <div class="form-group">
           <label>Start Time *</label>
-          <input type="time" id="p_start" required>
+          <div style="display:flex;gap:4px;">
+            <select id="p_start_h" required style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="">Hr</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+            <select id="p_start_m" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="00">:00</option><option value="30">:30</option>
+            </select>
+            <select id="p_start_p" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="AM">AM</option><option value="PM" selected>PM</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
           <label>End Time *</label>
-          <input type="time" id="p_end" required>
+          <div style="display:flex;gap:4px;">
+            <select id="p_end_h" required style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="">Hr</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+            <select id="p_end_m" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="00">:00</option><option value="30">:30</option>
+            </select>
+            <select id="p_end_p" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 6px;color:var(--text-primary);font-size:0.84rem;font-family:var(--font-body);">
+              <option value="AM">AM</option><option value="PM" selected>PM</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -244,5 +300,32 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// 12h input → 24h HH:MM conversion helpers
+function getTime12h(hId, mId, pId) {
+  const h = parseInt(document.getElementById(hId)?.value || '0');
+  const m = document.getElementById(mId)?.value || '00';
+  const p = document.getElementById(pId)?.value || 'AM';
+  if (!h) return '';
+  let h24 = h;
+  if (p === 'PM' && h !== 12) h24 += 12;
+  if (p === 'AM' && h === 12) h24 = 0;
+  return `${String(h24).padStart(2,'0')}:${m}`;
+}
+// Override checkConflict to use 12h inputs
+function getCC() {
+  return {
+    start: getTime12h('cc_start_h','cc_start_m','cc_start_p'),
+    end:   getTime12h('cc_end_h',  'cc_end_m',  'cc_end_p'),
+  };
+}
+// Override submitPlan to use 12h inputs
+function getPlanTimes() {
+  return {
+    start: getTime12h('p_start_h','p_start_m','p_start_p'),
+    end:   getTime12h('p_end_h',  'p_end_m',  'p_end_p'),
+  };
+}
+</script>
 <script src="/static/js/planner.js"></script>
 {% endblock %}

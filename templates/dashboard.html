@@ -121,7 +121,13 @@
 
 {% block extra_js %}
 <script>
-let _user = null;
+  function _t12h(t) {
+    if (!t) return '';
+    const p = String(t).split(':').map(Number);
+    if (p.length < 2 || isNaN(p[0])) return t;
+    return `${p[0] % 12 || 12}:${String(p[1]).padStart(2,'0')} ${p[0] < 12 ? 'AM' : 'PM'}`;
+  }
+  let _user = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   UniSync.requireAuth();
@@ -266,7 +272,7 @@ async function runDurationSearch() {
         <div class="ts-result-name">${c.course_name || c.course_code}</div>
         <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name || c.teacher_code} · ${c.day}</div>
       </div>
-      <div class="ts-result-time">${c.time_slot}</div>
+      <div class="ts-result-time">${_t12h(c.time_start)} – ${_t12h(c.time_end)}</div>
     </div>`).join('');
 
     if (data.ml?.suggestions?.length) {

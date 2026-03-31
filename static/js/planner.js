@@ -11,6 +11,17 @@
 
 'use strict';
 
+/* ── 12-hour time utility ── */
+function to12h(t) {
+  if (!t) return '';
+  const [h, m] = String(t).split(':').map(Number);
+  if (isNaN(h)) return t;
+  const period = h < 12 ? 'AM' : 'PM';
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${period}`;
+}
+function fmtRange(s, e) { return `${to12h(s)} – ${to12h(e)}`; }
+
+
 let allPlans = [];
 
 /* ================================================================
@@ -174,7 +185,7 @@ async function loadSemesterCourses() {
           <div class="sem-day-header">${day}</div>
           ${classes.map(cls => `
             <div class="sem-class-item">
-              <div class="sem-class-time">${cls.time_start}–${cls.time_end}</div>
+              <div class="sem-class-time">${to12h(cls.time_start)} – ${to12h(cls.time_end)}</div>
               <div class="sem-class-name">${cls.course_name || cls.course_code}</div>
               <div class="sem-class-meta">${cls.course_code} · Rm ${cls.room_no}</div>
               <div class="sem-class-teacher">${cls.teacher_name || cls.teacher_code || ''}</div>
@@ -195,9 +206,10 @@ async function loadSemesterCourses() {
    ================================================================ */
 
 async function checkConflict() {
-  const date  = (document.getElementById('cc_date')  || {}).value || '';
-  const start = (document.getElementById('cc_start') || {}).value || '';
-  const end   = (document.getElementById('cc_end')   || {}).value || '';
+  const date  = (document.getElementById('cc_date') || {}).value || '';
+  const _cc   = (typeof getCC === 'function') ? getCC() : {start:'', end:''};
+  const start = _cc.start;
+  const end   = _cc.end;
   const user  = getUser();
 
   if (!date || !start || !end) {
@@ -268,8 +280,8 @@ async function checkConflict() {
         ${semesterClasses.map(c => `
           <div style="display:flex;align-items:center;gap:10px;padding:6px 0;
                       border-bottom:1px solid var(--border);font-size:0.82rem;">
-            <span style="color:var(--accent-light);font-weight:700;min-width:42px;">
-              ${c.time_start}
+            <span style="color:var(--accent-light);font-weight:700;min-width:90px;">
+              ${to12h(c.time_start)}
             </span>
             <span style="flex:1;">${esc(c.course_name || c.course_code)}</span>
             <span style="color:var(--text-muted);font-size:0.75rem;">Rm ${c.room_no}</span>
@@ -292,7 +304,7 @@ async function checkConflict() {
                   border:1px solid rgba(52,211,153,0.25);border-radius:var(--radius-sm);">
         <div style="color:var(--green);font-weight:700;margin-bottom:4px;">✅ No Conflicts!</div>
         <div style="font-size:0.84rem;color:var(--text-muted);">
-          Your plan ${start}–${end} on <strong>${dayLabel}</strong>
+          Your plan ${to12h(start)} – ${to12h(end)} on <strong>${dayLabel}</strong>
           does not overlap with any of your semester's classes.
         </div>
       </div>`;
@@ -304,7 +316,7 @@ async function checkConflict() {
           <div class="conflict-item">
             📚 <strong>${esc(c.course_code)}</strong> — ${esc(c.course_name || c.course_code)}
             <span style="color:var(--text-muted);font-size:0.8rem;">
-              &nbsp;|&nbsp; ${c.time_start}–${c.time_end}
+              &nbsp;|&nbsp; ${to12h(c.time_start)} – ${to12h(c.time_end)}
               &nbsp;|&nbsp; Room ${c.room_no}
               ${c.teacher_name ? `&nbsp;|&nbsp; ${esc(c.teacher_name)}` : ''}
             </span>
@@ -340,7 +352,7 @@ async function checkConflict() {
 
     const conflictSummary = conflicts.length
       ? conflicts.map(c =>
-          `${c.course_code} (${c.course_name || c.course_code}) ${c.time_start}–${c.time_end}`
+          `${c.course_code} (${c.course_name || c.course_code}) ${to12h(c.time_start)}–${to12h(c.time_end)}`
         ).join('; ')
       : 'None';
 
@@ -509,7 +521,7 @@ function renderPlans() {
     <div class="plan-info" style="flex:1;min-width:0;">
       <div class="plan-title">${esc(p.title)}</div>
       <div class="plan-meta">
-        ${p.date} · ${p.start_time}–${p.end_time}
+        ${p.date} · ${to12h(p.start_time)} – ${to12h(p.end_time)}
         · <span style="text-transform:capitalize">${p.type}</span>
       </div>
       ${p.note ? `<div class="plan-meta" style="font-style:italic;">${esc(p.note)}</div>` : ''}
@@ -528,8 +540,8 @@ async function submitPlan(e) {
     title:      document.getElementById('p_title').value,
     type:       document.getElementById('p_type').value,
     date:       document.getElementById('p_date').value,
-    start_time: document.getElementById('p_start').value,
-    end_time:   document.getElementById('p_end').value,
+    start_time: (typeof getPlanTimes === 'function' ? getPlanTimes().start : document.getElementById('p_start')?.value) || '',
+    end_time:   (typeof getPlanTimes === 'function' ? getPlanTimes().end   : document.getElementById('p_end')?.value)   || '',
     note:       (document.getElementById('p_note') || {}).value || '',
   };
   try {
@@ -605,7 +617,7 @@ async function runDurationSearch() {
         <div class="ts-result-name">${esc(c.course_name || c.course_code)}</div>
         <div class="ts-result-meta">Room ${c.room_no} · ${esc(c.teacher_name || c.teacher_code)} · ${c.day}</div>
       </div>
-      <div class="ts-result-time">${c.time_slot}</div>
+      <div class="ts-result-time">${to12h(c.time_start)}–${to12h(c.time_end)}</div>
     </div>`).join('');
 
     if (data.ml?.suggestions?.length) {
