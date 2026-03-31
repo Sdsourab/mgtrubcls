@@ -1,25 +1,29 @@
 """
-core/mailer.py — UniSync Email Sender
-Vercel Serverless compatible: synchronous, no threading.
+core/mailer.py — UniSync Email Sender (Resend API)
 """
+import resend
+import os
 from flask import render_template
-from flask_mail import Message
 
 
-def _mail():
-    from app import mail
-    return mail
+def _get_resend_client():
+    resend.api_key = os.environ.get("RESEND_API_KEY", "")
 
 
 def _send(subject: str, to: str, template: str, **ctx) -> bool:
-    """Core send — renders template and sends via Flask-Mail."""
     try:
+        _get_resend_client()
         html = render_template(template, **ctx)
-        msg  = Message(subject=subject, recipients=[to], html=html)
-        _mail().send(msg)
+        params = {
+            "from": os.environ.get("MAIL_DEFAULT_SENDER", "UniSync <onboarding@resend.dev>"),
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        }
+        resend.Emails.send(params)
         return True
     except Exception as e:
-        _log(f'send failed → {to} | {template}', e)
+        print(f"[Mailer] send failed → {to} | {e}")
         return False
 
 
@@ -53,11 +57,3 @@ def send_class_alert(to_email: str, user_name: str, class_info: dict, **_):
         user_name  = user_name,
         class_info = class_info,
     )
-
-
-def _log(where: str, err: Exception):
-    try:
-        from flask import current_app
-        current_app.logger.error(f'[Mailer] {where}: {err}')
-    except Exception:
-        print(f'[Mailer] {where}: {err}')
