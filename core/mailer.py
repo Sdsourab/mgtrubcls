@@ -1,184 +1,163 @@
 """
-core/mailer.py — UniSync Email Sender
-══════════════════════════════════════
-Brevo SMTP দিয়ে email পাঠানো হয়।
-Python built-in smtplib ব্যবহার করা হয়েছে — কোনো extra package লাগবে না।
-
-সম্পূর্ণ synchronous, Vercel Serverless compatible।
+core/mailer.py — UniSync Email via Brevo SMTP
+Python smtplib — no Flask-Mail needed.
 """
-
 import smtplib
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text      import MIMEText
 from email.utils          import formataddr
 
-
-# ── Brevo SMTP Config ──────────────────────────────────────────
-SMTP_HOST  = 'smtp-relay.brevo.com'
-SMTP_PORT  = 587
+SMTP_HOST = 'smtp-relay.brevo.com'
+SMTP_PORT = 587
 
 
-def _get_config():
-    """Get Brevo credentials from Flask config or environment."""
+def _creds():
+    """Read Brevo credentials — from Flask config or env directly."""
     try:
         from flask import current_app
-        cfg = current_app.config
-        return {
-            'login':      cfg.get('BREVO_SMTP_LOGIN',  os.environ.get('BREVO_SMTP_LOGIN', '')),
-            'key':        cfg.get('BREVO_SMTP_KEY',    os.environ.get('BREVO_SMTP_KEY',   '')),
-            'from_name':  cfg.get('MAIL_FROM_NAME',    os.environ.get('MAIL_FROM_NAME',   'UniSync')),
-            'from_email': cfg.get('MAIL_FROM_EMAIL',   os.environ.get('MAIL_FROM_EMAIL',  '')),
-        }
+        c = current_app.config
+        return (
+            c.get('BREVO_SMTP_LOGIN',  os.environ.get('BREVO_SMTP_LOGIN',  '')).strip(),
+            c.get('BREVO_SMTP_KEY',    os.environ.get('BREVO_SMTP_KEY',    '')).strip(),
+            c.get('MAIL_FROM_NAME',    os.environ.get('MAIL_FROM_NAME',    'UniSync')),
+            c.get('MAIL_FROM_EMAIL',   os.environ.get('MAIL_FROM_EMAIL',   '')).strip(),
+        )
     except RuntimeError:
-        # Outside app context — read from environment directly
-        return {
-            'login':      os.environ.get('BREVO_SMTP_LOGIN',  ''),
-            'key':        os.environ.get('BREVO_SMTP_KEY',    ''),
-            'from_name':  os.environ.get('MAIL_FROM_NAME',    'UniSync'),
-            'from_email': os.environ.get('MAIL_FROM_EMAIL',   ''),
-        }
+        return (
+            os.environ.get('BREVO_SMTP_LOGIN',  '').strip(),
+            os.environ.get('BREVO_SMTP_KEY',    '').strip(),
+            os.environ.get('MAIL_FROM_NAME',    'UniSync'),
+            os.environ.get('MAIL_FROM_EMAIL',   '').strip(),
+        )
 
 
-def _render(template: str, **ctx) -> str:
-    """Render a Jinja2 HTML template."""
-    from flask import render_template
-    return render_template(template, **ctx)
-
-
-def _send_smtp(to_email: str, subject: str, html_body: str) -> tuple[bool, str]:
+def send_raw(to_email: str, subject: str, html_body: str) -> dict:
     """
-    Core SMTP send function using Brevo.
-    Returns (success: bool, error_message: str).
+    Send email via Brevo SMTP.
+    Returns dict: {ok, error, detail}
+    'error' is always the full real error — never hidden.
     """
-    cfg = _get_config()
+    login, key, from_name, from_email = _creds()
+    from_email = from_email or login
 
-    login      = cfg['login'].strip()
-    key        = cfg['key'].strip()
-    from_name  = cfg['from_name']
-    from_email = cfg['from_email'].strip() or login
-
-    # ── Validation ────────────────────────────────────────────
+    # ── Config validation ────────────────────────────────────
     if not login:
-        return False, 'BREVO_SMTP_LOGIN not set in environment variables'
+        return {'ok': False, 'error': 'BREVO_SMTP_LOGIN is empty',
+                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_LOGIN এ Brevo login email দিন'}
     if not key:
-        return False, 'BREVO_SMTP_KEY not set in environment variables'
+        return {'ok': False, 'error': 'BREVO_SMTP_KEY is empty',
+                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_KEY এ Brevo SMTP password দিন'}
     if not to_email:
-        return False, 'Recipient email is empty'
+        return {'ok': False, 'error': 'to_email is empty'}
 
-    # ── Build email ───────────────────────────────────────────
+    # ── Build message ────────────────────────────────────────
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From']    = formataddr((from_name, from_email))
     msg['To']      = to_email
-    msg['X-Mailer'] = 'UniSync/1.0'
-
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-    # ── Send via Brevo SMTP ───────────────────────────────────
+    # ── SMTP send ────────────────────────────────────────────
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(login, key)
-            server.sendmail(from_email, [to_email], msg.as_string())
-        return True, ''
-    except smtplib.SMTPAuthenticationError:
-        return False, 'Authentication failed — BREVO_SMTP_KEY ভুল আছে। Brevo dashboard থেকে SMTP password copy করুন।'
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=25) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.ehlo()
+            srv.login(login, key)
+            srv.sendmail(from_email, [to_email], msg.as_string())
+        return {'ok': True, 'error': None}
+
+    except smtplib.SMTPAuthenticationError as e:
+        return {'ok': False,
+                'error': f'Authentication failed (535): {e}',
+                'fix': 'Brevo dashboard → SMTP & API → SMTP tab → Password এ নতুন key copy করুন। Login হলো আপনার Brevo account email।'}
+    except smtplib.SMTPRecipientsRefused as e:
+        return {'ok': False, 'error': f'Recipient refused: {e}'}
+    except smtplib.SMTPSenderRefused as e:
+        return {'ok': False,
+                'error': f'Sender refused: {e}',
+                'fix': 'MAIL_FROM_EMAIL টা Brevo তে verified হতে হবে। Brevo → Senders & Domains এ check করুন।'}
     except smtplib.SMTPConnectError as e:
-        return False, f'Cannot connect to Brevo SMTP: {e}'
+        return {'ok': False, 'error': f'Cannot connect to smtp-relay.brevo.com:587 — {e}'}
     except smtplib.SMTPException as e:
-        return False, f'SMTP error: {e}'
+        return {'ok': False, 'error': f'SMTP error: {e}'}
     except OSError as e:
-        return False, f'Network error: {e}'
+        return {'ok': False, 'error': f'Network/OS error: {e}',
+                'fix': 'Vercel outbound SMTP blocked হতে পারে। Port 587 allow করতে Vercel support contact করুন।'}
     except Exception as e:
-        return False, f'Unexpected error: {e}'
+        return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+def _render_html(template: str, **ctx) -> str:
+    from flask import render_template
+    return render_template(template, **ctx)
 
 
 def _send(subject: str, to: str, template: str, **ctx) -> bool:
-    """Render template and send email. Returns True on success."""
     try:
-        html = _render(template, **ctx)
+        html = _render_html(template, **ctx)
     except Exception as e:
-        _log(f'Template render failed [{template}]', e)
+        _log(f'Template error [{template}]: {e}')
         return False
+    result = send_raw(to_email=to, subject=subject, html_body=html)
+    if not result['ok']:
+        _log(f'Send failed → {to}: {result.get("error")}')
+    return result['ok']
 
-    ok, err = _send_smtp(to_email=to, subject=subject, html_body=html)
-    if not ok:
-        _log(f'Send failed → {to}', Exception(err))
-    return ok
 
-
-def _log(where: str, err: Exception):
+def _log(msg: str):
     try:
         from flask import current_app
-        current_app.logger.error(f'[Mailer] {where}: {err}')
+        current_app.logger.error(f'[Mailer] {msg}')
     except Exception:
-        print(f'[Mailer] {where}: {err}')
+        print(f'[Mailer] {msg}')
 
 
-# ══════════════════════════════════════════════════════════════
-# Public API
-# ══════════════════════════════════════════════════════════════
+def test_connection() -> dict:
+    """
+    Test Brevo SMTP connection without sending an email.
+    Returns {ok, message, login, fix?}
+    """
+    login, key, _, _ = _creds()
+
+    if not login:
+        return {'ok': False, 'message': 'BREVO_SMTP_LOGIN not set',
+                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_LOGIN'}
+    if not key:
+        return {'ok': False, 'message': 'BREVO_SMTP_KEY not set',
+                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_KEY'}
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.ehlo()
+            srv.login(login, key)
+        return {'ok': True, 'message': f'✅ Brevo SMTP connected. Login: {login}'}
+    except smtplib.SMTPAuthenticationError as e:
+        return {'ok': False,
+                'message': f'Authentication failed: {e}',
+                'fix': 'BREVO_SMTP_KEY ভুল। Brevo → SMTP & API → SMTP → Password copy করুন।'}
+    except Exception as e:
+        return {'ok': False, 'message': str(e)}
+
+
+# ── Public send functions ────────────────────────────────────
 
 def send_welcome(to_email: str, user_name: str, **_) -> bool:
-    """Registration এর পরপরই welcome email পাঠায়।"""
-    return _send(
-        subject   = '🎓 Welcome to UniSync — Rabindra University',
-        to        = to_email,
-        template  = 'emails/welcome.html',
-        user_name = user_name,
-    )
+    return _send('🎓 Welcome to UniSync — Rabindra University',
+                 to_email, 'emails/welcome.html', user_name=user_name)
 
 
 def send_daily_summary(to_email: str, user_name: str,
                        classes: list, tasks: list, date_str: str, **_) -> bool:
-    """প্রতিদিন রাত ৭টায় আগামীকালের class + pending tasks।"""
-    return _send(
-        subject   = f'📚 UniSync — Tomorrow\'s Schedule ({date_str})',
-        to        = to_email,
-        template  = 'emails/daily_summary.html',
-        user_name = user_name,
-        classes   = classes,
-        tasks     = tasks,
-        date_str  = date_str,
-    )
+    return _send(f"📚 UniSync — Tomorrow's Schedule ({date_str})",
+                 to_email, 'emails/daily_summary.html',
+                 user_name=user_name, classes=classes,
+                 tasks=tasks, date_str=date_str)
 
 
 def send_class_alert(to_email: str, user_name: str, class_info: dict, **_) -> bool:
-    """Class শুরুর alert email।"""
-    return _send(
-        subject    = f'⏰ Class Alert: {class_info.get("course_code", "")} — UniSync',
-        to         = to_email,
-        template   = 'emails/class_alert.html',
-        user_name  = user_name,
-        class_info = class_info,
-    )
-
-
-def test_connection() -> tuple[bool, str]:
-    """
-    Email config ঠিক আছে কিনা check করে — actual email পাঠায় না।
-    Returns (ok: bool, message: str)
-    """
-    cfg   = _get_config()
-    login = cfg['login'].strip()
-    key   = cfg['key'].strip()
-
-    if not login:
-        return False, 'BREVO_SMTP_LOGIN not configured'
-    if not key:
-        return False, 'BREVO_SMTP_KEY not configured'
-
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(login, key)
-        return True, f'Connected to Brevo SMTP successfully. Login: {login}'
-    except smtplib.SMTPAuthenticationError:
-        return False, 'Authentication failed — BREVO_SMTP_KEY ভুল। Brevo dashboard → SMTP & API → SMTP → Password দেখুন।'
-    except Exception as e:
-        return False, str(e)
+    return _send(f"⏰ Class Alert: {class_info.get('course_code','')} — UniSync",
+                 to_email, 'emails/class_alert.html',
+                 user_name=user_name, class_info=class_info)
