@@ -1,12 +1,10 @@
 """
-app/__init__.py
+app/__init__.py — UniSync Flask Application Factory
+Email: Brevo SMTP (smtplib) — no Flask-Mail
 """
 from flask import Flask, render_template, redirect, url_for, request, jsonify
-from flask_mail import Mail
 from config import config
 import os
-
-mail = Mail()
 
 
 def _fmt12h(t: str) -> str:
@@ -17,18 +15,17 @@ def _fmt12h(t: str) -> str:
         return t
 
 
-def create_app(config_name=None):
+def create_app(config_name: str = None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
 
     _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    app = Flask(
+    app   = Flask(
         __name__,
         template_folder=os.path.join(_root, 'templates'),
         static_folder  =os.path.join(_root, 'static'),
     )
     app.config.from_object(config[config_name])
-    mail.init_app(app)
 
     # ── Blueprints ──────────────────────────────────────────
     from app.auth.routes         import auth_bp
@@ -47,7 +44,7 @@ def create_app(config_name=None):
     app.register_blueprint(guest_bp,        url_prefix='/guest')
     app.register_blueprint(planner_bp,      url_prefix='/planner')
 
-    # ── Core Routes ─────────────────────────────────────────
+    # ── Core routes ─────────────────────────────────────────
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
@@ -57,90 +54,78 @@ def create_app(config_name=None):
         return render_template('dashboard.html')
 
     # ════════════════════════════════════════════════════════
-    # TEST EMAIL ENDPOINT
-    # ব্যবহার: browser এ যান →
-    #   https://আপনার-সাইট.vercel.app/api/test-email?to=আপনার@gmail.com
+    # EMAIL TEST ENDPOINT
+    # ─────────────────────────────────────────────────────────
+    # Step 1 — Connection test (credentials ঠিক আছে?):
+    #   GET /api/test-email?check=1
     #
-    # ✅ কাজ করলে: {"ok": true, "sent_to": "..."}
-    # ❌ না হলে:   {"ok": false, "error": "...", "fix": "..."}
+    # Step 2 — Actual send test (real email পাঠাবে):
+    #   GET /api/test-email?to=your@email.com
     # ════════════════════════════════════════════════════════
     @app.route('/api/test-email')
     def test_email():
+        from core.mailer import test_connection, send_welcome
+
+        # ── Step 1: Just check connection ─────────────────
+        if request.args.get('check'):
+            ok, msg = test_connection()
+            return jsonify({
+                'ok':      ok,
+                'message': msg,
+                'config': {
+                    'BREVO_SMTP_LOGIN': bool(app.config.get('BREVO_SMTP_LOGIN')),
+                    'BREVO_SMTP_KEY':   bool(app.config.get('BREVO_SMTP_KEY')),
+                    'MAIL_FROM_EMAIL':  app.config.get('MAIL_FROM_EMAIL', ''),
+                    'SMTP_HOST':        'smtp-relay.brevo.com:587',
+                },
+            }), (200 if ok else 500)
+
+        # ── Step 2: Send a real test email ────────────────
         to = request.args.get('to', '').strip()
         if not to:
             return jsonify({
-                'ok': False,
-                'error': '?to= parameter দিন',
-                'example': '/api/test-email?to=your@gmail.com',
+                'ok':    False,
+                'error': 'Parameter required',
+                'usage': {
+                    'connection_test': '/api/test-email?check=1',
+                    'send_test':       '/api/test-email?to=your@email.com',
+                },
             }), 400
 
-        # ── Config check ──────────────────────────────────
-        mail_user = app.config.get('MAIL_USERNAME', '').strip()
-        mail_pass = app.config.get('MAIL_PASSWORD', '').strip()
-        mail_srv  = app.config.get('MAIL_SERVER',   'smtp.gmail.com')
-
-        if not mail_user:
+        # Check config first
+        cfg_ok, cfg_msg = test_connection()
+        if not cfg_ok:
             return jsonify({
-                'ok': False,
-                'error': 'MAIL_USERNAME set করা নেই।',
-                'fix': 'Vercel Dashboard → Settings → Environment Variables → MAIL_USERNAME = আপনার Gmail address',
+                'ok':    False,
+                'error': cfg_msg,
+                'fix':   'Vercel Dashboard → Settings → Environment Variables এ BREVO_SMTP_LOGIN এবং BREVO_SMTP_KEY সেট করুন।',
             }), 500
 
-        if not mail_pass:
+        # Send
+        ok = send_welcome(to_email=to, user_name='UniSync Test')
+        if ok:
             return jsonify({
-                'ok': False,
-                'error': 'MAIL_PASSWORD set করা নেই।',
-                'fix': 'Vercel Dashboard → Settings → Environment Variables → MAIL_PASSWORD = Gmail App Password (16 অক্ষর)',
-            }), 500
-
-        # ── Try sending ──────────────────────────────────
-        try:
-            from core.mailer import send_welcome
-            ok = send_welcome(to_email=to, user_name='Test User')
-            if ok:
-                return jsonify({
-                    'ok': True,
-                    'sent_to': to,
-                    'from': mail_user,
-                    'server': mail_srv,
-                    'message': f"✅ Email পাঠানো হয়েছে! '{to}' এর inbox চেক করুন। Spam/Junk ফোল্ডারও দেখুন।",
-                })
-            else:
-                return jsonify({
-                    'ok': False,
-                    'error': 'Email send হয়নি। নিচের fix গুলো দেখুন।',
-                    'possible_fixes': [
-                        '1. Gmail App Password ঠিক আছে? (myaccount.google.com → Security → App passwords)',
-                        '2. 2-Step Verification চালু আছে? (Gmail এর জন্য আবশ্যক)',
-                        '3. MAIL_DEFAULT_SENDER set করুন: UniSync <' + mail_user + '>',
-                        '4. Vercel Logs দেখুন: Vercel Dashboard → Logs',
-                    ],
-                }), 500
-        except Exception as e:
-            err = str(e)
-            fix = 'Vercel Logs দেখুন বিস্তারিত error এর জন্য।'
-            if 'Username and Password not accepted' in err or '535' in err:
-                fix = 'Gmail App Password ভুল। myaccount.google.com → Security → App passwords থেকে নতুন password নিন।'
-            elif 'authentication' in err.lower():
-                fix = '2-Step Verification চালু করুন, তারপর App Password নিন।'
-            elif 'Connection' in err or 'timeout' in err.lower():
-                fix = 'MAIL_SERVER বা MAIL_PORT ভুল। Gmail এর জন্য: smtp.gmail.com, port 587।'
+                'ok':      True,
+                'sent_to': to,
+                'message': f"✅ Email সফলভাবে পাঠানো হয়েছে '{to}' এ। Inbox ও Spam folder চেক করুন।",
+            })
+        else:
             return jsonify({
-                'ok': False,
-                'error': err,
-                'fix': fix,
+                'ok':    False,
+                'error': 'Email send failed। Vercel Logs চেক করুন।',
+                'logs':  'Vercel Dashboard → আপনার project → Logs',
             }), 500
 
     # ════════════════════════════════════════════════════════
-    # VERCEL CRON — প্রতিদিন রাত ৭:০০ PM Bangladesh time
-    # vercel.json schedule: "0 13 * * 0-4"
-    # (UTC 13:00 = BST 19:00, Sunday–Thursday)
+    # VERCEL CRON — Daily email at 7 PM Bangladesh time
+    # vercel.json: { "path": "/api/cron/daily", "schedule": "0 13 * * 0-4" }
+    # UTC 13:00 = BST 19:00 (UTC+6), Sunday–Thursday only
     # ════════════════════════════════════════════════════════
     @app.route('/api/cron/daily', methods=['GET', 'POST'])
     def cron_daily():
         from datetime import datetime, timedelta, timezone
+        from core.mailer import send_daily_summary
 
-        # Bangladesh = UTC+6
         BST      = timezone(timedelta(hours=6))
         now_bst  = datetime.now(BST)
         tomorrow = (now_bst + timedelta(days=1)).date()
@@ -149,21 +134,20 @@ def create_app(config_name=None):
 
         results = {
             'sent': 0, 'skipped': 0, 'errors': [],
-            'day_checked': day_name,
-            'run_at_bst': now_bst.strftime('%Y-%m-%d %H:%M BST'),
+            'checked_day': day_name,
+            'run_at':      now_bst.strftime('%Y-%m-%d %H:%M BST'),
         }
 
-        if day_name not in ['Sunday','Monday','Tuesday','Wednesday','Thursday']:
-            return jsonify({'ok': True, 'reason': f'tomorrow is {day_name} — weekend', **results}), 200
+        if day_name not in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']:
+            return jsonify({'ok': True, 'reason': f'{day_name} is weekend — no email', **results}), 200
 
         try:
             from core.supabase_client import get_supabase_admin
             from core.holidays        import is_holiday
-            from core.mailer          import send_daily_summary
 
             is_hol, _ = is_holiday(tomorrow)
-            sb    = get_supabase_admin()
-            users = sb.table('profiles').select('*').execute().data or []
+            sb         = get_supabase_admin()
+            users      = sb.table('profiles').select('*').execute().data or []
 
             for user in users:
                 email = (user.get('email') or '').strip()
@@ -229,7 +213,7 @@ def create_app(config_name=None):
 
         return jsonify({'ok': True, **results}), 200
 
-    # ── Error Handlers ──────────────────────────────────────
+    # ── Error handlers ──────────────────────────────────────
     @app.errorhandler(404)
     def not_found(e):
         if request.path.startswith('/api') or request.accept_mimetypes.accept_json:

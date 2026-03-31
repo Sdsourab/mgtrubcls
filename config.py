@@ -1,6 +1,16 @@
 """
-config.py — Flask Configuration
-সব values Vercel Environment Variables থেকে আসে।
+config.py
+══════════
+Flask configuration for UniSync.
+
+Email এর জন্য Brevo (smtp-relay.brevo.com) ব্যবহার করা হচ্ছে।
+Flask-Mail নেই — Python built-in smtplib দিয়ে সরাসরি send করা হয়।
+
+Vercel এ Environment Variables:
+  BREVO_SMTP_LOGIN   → Brevo account email
+  BREVO_SMTP_KEY     → Brevo → SMTP & API → SMTP → Password (key)
+  MAIL_FROM_NAME     → "UniSync" (optional, default: UniSync)
+  MAIL_FROM_EMAIL    → sender email (Brevo verified email)
 """
 import os
 
@@ -12,21 +22,24 @@ except ImportError:
 
 
 class Config:
-    SECRET_KEY           = os.environ.get("FLASK_SECRET_KEY", "change-me")
-    SUPABASE_URL         = os.environ.get("SUPABASE_URL",         "")
-    SUPABASE_ANON_KEY    = os.environ.get("SUPABASE_ANON_KEY",    "")
-    SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    # ── Core ──────────────────────────────────────────────────
+    SECRET_KEY           = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-prod')
+    APP_NAME             = 'UniSync'
 
-    # Email (Gmail App Password অথবা Brevo SMTP)
-    MAIL_SERVER         = os.environ.get("MAIL_SERVER",         "smtp.gmail.com")
-    MAIL_PORT           = int(os.environ.get("MAIL_PORT",       "587"))
-    MAIL_USE_TLS        = os.environ.get("MAIL_USE_TLS",        "True") == "True"
-    MAIL_USERNAME       = os.environ.get("MAIL_USERNAME",       "")
-    MAIL_PASSWORD       = os.environ.get("MAIL_PASSWORD",       "")
-    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "")
+    # ── Supabase ──────────────────────────────────────────────
+    SUPABASE_URL         = os.environ.get('SUPABASE_URL',         '')
+    SUPABASE_ANON_KEY    = os.environ.get('SUPABASE_ANON_KEY',    '')
+    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
 
-    SCHEDULER_API_ENABLED = False
-    SCHEDULER_ENABLED     = False
+    # ── Brevo SMTP ────────────────────────────────────────────
+    # Brevo Dashboard → SMTP & API → SMTP tab
+    BREVO_SMTP_HOST  = 'smtp-relay.brevo.com'
+    BREVO_SMTP_PORT  = 587
+    BREVO_SMTP_LOGIN = os.environ.get('BREVO_SMTP_LOGIN', '')   # Brevo account email
+    BREVO_SMTP_KEY   = os.environ.get('BREVO_SMTP_KEY',   '')   # Brevo SMTP password/key
+    MAIL_FROM_NAME   = os.environ.get('MAIL_FROM_NAME',   'UniSync')
+    MAIL_FROM_EMAIL  = os.environ.get('MAIL_FROM_EMAIL',  os.environ.get('BREVO_SMTP_LOGIN', ''))
+
     DEBUG = False
 
 
@@ -39,7 +52,7 @@ class ProductionConfig(Config):
 
 
 config = {
-    "development": DevelopmentConfig,
-    "production":  ProductionConfig,
-    "default":     DevelopmentConfig,
+    'development': DevelopmentConfig,
+    'production':  ProductionConfig,
+    'default':     DevelopmentConfig,
 }
