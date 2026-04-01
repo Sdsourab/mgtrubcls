@@ -1,108 +1,93 @@
 """
-core/mailer.py — UniSync Email via Brevo SMTP
-Python smtplib — no Flask-Mail needed.
+core/mailer.py — UniSync Email via Resend API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Resend (resend.com) — instant activation, no SMTP needed.
+Free: 3000 emails/month. Works on Vercel serverless perfectly.
 """
-import smtplib
 import os
-from email.mime.multipart import MIMEMultipart
-from email.mime.text      import MIMEText
-from email.utils          import formataddr
-
-SMTP_HOST = 'smtp-relay.brevo.com'
-SMTP_PORT = 587
+import resend
 
 
-def _creds():
-    """Read Brevo credentials — from Flask config or env directly."""
+def _setup():
+    """Configure Resend API key from Flask config or env."""
     try:
         from flask import current_app
-        c = current_app.config
-        return (
-            c.get('BREVO_SMTP_LOGIN',  os.environ.get('BREVO_SMTP_LOGIN',  '')).strip(),
-            c.get('BREVO_SMTP_KEY',    os.environ.get('BREVO_SMTP_KEY',    '')).strip(),
-            c.get('MAIL_FROM_NAME',    os.environ.get('MAIL_FROM_NAME',    'UniSync')),
-            c.get('MAIL_FROM_EMAIL',   os.environ.get('MAIL_FROM_EMAIL',   '')).strip(),
-        )
+        key = current_app.config.get('RESEND_API_KEY', '')
     except RuntimeError:
-        return (
-            os.environ.get('BREVO_SMTP_LOGIN',  '').strip(),
-            os.environ.get('BREVO_SMTP_KEY',    '').strip(),
-            os.environ.get('MAIL_FROM_NAME',    'UniSync'),
-            os.environ.get('MAIL_FROM_EMAIL',   '').strip(),
-        )
-
-
-def send_raw(to_email: str, subject: str, html_body: str) -> dict:
-    """
-    Send email via Brevo SMTP.
-    Returns dict: {ok, error, detail}
-    'error' is always the full real error — never hidden.
-    """
-    login, key, from_name, from_email = _creds()
-    from_email = from_email or login
-
-    # ── Config validation ────────────────────────────────────
-    if not login:
-        return {'ok': False, 'error': 'BREVO_SMTP_LOGIN is empty',
-                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_LOGIN এ Brevo login email দিন'}
+        key = ''
     if not key:
-        return {'ok': False, 'error': 'BREVO_SMTP_KEY is empty',
-                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_KEY এ Brevo SMTP password দিন'}
-    if not to_email:
-        return {'ok': False, 'error': 'to_email is empty'}
+        key = os.environ.get('RESEND_API_KEY', '')
+    resend.api_key = key
+    return key
 
-    # ── Build message ────────────────────────────────────────
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From']    = formataddr((from_name, from_email))
-    msg['To']      = to_email
-    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-    # ── SMTP send ────────────────────────────────────────────
+def _from_addr():
+    """Get sender address."""
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=25) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.ehlo()
-            srv.login(login, key)
-            srv.sendmail(from_email, [to_email], msg.as_string())
-        return {'ok': True, 'error': None}
-
-    except smtplib.SMTPAuthenticationError as e:
-        return {'ok': False,
-                'error': f'Authentication failed (535): {e}',
-                'fix': 'Brevo dashboard → SMTP & API → SMTP tab → Password এ নতুন key copy করুন। Login হলো আপনার Brevo account email।'}
-    except smtplib.SMTPRecipientsRefused as e:
-        return {'ok': False, 'error': f'Recipient refused: {e}'}
-    except smtplib.SMTPSenderRefused as e:
-        return {'ok': False,
-                'error': f'Sender refused: {e}',
-                'fix': 'MAIL_FROM_EMAIL টা Brevo তে verified হতে হবে। Brevo → Senders & Domains এ check করুন।'}
-    except smtplib.SMTPConnectError as e:
-        return {'ok': False, 'error': f'Cannot connect to smtp-relay.brevo.com:587 — {e}'}
-    except smtplib.SMTPException as e:
-        return {'ok': False, 'error': f'SMTP error: {e}'}
-    except OSError as e:
-        return {'ok': False, 'error': f'Network/OS error: {e}',
-                'fix': 'Vercel outbound SMTP blocked হতে পারে। Port 587 allow করতে Vercel support contact করুন।'}
-    except Exception as e:
-        return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+        from flask import current_app
+        return current_app.config.get('MAIL_FROM', 'UniSync <onboarding@resend.dev>')
+    except RuntimeError:
+        return os.environ.get('MAIL_FROM', 'UniSync <onboarding@resend.dev>')
 
 
-def _render_html(template: str, **ctx) -> str:
+def _render(template: str, **ctx) -> str:
     from flask import render_template
     return render_template(template, **ctx)
 
 
-def _send(subject: str, to: str, template: str, **ctx) -> bool:
+def send_raw(to_email: str, subject: str, html: str) -> dict:
+    """
+    Send email via Resend API.
+    Returns: {'ok': bool, 'id': str|None, 'error': str|None}
+    """
+    api_key = _setup()
+
+    if not api_key:
+        return {
+            'ok':    False,
+            'error': 'RESEND_API_KEY not set',
+            'fix':   'Vercel → Settings → Environment Variables → RESEND_API_KEY',
+        }
+
     try:
-        html = _render_html(template, **ctx)
+        resp = resend.Emails.send({
+            'from':    _from_addr(),
+            'to':      [to_email],
+            'subject': subject,
+            'html':    html,
+        })
+        # Resend returns {'id': 'email_id'} on success
+        if resp and resp.get('id'):
+            return {'ok': True, 'id': resp['id'], 'error': None}
+        else:
+            return {'ok': False, 'error': f'Unexpected response: {resp}'}
+
+    except resend.exceptions.ResendError as e:
+        msg = str(e)
+        fix = 'Resend dashboard → API Keys চেক করুন।'
+        if '401' in msg or 'Unauthorized' in msg:
+            fix = 'RESEND_API_KEY ভুল। resend.com → API Keys → নতুন key তৈরি করুন।'
+        elif '422' in msg or 'validation' in msg.lower():
+            fix = 'MAIL_FROM ঠিক নেই। Format: "UniSync <onboarding@resend.dev>"'
+        elif '429' in msg:
+            fix = 'Rate limit — কিছুক্ষণ পরে চেষ্টা করুন।'
+        return {'ok': False, 'error': msg, 'fix': fix}
+
+    except Exception as e:
+        return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
+
+
+def _send(subject: str, to: str, template: str, **ctx) -> bool:
+    """Render Jinja2 template and send via Resend."""
+    try:
+        html = _render(template, **ctx)
     except Exception as e:
         _log(f'Template error [{template}]: {e}')
         return False
-    result = send_raw(to_email=to, subject=subject, html_body=html)
+
+    result = send_raw(to_email=to, subject=subject, html=html)
     if not result['ok']:
-        _log(f'Send failed → {to}: {result.get("error")}')
+        _log(f'Send failed → {to} | {result.get("error")}')
     return result['ok']
 
 
@@ -116,48 +101,62 @@ def _log(msg: str):
 
 def test_connection() -> dict:
     """
-    Test Brevo SMTP connection without sending an email.
-    Returns {ok, message, login, fix?}
+    Verify RESEND_API_KEY is valid without sending an email.
+    Uses Resend's /domains endpoint as a lightweight check.
     """
-    login, key, _, _ = _creds()
+    api_key = _setup()
 
-    if not login:
-        return {'ok': False, 'message': 'BREVO_SMTP_LOGIN not set',
-                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_LOGIN'}
-    if not key:
-        return {'ok': False, 'message': 'BREVO_SMTP_KEY not set',
-                'fix': 'Vercel → Settings → Environment Variables → BREVO_SMTP_KEY'}
+    if not api_key:
+        return {
+            'ok':      False,
+            'message': 'RESEND_API_KEY not set',
+            'fix':     'Vercel → Settings → Environment Variables → RESEND_API_KEY এ Resend API key দিন',
+        }
+
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.ehlo()
-            srv.login(login, key)
-        return {'ok': True, 'message': f'✅ Brevo SMTP connected. Login: {login}'}
-    except smtplib.SMTPAuthenticationError as e:
-        return {'ok': False,
-                'message': f'Authentication failed: {e}',
-                'fix': 'BREVO_SMTP_KEY ভুল। Brevo → SMTP & API → SMTP → Password copy করুন।'}
+        # List domains — lightweight authenticated request
+        resend.Domains.list()
+        return {
+            'ok':      True,
+            'message': '✅ Resend API key valid. Email system ready.',
+            'from':    _from_addr(),
+        }
+    except resend.exceptions.ResendError as e:
+        msg = str(e)
+        if '401' in msg or 'Unauthorized' in msg:
+            return {
+                'ok':      False,
+                'message': f'Invalid API key: {msg}',
+                'fix':     'resend.com → API Keys → নতুন key তৈরি করুন এবং Vercel এ দিন।',
+            }
+        return {'ok': False, 'message': msg}
     except Exception as e:
-        return {'ok': False, 'message': str(e)}
+        return {'ok': False, 'message': f'{type(e).__name__}: {e}'}
 
 
-# ── Public send functions ────────────────────────────────────
+# ── Public API ───────────────────────────────────────────────
 
 def send_welcome(to_email: str, user_name: str, **_) -> bool:
-    return _send('🎓 Welcome to UniSync — Rabindra University',
-                 to_email, 'emails/welcome.html', user_name=user_name)
+    return _send(
+        '🎓 Welcome to UniSync — Rabindra University',
+        to_email, 'emails/welcome.html',
+        user_name=user_name,
+    )
 
 
 def send_daily_summary(to_email: str, user_name: str,
                        classes: list, tasks: list, date_str: str, **_) -> bool:
-    return _send(f"📚 UniSync — Tomorrow's Schedule ({date_str})",
-                 to_email, 'emails/daily_summary.html',
-                 user_name=user_name, classes=classes,
-                 tasks=tasks, date_str=date_str)
+    return _send(
+        f"📚 UniSync — Tomorrow's Schedule ({date_str})",
+        to_email, 'emails/daily_summary.html',
+        user_name=user_name, classes=classes,
+        tasks=tasks, date_str=date_str,
+    )
 
 
 def send_class_alert(to_email: str, user_name: str, class_info: dict, **_) -> bool:
-    return _send(f"⏰ Class Alert: {class_info.get('course_code','')} — UniSync",
-                 to_email, 'emails/class_alert.html',
-                 user_name=user_name, class_info=class_info)
+    return _send(
+        f"⏰ Class Alert: {class_info.get('course_code', '')} — UniSync",
+        to_email, 'emails/class_alert.html',
+        user_name=user_name, class_info=class_info,
+    )
