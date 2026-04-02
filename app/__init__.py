@@ -26,21 +26,27 @@ def create_app(config_name: str = None):
     app.config.from_object(config[config_name])
 
     # ── Blueprints ──────────────────────────────────────────
-    from app.auth.routes         import auth_bp
-    from app.academic.routes     import academic_bp
-    from app.productivity.routes import productivity_bp
-    from app.campus.routes       import campus_bp
-    from app.admin.routes        import admin_bp
-    from app.guest.routes        import guest_bp
-    from app.planner.routes      import planner_bp
+    from app.auth.routes             import auth_bp
+    from app.academic.routes         import academic_bp
+    from app.productivity.routes     import productivity_bp
+    from app.campus.routes           import campus_bp
+    from app.admin.routes            import admin_bp
+    from app.guest.routes            import guest_bp
+    from app.planner.routes          import planner_bp
+    from app.notices.routes          import notices_bp
+    from app.classmanagement.routes  import classmanagement_bp
+    from app.exams.routes            import exams_bp
 
-    app.register_blueprint(auth_bp,         url_prefix='/auth')
-    app.register_blueprint(academic_bp,     url_prefix='/academic')
-    app.register_blueprint(productivity_bp, url_prefix='/productivity')
-    app.register_blueprint(campus_bp,       url_prefix='/campus')
-    app.register_blueprint(admin_bp,        url_prefix='/admin')
-    app.register_blueprint(guest_bp,        url_prefix='/guest')
-    app.register_blueprint(planner_bp,      url_prefix='/planner')
+    app.register_blueprint(auth_bp,             url_prefix='/auth')
+    app.register_blueprint(academic_bp,         url_prefix='/academic')
+    app.register_blueprint(productivity_bp,     url_prefix='/productivity')
+    app.register_blueprint(campus_bp,           url_prefix='/campus')
+    app.register_blueprint(admin_bp,            url_prefix='/admin')
+    app.register_blueprint(guest_bp,            url_prefix='/guest')
+    app.register_blueprint(planner_bp,          url_prefix='/planner')
+    app.register_blueprint(notices_bp,          url_prefix='/notices')
+    app.register_blueprint(classmanagement_bp,  url_prefix='/classmanagement')
+    app.register_blueprint(exams_bp,            url_prefix='/exams')
 
     @app.route('/')
     def index():

@@ -68,6 +68,23 @@
           </div>
         </div>
 
+        <!-- Student ID -->
+        <div class="input-group">
+          <label for="student_id">Student ID <span style="color:var(--text-muted);font-weight:400;">(Recommended)</span></label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="2" y="7" width="20" height="14" rx="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            <input type="text" id="student_id" placeholder="e.g. RU2024BBA001"
+                   autocomplete="off" maxlength="24"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;padding-left:2px;">
+            Used for CR identification and verification. Must be unique.
+          </div>
+        </div>
+
         <!-- Email -->
         <div class="input-group">
           <label for="email">Email Address</label>
@@ -214,13 +231,14 @@
     sucDiv.classList.add('hidden');
 
     const payload = {
-      full_name: document.getElementById('full_name').value.trim(),
-      email:     document.getElementById('email').value.trim(),
-      password:  document.getElementById('password').value,
-      dept:      document.getElementById('dept').value.trim() || 'Management',
-      program:   document.getElementById('program').value,
-      year:      parseInt(document.getElementById('year').value),
-      semester:  parseInt(document.getElementById('semester').value),
+      full_name:  document.getElementById('full_name').value.trim(),
+      student_id: document.getElementById('student_id').value.trim() || null,
+      email:      document.getElementById('email').value.trim(),
+      password:   document.getElementById('password').value,
+      dept:       document.getElementById('dept').value.trim() || 'Management',
+      program:    document.getElementById('program').value,
+      year:       parseInt(document.getElementById('year').value),
+      semester:   parseInt(document.getElementById('semester').value),
     };
 
     try {

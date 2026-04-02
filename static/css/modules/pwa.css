@@ -1,0 +1,513 @@
+/* ============================================================
+   UniSync  —  PWA + Offline CSS  (pwa.css)
+   Offline bar, sync indicator, exam alerts, CR badge,
+   install button, notice cards, class change chips
+   ============================================================ */
+
+/* ── Offline Bar ─────────────────────────────────────────────
+   Fixed bottom banner shown when body.is-offline is set.
+   Also shows when pending queue > 0 (has-queue state).
+   ---------------------------------------------------------- */
+.offline-bar {
+  position: fixed;
+  bottom: 68px;           /* above mobile bottom nav */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26, 20, 8, 0.94);
+  color: #FDE68A;
+  padding: 9px 18px 9px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  z-index: 9990;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(205, 169, 106, 0.3);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease, bottom 0.3s ease;
+  white-space: nowrap;
+}
+
+body.is-offline .offline-bar,
+.offline-bar.has-queue {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* On desktop, shift above sidebar */
+@media (min-width: 900px) {
+  .offline-bar { bottom: 20px; }
+}
+
+.offline-bar-icon { font-size: 1rem; }
+.offline-bar-label { flex: 1; }
+
+/* Queue badge pill */
+.offline-queue-badge {
+  background: #BC6F37;
+  color: white;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Sync dot indicator */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sync-dot--syncing { background: #FDE68A; animation: pulse-dot 1s ease infinite; }
+.sync-dot--synced  { background: #68D391; }
+.sync-dot--error   { background: #FC8181; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* ── PWA Install Banner ───────────────────────────────────────
+   Shown via JS when beforeinstallprompt fires.
+   ---------------------------------------------------------- */
+.pwa-install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(188,111,55,0.08), rgba(205,169,106,0.06));
+  border: 1px solid rgba(188,111,55,0.22);
+  border-radius: var(--radius-lg, 14px);
+  margin-bottom: 16px;
+  transition: opacity 0.3s;
+}
+
+.pwa-install-banner.hidden { display: none; }
+
+.pwa-install-banner__text h4 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin: 0 0 3px;
+  color: var(--text-primary);
+}
+
+.pwa-install-banner__text p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.pwa-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #BC6F37, #CDA96A);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pwa-install-btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+.pwa-install-btn:active { transform: translateY(0); }
+
+/* ── Exam Alert Cards ─────────────────────────────────────────
+   Dashboard countdown cards for upcoming exams.
+   ---------------------------------------------------------- */
+.exam-alert-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 15px 18px;
+  background: linear-gradient(135deg,
+    rgba(188,111,55,0.08),
+    rgba(229, 62, 62, 0.07));
+  border: 1px solid rgba(229, 62, 62, 0.28);
+  border-radius: var(--radius-md, 12px);
+  margin-bottom: 10px;
+  transition: transform 0.2s;
+  cursor: default;
+}
+
+.exam-alert-card:hover { transform: translateY(-1px); }
+
+.exam-alert-card .exam-countdown {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #E53E3E;
+  line-height: 1;
+  min-width: 52px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.exam-alert-card .exam-countdown.today-fire {
+  font-size: 2.4rem;
+  animation: fire-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fire-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.12); }
+}
+
+.exam-alert-card .exam-info  { flex: 1; min-width: 0; }
+
+.exam-alert-card .exam-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exam-alert-card .exam-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.exam-type-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(229,62,62,0.1);
+  color: #C53030;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.exam-urgency-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #E53E3E;
+}
+
+/* ── Notice Cards ─────────────────────────────────────────────
+   Cards in the Notices page.
+   ---------------------------------------------------------- */
+.notice-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 14px);
+  padding: 20px 22px;
+  margin-bottom: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.notice-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.notice-card.pinned {
+  border-color: rgba(205,169,106,0.5);
+  background: linear-gradient(135deg, var(--bg-card), rgba(205,169,106,0.04));
+}
+
+.notice-card.pinned::before {
+  content: '📌';
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 1rem;
+}
+
+.notice-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.notice-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.notice-type-badge.general      { background: rgba(99,102,241,0.12); color: #6366f1; }
+.notice-type-badge.exam         { background: rgba(229,62,62,0.12);  color: #E53E3E; }
+.notice-type-badge.class_cancel { background: rgba(245,101,101,0.12);color: #C53030; }
+.notice-type-badge.extra_class  { background: rgba(56,161,105,0.12); color: #276749; }
+.notice-type-badge.urgent       { background: rgba(237,137,54,0.15); color: #C05621;
+                                   animation: urgent-blink 2s ease infinite; }
+
+@keyframes urgent-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+.notice-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.notice-card__body {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* Quill-rendered content reset */
+.notice-card__body h1, .notice-card__body h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+.notice-card__body ul, .notice-card__body ol  { padding-left: 20px; margin: 6px 0; }
+.notice-card__body strong { font-weight: 700; }
+
+.notice-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notice-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* ── CR Role Badge ────────────────────────────────────────────
+   Shown next to CR user name in sidebar / notices.
+   ---------------------------------------------------------- */
+.cr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: linear-gradient(135deg, #BC6F37, #9A5A2C);
+  color: white;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+
+/* ── Role Switch Buttons ──────────────────────────────────────
+   In the profile page role panel.
+   ---------------------------------------------------------- */
+.role-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-primary);
+}
+
+.role-btn:hover {
+  border-color: rgba(188,111,55,0.5);
+  background: rgba(188,111,55,0.06);
+}
+
+.role-btn.active {
+  background: linear-gradient(135deg, #BC6F37, #CDA96A);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 3px 12px rgba(188,111,55,0.35);
+}
+
+/* ── Class Change Chips ───────────────────────────────────────
+   Inline indicators on routine / dashboard.
+   ---------------------------------------------------------- */
+.class-change-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.class-change-chip.cancel { background: rgba(229,62,62,0.12); color: #C53030; }
+.class-change-chip.extra  { background: rgba(56,161,105,0.12); color: #276749; }
+
+/* ── Quill Editor Override ────────────────────────────────────
+   Match the app's warm cream aesthetic.
+   ---------------------------------------------------------- */
+.ql-toolbar.ql-snow,
+.ql-container.ql-snow {
+  border-color: var(--border) !important;
+  font-family: 'Outfit', sans-serif !important;
+}
+
+.ql-toolbar.ql-snow {
+  background: var(--bg-surface, #f5ede0) !important;
+  border-radius: var(--radius-sm, 8px) var(--radius-sm, 8px) 0 0 !important;
+}
+
+.ql-container.ql-snow {
+  background: var(--bg-card) !important;
+  border-radius: 0 0 var(--radius-sm, 8px) var(--radius-sm, 8px) !important;
+  min-height: 160px;
+  font-size: 0.9rem;
+  color: var(--text-primary) !important;
+}
+
+.ql-editor { min-height: 140px; }
+
+.ql-snow .ql-stroke  { stroke:  var(--text-secondary) !important; }
+.ql-snow .ql-fill    { fill:    var(--text-secondary) !important; }
+.ql-snow .ql-picker   { color:   var(--text-secondary) !important; }
+
+/* ── Exam Schedule Table ──────────────────────────────────────
+   Table in the exams page.
+   ---------------------------------------------------------- */
+.exam-table-wrap { overflow-x: auto; }
+
+.exam-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.exam-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.exam-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(var(--border-rgb, 210,195,175), 0.5);
+  color: var(--text-primary);
+}
+
+.exam-table tr:last-child td { border-bottom: none; }
+
+.exam-table tr:hover td {
+  background: rgba(188,111,55,0.04);
+}
+
+.exam-row--today td  { background: rgba(229,62,62,0.06); }
+.exam-row--urgent td { background: rgba(237,137,54,0.04); }
+
+.days-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.days-pill.today    { background: rgba(229,62,62,0.15);  color: #C53030; }
+.days-pill.urgent   { background: rgba(237,137,54,0.15); color: #C05621; }
+.days-pill.normal   { background: rgba(56,161,105,0.12); color: #276749; }
+
+/* ── CR Compose Area ──────────────────────────────────────────
+   Notice compose panel at top of notices page (CR only).
+   ---------------------------------------------------------- */
+.cr-compose-panel {
+  background: var(--bg-card);
+  border: 1px solid rgba(188,111,55,0.3);
+  border-radius: var(--radius-lg, 14px);
+  padding: 22px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.cr-compose-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(188,111,55,0.04), transparent);
+  pointer-events: none;
+}
+
+.cr-compose-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cr-compose-panel__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cr-compose-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-offline-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--bg-surface, #f5ede0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.btn-offline-draft:hover {
+  border-color: rgba(188,111,55,0.4);
+  color: var(--terra);
+}

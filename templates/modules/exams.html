@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block title %}Exam Schedule{% endblock %}
+{% block nav_exams %}active{% endblock %}
+{% block extra_css %}
+<style>
+.exam-header-stats {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;
+}
+@media(max-width:600px) { .exam-header-stats { grid-template-columns:1fr 1fr; } }
+
+.exam-stat-mini {
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:14px 16px;text-align:center;
+}
+.exam-stat-mini .num {
+  font-size:1.8rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+  color:var(--terra);line-height:1;
+}
+.exam-stat-mini .lbl { font-size:0.72rem;color:var(--text-muted);margin-top:4px;font-weight:600;text-transform:uppercase; }
+
+.exam-publish-wrap { display:none; }
+body[data-role="cr"]   .exam-publish-wrap,
+body[data-role="admin"] .exam-publish-wrap { display:block; }
+
+.exam-empty {
+  text-align:center;padding:60px 24px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header scroll-reveal">
+    <div>
+      <h1 class="page-title">📝 Exam Schedule</h1>
+      <p class="page-sub" id="examSubTitle">Upcoming exams with countdown · Works offline</p>
+    </div>
+    <button onclick="togglePublishPanel()"
+      class="btn-primary exam-publish-wrap" id="publishToggleBtn"
+      style="display:none;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Exam
+    </button>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="exam-header-stats">
+    <div class="exam-stat-mini">
+      <div class="num" id="statTotal">—</div>
+      <div class="lbl">Total Exams</div>
+    </div>
+    <div class="exam-stat-mini">
+      <div class="num" id="statUrgent" style="color:#E53E3E;">—</div>
+      <div class="lbl">Within 7 Days</div>
+    </div>
+    <div class="exam-stat-mini">
+      <div class="num" id="statNextDays" style="color:#38A169;">—</div>
+      <div class="lbl">Days to Next Exam</div>
+    </div>
+  </div>
+
+  <!-- Offline cache banner -->
+  <div id="examOfflineBanner" class="hidden"
+       style="background:rgba(188,111,55,0.08);border:1px solid rgba(188,111,55,0.2);
+              border-radius:var(--radius-sm);padding:9px 14px;margin-bottom:14px;
+              font-size:0.78rem;color:var(--text-muted);">
+    📡 Showing cached exam schedule — connect to refresh
+  </div>
+
+  <!-- ── CR PUBLISH PANEL ─────────────────────────────────────── -->
+  <div id="publishPanel" class="exam-publish-wrap cr-compose-panel anim-fade-up hidden">
+    <div class="cr-compose-panel__header">
+      <span style="font-size:1.3rem;">📝</span>
+      <span class="cr-compose-panel__title">Publish Exam Schedule</span>
+      <span class="cr-badge">CR</span>
+    </div>
+
+    <div id="publishMsg" class="hidden"
+         style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-group">
+        <label>Course *</label>
+        <select id="examCourse">
+          <option value="">Loading courses…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Exam Type *</label>
+        <select id="examType">
+          <option value="midterm">Midterm</option>
+          <option value="final">Final</option>
+          <option value="quiz">Quiz</option>
+          <option value="viva">Viva</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-group">
+        <label>Exam Date *</label>
+        <input type="date" id="examDate">
+      </div>
+      <div class="form-group">
+        <label>Start Time</label>
+        <input type="time" id="examStart" value="09:00">
+      </div>
+      <div class="form-group">
+        <label>End Time</label>
+        <input type="time" id="examEnd" value="12:00">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group">
+        <label>Room No.</label>
+        <input type="text" id="examRoom" placeholder="e.g. Exam Hall 1">
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" id="examNotes" placeholder="e.g. Bring calculator, 2 pens required">
+      </div>
+    </div>
+
+    <div class="cr-compose-actions">
+      <button class="btn-primary" onclick="publishExam()">
+        📝 Publish to Students
+      </button>
+      <button class="btn-offline-draft" onclick="togglePublishPanel()">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- ── EXAM TABLE ─────────────────────────────────────────── -->
+  <div id="examListWrap">
+    <!-- Loading skeleton -->
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);">
+        <div style="height:12px;background:var(--border);border-radius:4px;width:40%;animation:pulse 1.5s ease infinite;"></div>
+      </div>
+      <div style="padding:16px 18px;" class="exam-table-wrap">
+        <div style="height:12px;background:var(--border);border-radius:4px;width:90%;margin-bottom:10px;animation:pulse 1.5s ease infinite;"></div>
+        <div style="height:12px;background:var(--border);border-radius:4px;width:75%;margin-bottom:10px;animation:pulse 1.5s ease infinite;animation-delay:0.1s;"></div>
+        <div style="height:12px;background:var(--border);border-radius:4px;width:85%;animation:pulse 1.5s ease infinite;animation-delay:0.2s;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _user  = null;
+let _exams = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  UniSync.requireAuth();
+  _user = UniSync.getUser();
+  if (!_user) return;
+
+  // Set CR mode
+  if (_user.role === 'cr' || _user.role === 'admin') {
+    document.body.setAttribute('data-role', _user.role);
+    document.getElementById('publishToggleBtn').style.display = 'inline-flex';
+    document.getElementById('examSubTitle').textContent =
+      `Managing: ${_user.program} Year ${_user.year} Semester ${_user.semester}`;
+    loadCourses();
+  } else {
+    document.getElementById('examSubTitle').textContent =
+      `${_user.program} · Year ${_user.year} · Semester ${_user.semester}`;
+  }
+
+  await loadExams();
+});
+
+// ── Load courses for publish form ─────────────────────────────
+async function loadCourses() {
+  try {
+    const res  = await fetch(`/academic/api/routine?program=${_user.program}&year=${_user.year}&semester=${_user.semester}`);
+    const data = await res.json();
+    if (data.success) {
+      const seen = new Set();
+      const courses = data.data.filter(r => {
+        if (seen.has(r.course_code)) return false;
+        seen.add(r.course_code); return true;
+      });
+      document.getElementById('examCourse').innerHTML =
+        `<option value="">Select course…</option>` +
+        courses.map(c =>
+          `<option value="${c.course_code}" data-name="${c.course_name || c.course_code}">` +
+          `${c.course_code} — ${c.course_name || c.course_code}</option>`
+        ).join('');
+    }
+  } catch {}
+}
+
+// ── Load exam schedule ────────────────────────────────────────
+async function loadExams() {
+  const cacheKey = `exams_${_user.program}_${_user.year}_${_user.semester}`;
+
+  try {
+    const params = new URLSearchParams({
+      program: _user.program || 'BBA', year: _user.year || 1, semester: _user.semester || 1,
+    });
+    const res  = await fetch(`/exams/api/exams?${params}`);
+
+    if (res.headers.get('X-Served-Offline') === 'true') {
+      document.getElementById('examOfflineBanner').classList.remove('hidden');
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      _exams = data.data;
+      localStorage.setItem(cacheKey, JSON.stringify(_exams));
+      renderExams(_exams);
+    }
+  } catch {
+    // Offline: use cached + recalculate days
+    document.getElementById('examOfflineBanner').classList.remove('hidden');
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const today = new Date();
+      _exams = JSON.parse(cached).map(e => ({
+        ...e,
+        days_remaining: Math.round((new Date(e.exam_date) - today) / 86400000),
+        is_today:   new Date(e.exam_date).toDateString() === today.toDateString(),
+        is_urgent:  Math.round((new Date(e.exam_date) - today) / 86400000) <= 7,
+      }));
+      renderExams(_exams);
+    } else {
+      document.getElementById('examListWrap').innerHTML =
+        `<div class="exam-empty">📡 No cached exam schedule available.</div>`;
+    }
+  }
+}
+
+// ── Render exam table ─────────────────────────────────────────
+function renderExams(exams) {
+  const wrap = document.getElementById('examListWrap');
+
+  // Update stats
+  const upcoming  = exams.filter(e => (e.days_remaining ?? 999) >= 0);
+  const urgent    = upcoming.filter(e => e.is_urgent);
+  const next      = upcoming[0];
+  document.getElementById('statTotal').textContent  = upcoming.length;
+  document.getElementById('statUrgent').textContent = urgent.length;
+  document.getElementById('statNextDays').textContent =
+    next ? (next.days_remaining === 0 ? '🔥' : next.days_remaining) : '—';
+
+  if (!upcoming.length) {
+    wrap.innerHTML = `<div class="exam-empty">
+      <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+      <h3 style="font-weight:700;margin-bottom:8px;">No Upcoming Exams</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;">
+        ${_user.role === 'cr' || _user.role === 'admin'
+          ? 'Click "Add Exam" to publish the exam schedule for your section.'
+          : 'Your CR hasn\'t published the exam schedule yet. Check back soon.'}
+      </p>
+    </div>`;
+    return;
+  }
+
+  const EXAM_LABELS = {
+    midterm: '📝 Midterm', final: '📋 Final', quiz: '✏️ Quiz',
+    viva: '🗣 Viva', other: '📌 Exam',
+  };
+
+  const isCR = _user.role === 'cr' || _user.role === 'admin';
+
+  wrap.innerHTML = `
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+    <div class="exam-table-wrap">
+      <table class="exam-table">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Room</th>
+            <th>Countdown</th>
+            ${isCR ? '<th></th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${upcoming.map(exam => {
+            const d = exam.days_remaining;
+            const rowClass = exam.is_today ? 'exam-row--today' : (exam.is_urgent ? 'exam-row--urgent' : '');
+            const pillClass = exam.is_today ? 'today' : (exam.is_urgent ? 'urgent' : 'normal');
+            const countdownText = d === 0 ? '🔥 TODAY'
+                                : d === 1 ? '⚡ TOMORROW'
+                                : `${d} days`;
+            return `
+            <tr class="${rowClass}">
+              <td>
+                <div style="font-weight:700;font-size:0.88rem;">${exam.course_name || exam.course_code}</div>
+                <div style="font-size:0.73rem;color:var(--text-muted);">${exam.course_code}</div>
+              </td>
+              <td><span style="font-size:0.8rem;">${EXAM_LABELS[exam.exam_type] || exam.exam_type || '—'}</span></td>
+              <td style="font-size:0.83rem;white-space:nowrap;">${exam.exam_date}</td>
+              <td style="font-size:0.8rem;white-space:nowrap;color:var(--text-muted);">
+                ${exam.start_time || '—'}${exam.end_time ? ' – ' + exam.end_time : ''}
+              </td>
+              <td style="font-size:0.8rem;color:var(--text-muted);">${exam.room_no || '—'}</td>
+              <td>
+                <span class="days-pill ${pillClass}">${countdownText}</span>
+                ${exam.notes ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">${exam.notes}</div>` : ''}
+              </td>
+              ${isCR ? `
+              <td>
+                <button onclick="deleteExam('${exam.id}')"
+                  style="padding:3px 10px;border-radius:var(--radius-sm);border:1px solid rgba(229,62,62,0.3);
+                         background:transparent;color:#C53030;font-size:0.7rem;cursor:pointer;">
+                  Remove
+                </button>
+              </td>` : ''}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── Publish exam ──────────────────────────────────────────────
+async function publishExam() {
+  const sel     = document.getElementById('examCourse');
+  const course  = sel.value;
+  const cName   = sel.options[sel.selectedIndex]?.dataset?.name || '';
+  const type    = document.getElementById('examType').value;
+  const date    = document.getElementById('examDate').value;
+  const start   = document.getElementById('examStart').value;
+  const end     = document.getElementById('examEnd').value;
+  const room    = document.getElementById('examRoom').value.trim();
+  const notes   = document.getElementById('examNotes').value.trim();
+  const msgEl   = document.getElementById('publishMsg');
+
+  if (!course || !type || !date) {
+    _msg(msgEl, 'Course, type and date are required', 'error');
+    return;
+  }
+
+  const payload = {
+    user_id: _user.id, course_code: course, course_name: cName,
+    exam_type: type, exam_date: date, start_time: start, end_time: end,
+    room_no: room, notes,
+    program: _user.program, year: _user.year, semester: _user.semester,
+  };
+
+  try {
+    if (!navigator.onLine) throw new Error('offline');
+    const res  = await fetch('/exams/api/exams', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+      _msg(msgEl, '✅ Exam published! A notice has been sent to students.', 'success');
+      togglePublishPanel();
+      await loadExams();
+    } else {
+      _msg(msgEl, data.error || 'Publish failed', 'error');
+    }
+  } catch (err) {
+    if (!navigator.onLine || err.message === 'offline') {
+      await OfflineSync.queue('create_exam', { ...payload, type: 'create_exam' });
+      _msg(msgEl, '💾 Saved offline — will publish when connected.', 'success');
+    } else {
+      _msg(msgEl, 'Server error.', 'error');
+    }
+  }
+}
+
+async function deleteExam(id) {
+  if (!confirm('Remove this exam from the schedule?')) return;
+  try {
+    await fetch(`/exams/api/exams/${id}?user_id=${_user.id}`, { method: 'DELETE' });
+    await loadExams();
+    UniSync.toast('Exam removed', 'success');
+  } catch { UniSync.toast('Error removing exam', 'error'); }
+}
+
+function togglePublishPanel() {
+  const panel = document.getElementById('publishPanel');
+  panel.classList.toggle('hidden');
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('examDate').value = today;
+}
+
+function _msg(el, msg, type) {
+  el.textContent = msg;
+  el.style.background = type === 'success' ? 'var(--success-bg)' : 'var(--danger-bg)';
+  el.style.color      = type === 'success' ? 'var(--success)'    : 'var(--danger)';
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+}
+</script>
+{% endblock %}

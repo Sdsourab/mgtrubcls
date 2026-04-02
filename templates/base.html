@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}UniSync{% endblock %} — Rabindra University</title>
   <meta name="description" content="UniSync Academic Portal — Rabindra University, Bangladesh, Dept. of Management">
-  <meta name="theme-color" content="#FCF5E8">
+  <meta name="theme-color" content="#BC6F37">
+
+  <!-- PWA Manifest + App Meta -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="UniSync">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 
   <!-- Fonts: Playfair Display + Outfit + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +22,7 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/scroll-animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/pwa.css') }}">
   {% block extra_css %}{% endblock %}
 </head>
 
@@ -117,6 +126,38 @@
       </a>
 
       <div class="nav-section-label">Tools</div>
+
+      <a href="{{ url_for('notices.notices_page') }}"
+         class="nav-item {% block nav_notices %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/>
+          <line x1="9" y1="17" x2="13" y2="17"/>
+        </svg>
+        <span>Notices</span>
+        <span id="noticeNavBadge" class="nav-badge hidden">0</span>
+      </a>
+
+      <a href="{{ url_for('exams.exams_page') }}"
+         class="nav-item {% block nav_exams %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+        </svg>
+        <span>Exams</span>
+        <span id="examNavBadge" class="nav-badge nav-badge--urgent hidden">!</span>
+      </a>
+
+      <a href="{{ url_for('classmanagement.management_page') }}"
+         class="nav-item cr-only hidden {% block nav_classmanage %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        <span>Class Management</span>
+      </a>
 
       <a href="/campus/resources"
          class="nav-item {% block nav_resources %}{% endblock %}">
@@ -349,6 +390,8 @@
 <!-- AI preloader: silently warms Transformers.js MiniLM model in background -->
 <script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/push-client.js') }}" defer></script>
+<!-- Offline sync engine — must load before extra_js blocks -->
+<script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
 
 <!-- Scroll-reveal IntersectionObserver -->
 <script>
@@ -366,6 +409,85 @@
   els.forEach(el => io.observe(el));
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════
+     OFFLINE BAR — shown by body.is-offline or pending queue
+     ═══════════════════════════════════════════════════════ -->
+<div id="offlineBar" class="offline-bar" role="status" aria-live="polite">
+  <span class="offline-bar-icon">📡</span>
+  <span class="offline-bar-label" id="offlineBarLabel">Offline Mode</span>
+  <span class="offline-queue-badge" id="offlineQueueBadge"></span>
+  <span class="sync-dot" id="offlineSyncDot"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SERVICE WORKER REGISTRATION
+     ═══════════════════════════════════════════════════════ -->
+<script>
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/static/sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      });
+
+      // Check for updates every 10 minutes while page is open
+      setInterval(() => reg.update(), 10 * 60 * 1000);
+
+      // Prompt reload when new SW is waiting
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Show update notification
+            if (typeof UniSync !== 'undefined' && UniSync.toast) {
+              UniSync.toast(
+                '🔄 UniSync updated! <a href="" onclick="location.reload();return false;" style="color:var(--golden);font-weight:700;">Reload</a>',
+                'info', 0
+              );
+            }
+          }
+        });
+      });
+
+      // Show/hide CR-only nav items based on role
+      const user = (() => {
+        try { return JSON.parse(localStorage.getItem('us_user')); } catch { return null; }
+      })();
+
+      if (user?.role === 'cr' || user?.role === 'admin') {
+        document.querySelectorAll('.cr-only').forEach(el => el.classList.remove('hidden'));
+      }
+
+      // Update nav badges for notices/exams
+      if (user) _updateNavBadges(user);
+
+    } catch (err) {
+      console.warn('[SW] Registration failed:', err.message);
+    }
+  });
+
+  async function _updateNavBadges(user) {
+    // Check for urgent exams (badge on Exams nav)
+    try {
+      const r = await fetch(
+        `/exams/api/exams/upcoming?program=${user.program}&year=${user.year}&semester=${user.semester}`
+      );
+      if (r.ok) {
+        const d = await r.json();
+        if (d.has_urgent) {
+          const b = document.getElementById('examNavBadge');
+          if (b) b.classList.remove('hidden');
+        }
+      }
+    } catch {}
+  }
+})();
+</script>
+
 {% block extra_js %}{% endblock %}
 
 </body>

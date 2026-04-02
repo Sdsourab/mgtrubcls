@@ -31,6 +31,27 @@
     </div>
   </div>
 
+  <!-- PWA Install Banner (shown via JS beforeinstallprompt) -->
+  <div id="pwaInstallBanner" class="pwa-install-banner hidden">
+    <div class="pwa-install-banner__text">
+      <h4>📲 Install UniSync App</h4>
+      <p>Works offline · Opens instantly · No app store needed</p>
+    </div>
+    <button class="pwa-install-btn" id="pwaInstallBtn" onclick="PWAInstall.prompt()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Install Now
+    </button>
+  </div>
+
+  <!-- Exam Alert Section — populated by JS, works offline via cache -->
+  <section id="examAlertSection"></section>
+
+  <!-- Class Changes Alert — cancelled / extra classes -->
+  <section id="classChangesSection"></section>
+
   <!-- Stats -->
   <section class="stats-grid stagger">
     <div class="stat-card">
@@ -43,11 +64,11 @@
     </div>
     <div class="stat-card">
       <div class="stat-header">
-        <span class="stat-label">TODAY'S CLASSES</span>
+        <span class="stat-label" id="classesStatLabel">TODAY'S CLASSES</span>
         <svg class="stat-icon text-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       </div>
       <div class="stat-value text-green" id="statTodayClasses">0</div>
-      <div class="stat-sub">classes scheduled today</div>
+      <div class="stat-sub" id="statClassesSub">classes scheduled</div>
     </div>
     <div class="stat-card">
       <div class="stat-header">
@@ -121,71 +142,147 @@
 
 {% block extra_js %}
 <script>
-  function _t12h(t) {
-    if (!t) return '';
-    const p = String(t).split(':').map(Number);
-    if (p.length < 2 || isNaN(p[0])) return t;
-    return `${p[0] % 12 || 12}:${String(p[1]).padStart(2,'0')} ${p[0] < 12 ? 'AM' : 'PM'}`;
+/**
+ * UniSync Dashboard — Extra Logic
+ * • Time-based class display (8am–6pm = today, after 6pm = tomorrow)
+ * • Exam countdown alerts (online + offline cache)
+ * • Class cancellation / extra class alerts
+ * • PWA install prompt
+ * • Duration search
+ */
+
+// ─────────────────────────────────────────────────────────────
+// TIME LOGIC  — decide which day's classes to show
+// ─────────────────────────────────────────────────────────────
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const WORKDAYS = new Set(['Sunday','Monday','Tuesday','Wednesday','Thursday']);
+
+function getTargetDay() {
+  const now  = new Date();
+  const hour = now.getHours();
+
+  if (hour >= 8 && hour < 18) {
+    // 8 AM – 6 PM: show today
+    return {
+      date:  now,
+      day:   DAYS[now.getDay()],
+      label: "Today's Classes",
+      isToday: true,
+    };
+  } else {
+    // After 6 PM: show tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return {
+      date:  tomorrow,
+      day:   DAYS[tomorrow.getDay()],
+      label: "Tomorrow's Classes",
+      isToday: false,
+    };
   }
-  let _user = null;
+}
+
+// Expose for live_engine.js to consume
+const _target = getTargetDay();
+window.__DASH_TARGET_DAY   = _target.day;
+window.__DASH_TARGET_LABEL = _target.label;
+window.__DASH_TARGET_DATE  = _target.date.toISOString().split('T')[0];
+
+// ─────────────────────────────────────────────────────────────
+// MAIN INIT
+// ─────────────────────────────────────────────────────────────
+let _user = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   UniSync.requireAuth();
   _user = UniSync.getUser();
   if (!_user) return;
 
-  // Stat: program
+  // Stat: program label
   document.getElementById('statProgram').textContent  = _user.program  || 'BBA';
   document.getElementById('statYearSem').textContent  =
     `Year ${_user.year || 1} · Semester ${_user.semester || 1}`;
 
-  await checkHolidayBanner();
-  await loadTodayCount();
-  await loadDashTasks();
+  // Update classes stat label with time-based label
+  const lbl = document.getElementById('classesStatLabel');
+  const sub = document.getElementById('statClassesSub');
+  if (lbl) lbl.textContent = _target.isToday ? "TODAY'S CLASSES" : "TOMORROW'S CLASSES";
+  if (sub) sub.textContent = `classes ${_target.isToday ? 'today' : 'tomorrow'}`;
 
-  // Pre-select today in duration search
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const today = days[new Date().getDay()];
+  // Run all parallel loads — don't block on any single one
+  await Promise.allSettled([
+    checkHolidayBanner(),
+    loadTodayCount(),
+    loadDashTasks(),
+    loadExamAlerts(),
+    loadClassChanges(),
+  ]);
+
+  // Pre-select target day in duration search
   const sel = document.getElementById('dsDay');
-  if (['Sunday','Monday','Tuesday','Wednesday','Thursday'].includes(today)) sel.value = today;
+  if (sel && WORKDAYS.has(_target.day)) sel.value = _target.day;
 });
 
+// ─────────────────────────────────────────────────────────────
+// HOLIDAY CHECK
+// ─────────────────────────────────────────────────────────────
 async function checkHolidayBanner() {
   try {
     const today = new Date().toISOString().split('T')[0];
     const res   = await fetch(`/academic/api/holiday-check?date=${today}`);
+    if (!res.ok) return;
     const data  = await res.json();
     if (data.is_holiday) {
       document.getElementById('holidayBanner').classList.remove('hidden');
-      document.getElementById('holidayBannerName').textContent = data.name;
+      document.getElementById('holidayBannerName').textContent = data.name || 'Public Holiday';
     }
-  } catch(e) {}
+  } catch {}
 }
 
+// ─────────────────────────────────────────────────────────────
+// CLASS COUNT  (uses target day — today or tomorrow)
+// ─────────────────────────────────────────────────────────────
 async function loadTodayCount() {
-  const days    = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const today   = days[new Date().getDay()];
-  const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-  if (!validDays.includes(today)) { document.getElementById('statTodayClasses').textContent = '0'; return; }
+  if (!WORKDAYS.has(_target.day)) {
+    document.getElementById('statTodayClasses').textContent = '0';
+    return;
+  }
+  const cacheKey = `class_count_${_target.day}_${_user.program}_${_user.year}_${_user.semester}`;
   try {
     const params = new URLSearchParams({
-      day: today,
+      day:      _target.day,
       program:  _user.program  || 'BBA',
       year:     _user.year     || 1,
       semester: _user.semester || 1,
     });
     const res  = await fetch(`/academic/api/routine?${params}`);
     const data = await res.json();
-    document.getElementById('statTodayClasses').textContent = data.success ? data.data.length : '0';
-  } catch(e) {}
+    const count = data.success ? data.data.length : 0;
+    document.getElementById('statTodayClasses').textContent = count;
+    if (data.success) localStorage.setItem(cacheKey, count);
+  } catch {
+    // Offline fallback
+    const cached = localStorage.getItem(cacheKey);
+    if (cached !== null) document.getElementById('statTodayClasses').textContent = cached;
+  }
 }
 
+// ─────────────────────────────────────────────────────────────
+// TASKS  (offline-cached)
+// ─────────────────────────────────────────────────────────────
 async function loadDashTasks() {
+  const cacheKey = `dash_tasks_${_user.id}`;
   try {
     const res  = await fetch(`/productivity/api/tasks?user_id=${_user.id}`);
     const data = await res.json();
-    if (data.success) renderDashTasks(data.data);
-  } catch(e) {}
+    if (data.success) {
+      renderDashTasks(data.data);
+      localStorage.setItem(cacheKey, JSON.stringify(data.data));
+    }
+  } catch {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) renderDashTasks(JSON.parse(cached));
+  }
 }
 
 function renderDashTasks(tasks) {
@@ -195,16 +292,16 @@ function renderDashTasks(tasks) {
   document.getElementById('statPending').textContent  = pending.length;
 
   if (!pending.length) {
-    list.innerHTML = '<div class="empty-state"><p>No pending tasks! <a href="/productivity/tasks">Add one →</a></p></div>';
+    list.innerHTML = '<div class="empty-state"><p>✅ No pending tasks! <a href="/productivity/tasks">Add one →</a></p></div>';
     return;
   }
 
-  list.innerHTML = pending.slice(0,5).map(t => {
+  list.innerHTML = pending.slice(0, 5).map(t => {
     const dl  = t.deadline ? new Date(t.deadline) : null;
-    const dls = dl ? dl.toLocaleDateString('en-GB', {day:'numeric',month:'short'}) : '';
-    const prio = t.urgent_flag ? 'urgent' : (t.priority || 'medium');
+    const dls = dl ? dl.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
+    const prio = t.priority || 'medium';
     return `
-    <div class="task-item ${t.urgent_flag ? 'urgent-glow' : ''}">
+    <div class="task-item">
       <div class="task-item-left">
         <span class="priority-badge ${prio}">${prio.toUpperCase()}</span>
         <span class="task-date">${dls}</span>
@@ -214,8 +311,10 @@ function renderDashTasks(tasks) {
         ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
       </div>
       <div class="task-item-actions">
-        <button class="task-action-btn" onclick="quickDone('${t.id}',this)" title="Done">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <button class="task-action-btn" onclick="quickDone('${t.id}',this)" title="Mark done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
         </button>
       </div>
     </div>`;
@@ -225,17 +324,185 @@ function renderDashTasks(tasks) {
 async function quickDone(id, btn) {
   try {
     await fetch(`/productivity/api/tasks/${id}`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({status:'done'})
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done' }),
     });
-    btn.closest('.task-item').style.opacity = '0';
-    btn.closest('.task-item').style.transition = 'opacity 0.3s';
-    setTimeout(() => { btn.closest('.task-item').remove(); }, 320);
-    UniSync.toast('Task done! ✓', 'success');
-  } catch(e) { UniSync.toast('Error', 'error'); }
+    const item = btn.closest('.task-item');
+    item.style.cssText = 'opacity:0;transform:translateX(16px);transition:all 0.3s';
+    setTimeout(() => item.remove(), 320);
+    UniSync.toast('✓ Task done!', 'success');
+  } catch { UniSync.toast('Error', 'error'); }
 }
 
-// ── Duration Search ──────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// EXAM ALERTS  — countdown cards, works offline via localStorage
+// ─────────────────────────────────────────────────────────────
+async function loadExamAlerts() {
+  const section  = document.getElementById('examAlertSection');
+  if (!section) return;
+  const cacheKey = `exam_upcoming_${_user.program}_${_user.year}_${_user.semester}`;
+
+  let exams = [];
+
+  try {
+    if (navigator.onLine) {
+      const params = new URLSearchParams({
+        program: _user.program || 'BBA', year: _user.year || 1, semester: _user.semester || 1,
+      });
+      const res  = await fetch(`/exams/api/exams/upcoming?${params}`);
+      const data = await res.json();
+      if (data.success) {
+        exams = data.data;
+        localStorage.setItem(cacheKey, JSON.stringify({ data: exams, ts: Date.now() }));
+      }
+    } else {
+      // Offline: restore cached exams and recalculate days_remaining
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached?.data) {
+        const today = new Date();
+        exams = cached.data.map(e => ({
+          ...e,
+          days_remaining: Math.round((new Date(e.exam_date) - today) / 86400000),
+          is_today:       new Date(e.exam_date).toDateString() === today.toDateString(),
+          is_urgent:      Math.round((new Date(e.exam_date) - today) / 86400000) <= 7,
+        }));
+      }
+    }
+  } catch {}
+
+  // Filter: only show upcoming exams (days_remaining >= 0)
+  const upcoming = exams.filter(e => (e.days_remaining ?? 999) >= 0 && e.is_urgent);
+  if (!upcoming.length) return;
+
+  section.innerHTML = `
+    <div class="section-header scroll-reveal" style="margin-top:20px;">
+      <h2>📝 Upcoming Exams</h2>
+      <a href="/exams/" class="view-all-link">Full Schedule →</a>
+    </div>
+    ${upcoming.slice(0, 3).map(exam => {
+      const d  = exam.days_remaining;
+      const countdownHtml = d === 0
+        ? `<div class="exam-countdown today-fire">🔥</div>`
+        : `<div class="exam-countdown">${d}d</div>`;
+      const urgencyLabel = d === 0 ? '<strong style="color:#E53E3E">TODAY</strong>'
+                         : d === 1 ? '<strong style="color:#DD6B20">TOMORROW</strong>'
+                         : `<span style="color:#E53E3E">${d} days left</span>`;
+      return `
+      <div class="exam-alert-card scroll-reveal">
+        ${countdownHtml}
+        <div class="exam-info">
+          <div class="exam-name">
+            ${exam.course_name || exam.course_code}
+            <span class="exam-type-tag">${(exam.exam_type||'exam').toUpperCase()}</span>
+          </div>
+          <div class="exam-meta">
+            📅 ${exam.exam_date}
+            ${exam.start_time ? `· ⏰ ${exam.start_time}` : ''}
+            ${exam.room_no    ? `· 🏛 ${exam.room_no}`    : ''}
+            · ${urgencyLabel}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// CLASS CHANGES  — show recent cancellations / extra classes
+// ─────────────────────────────────────────────────────────────
+async function loadClassChanges() {
+  const section  = document.getElementById('classChangesSection');
+  if (!section) return;
+  const today   = new Date().toISOString().split('T')[0];
+  // Show changes for next 3 days
+  const in3days = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+  const cacheKey = `class_changes_${_user.program}_${_user.year}_${_user.semester}_${today}`;
+
+  let changes = [];
+  try {
+    if (navigator.onLine) {
+      const params = new URLSearchParams({
+        program: _user.program || 'BBA', year: _user.year || 1,
+        semester: _user.semester || 1, from: today, to: in3days,
+      });
+      const res  = await fetch(`/classmanagement/api/class-changes?${params}`);
+      const data = await res.json();
+      if (data.success) {
+        changes = data.data;
+        localStorage.setItem(cacheKey, JSON.stringify(changes));
+      }
+    } else {
+      changes = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+    }
+  } catch {}
+
+  if (!changes.length) return;
+
+  section.innerHTML = `
+    <div class="section-header scroll-reveal" style="margin-top:4px;">
+      <h2>📋 Class Alerts</h2>
+      <span class="section-sub">${changes.length} update${changes.length !== 1 ? 's' : ''}</span>
+    </div>
+    ${changes.map(c => `
+    <div class="notice-card scroll-reveal" style="margin-bottom:10px;">
+      <div class="notice-card__header">
+        <span class="notice-type-badge ${c.type === 'cancel' ? 'class_cancel' : 'extra_class'}">
+          ${c.type === 'cancel' ? '❌ CANCELLED' : '📅 EXTRA CLASS'}
+        </span>
+        <span class="notice-card__title" style="font-size:0.9rem;">
+          ${c.course_name || c.course_code}
+        </span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text-muted);">
+        📅 ${c.change_date}
+        ${c.time_start ? `· ⏰ ${c.time_start}${c.time_end ? ' – ' + c.time_end : ''}` : ''}
+        ${c.room_no ? `· 🏛 ${c.room_no}` : ''}
+        ${c.reason  ? `<br>💬 ${c.reason}` : ''}
+        <br><em>— ${c.created_by_name || 'CR'}</em>
+      </div>
+    </div>`).join('')}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PWA INSTALL PROMPT
+// ─────────────────────────────────────────────────────────────
+const PWAInstall = (() => {
+  let _deferred = null;
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferred = e;
+    // Only show if not already installed
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('pwaInstallBanner')?.classList.remove('hidden');
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('pwaInstallBanner')?.classList.add('hidden');
+    _deferred = null;
+    UniSync.toast('✅ UniSync installed! Open from your home screen.', 'success', 5000);
+  });
+
+  async function prompt() {
+    if (!_deferred) return;
+    _deferred.prompt();
+    const { outcome } = await _deferred.userChoice;
+    _deferred = null;
+    document.getElementById('pwaInstallBanner')?.classList.add('hidden');
+  }
+
+  return { prompt };
+})();
+
+// ─────────────────────────────────────────────────────────────
+// DURATION SEARCH
+// ─────────────────────────────────────────────────────────────
+function _t12h(t) {
+  if (!t) return '';
+  const p = String(t).split(':').map(Number);
+  if (p.length < 2 || isNaN(p[0])) return t;
+  return `${p[0] % 12 || 12}:${String(p[1]).padStart(2,'0')} ${p[0] < 12 ? 'AM' : 'PM'}`;
+}
 
 async function runDurationSearch() {
   const from   = document.getElementById('dsFrom').value;
@@ -250,18 +517,18 @@ async function runDurationSearch() {
   resDiv.classList.remove('hidden');
 
   try {
-    const params = new URLSearchParams({from, to});
-    if (day) params.set('day', day);
-    if (_user?.program)  params.set('program',  _user.program);
-    if (_user?.year)     params.set('year',      _user.year);
-    if (_user?.semester) params.set('semester',  _user.semester);
+    const params = new URLSearchParams({ from, to });
+    if (day)              params.set('day',      day);
+    if (_user?.program)   params.set('program',  _user.program);
+    if (_user?.year)      params.set('year',      _user.year);
+    if (_user?.semester)  params.set('semester',  _user.semester);
 
     const res  = await fetch(`/academic/api/duration-search?${params}`);
     const data = await res.json();
 
     if (!data.success) { resDiv.innerHTML = '<div class="ts-empty">Search failed.</div>'; return; }
     if (!data.data.length) {
-      resDiv.innerHTML = '<div class="ts-empty">✅ No classes in this time window for your semester.</div>';
+      resDiv.innerHTML = '<div class="ts-empty">✅ No classes in this window for your semester.</div>';
       return;
     }
 
@@ -276,16 +543,17 @@ async function runDurationSearch() {
     </div>`).join('');
 
     if (data.ml?.suggestions?.length) {
-      html += `<div class="ml-suggestion-box">
-        <div class="ml-suggestion-title">🧠 Smart Suggestions</div>`;
-      data.ml.suggestions.forEach(s => {
-        html += `<div class="ml-suggestion-item">${s.suggestion}</div>`;
-      });
+      html += `<div class="ml-suggestion-box"><div class="ml-suggestion-title">🧠 Smart Suggestions</div>`;
+      data.ml.suggestions.forEach(s => { html += `<div class="ml-suggestion-item">${s.suggestion}</div>`; });
       html += `</div>`;
     }
     resDiv.innerHTML = html;
-  } catch(e) {
-    resDiv.innerHTML = '<div class="ts-empty">Connection error.</div>';
+
+  } catch {
+    // Offline fallback message
+    resDiv.innerHTML = `<div class="ts-empty">
+      📡 Duration search requires an internet connection.
+    </div>`;
   }
 }
 </script>
