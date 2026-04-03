@@ -8,38 +8,43 @@
   <div class="page-header scroll-reveal">
     <div>
       <h1 class="page-title">My Profile</h1>
-      <p class="page-sub">Update your info, switch roles, manage your academic settings</p>
+      <p class="page-sub">Manage your account, role, and academic settings</p>
     </div>
   </div>
 
-  <!-- ── Profile Header Card ─────────────────────────────────── -->
+  <!-- ── Profile Header Card ──────────────────────────────── -->
   <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
-              padding:24px;margin-bottom:18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;"
-       class="anim-fade-up">
+              padding:24px;margin-bottom:18px;display:flex;align-items:center;
+              gap:20px;flex-wrap:wrap;" class="anim-fade-up">
     <div id="bigAvatar"
          style="width:72px;height:72px;border-radius:50%;
                 background:linear-gradient(135deg,var(--terra),var(--golden));
                 display:flex;align-items:center;justify-content:center;
                 font-size:2rem;font-weight:800;color:#fff;flex-shrink:0;">?</div>
     <div style="flex:1;min-width:200px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
         <div id="profileDisplayName" style="font-size:1.3rem;font-weight:700;">—</div>
-        <span id="profileRoleBadge" class="cr-badge hidden">CR</span>
+        <span id="headerCrBadge"
+              style="display:none;background:linear-gradient(135deg,#BC6F37,#9A5A2C);
+                     color:white;padding:2px 10px;border-radius:999px;
+                     font-size:0.68rem;font-weight:700;letter-spacing:0.05em;">CR</span>
       </div>
-      <div id="profileDisplayEmail"  style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;">—</div>
+      <div id="profileDisplayEmail" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;">—</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <span id="profileDisplayBadge" class="routine-program-tag">—</span>
-        <span id="profileStudentId"
-              style="font-size:0.75rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;"></span>
+        <span id="profileStudentIdDisplay"
+              style="font-size:0.74rem;color:var(--text-muted);
+                     font-family:'JetBrains Mono',monospace;"></span>
       </div>
     </div>
   </div>
 
-  <!-- ── Two-column grid ──────────────────────────────────────── -->
+  <!-- ── Two-column grid ──────────────────────────────────── -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:760px;">
 
     <!-- Update Name -->
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;">
+    <div style="background:var(--bg-card);border:1px solid var(--border);
+                border-radius:var(--radius-lg);padding:22px;">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">✏️ Update Name</h3>
       <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">
         Changes your display name everywhere in the app.
@@ -53,13 +58,14 @@
       <button class="btn-primary btn-full" onclick="saveName()">Save Name</button>
     </div>
 
-    <!-- Update Academic Info -->
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;">
+    <!-- Academic Info -->
+    <div style="background:var(--bg-card);border:1px solid var(--border);
+                border-radius:var(--radius-lg);padding:22px;">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">🎓 Academic Info</h3>
       <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">
-        Changing your year/semester instantly updates your class routine.
+        Changing your year/semester instantly updates your routine.
         <br><span style="color:var(--terra);font-weight:600;">💡</span>
-        Registration এর সময় দেওয়া Program/Year/Semester স্বয়ংক্রিয়ভাবে সেভ আছে।
+        Registration এ দেওয়া info স্বয়ংক্রিয়ভাবে সেভ আছে।
       </p>
       <div id="acadMsg" class="hidden"
            style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
@@ -90,13 +96,13 @@
 
   </div>
 
-  <!-- ── Student ID Card ──────────────────────────────────────── -->
+  <!-- ── Student ID ────────────────────────────────────────── -->
   <div style="background:var(--bg-card);border:1px solid var(--border);
               border-radius:var(--radius-lg);padding:22px;margin-top:16px;max-width:760px;"
        class="scroll-reveal">
     <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">🪪 Student ID</h3>
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">
-      Your unique university student ID. Used for CR verification and identification.
+      Unique university student ID. Required for CR verification.
     </p>
     <div id="sidMsg" class="hidden"
          style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
@@ -105,32 +111,39 @@
         <label>Student ID</label>
         <input type="text" id="inp_student_id" placeholder="e.g. RU2024BBA001"
                maxlength="24" oninput="this.value=this.value.toUpperCase()"
-               style="font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">
+               style="font-family:'JetBrains Mono',monospace;">
       </div>
-      <button class="btn-primary" onclick="saveStudentId()" style="white-space:nowrap;padding:10px 18px;">
-        Save ID
-      </button>
+      <button class="btn-primary" onclick="saveStudentId()"
+              style="padding:10px 18px;white-space:nowrap;">Save ID</button>
     </div>
   </div>
 
-  <!-- ── Role Switching Card ──────────────────────────────────── -->
+  <!-- ── Role Switching ────────────────────────────────────── -->
   <div style="background:var(--bg-card);border:1px solid var(--border);
               border-radius:var(--radius-lg);padding:22px;margin-top:16px;max-width:760px;"
        class="scroll-reveal">
     <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">⭐ Role &amp; Permissions</h3>
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;line-height:1.65;">
-      <strong>Student</strong> — read-only access to notices, exams, class changes.<br>
-      <strong>CR (Class Representative)</strong> — can create notices, cancel/add classes, publish exam schedules for your section.
+      <strong>Student</strong> — notices, exams, class changes দেখতে পাবে।<br>
+      <strong>CR (Class Representative)</strong> — notices তৈরি করতে, class cancel/add করতে,
+      exam schedule publish করতে পারবে।
     </p>
-
     <div id="roleMsg" class="hidden"
          style="margin-bottom:14px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-      <button id="roleBtnStudent" class="role-btn" onclick="switchRole('student')">
+      <button id="roleBtnStudent"
+              onclick="switchRole('student')"
+              style="padding:10px 20px;border-radius:var(--radius-md);
+                     border:1px solid var(--border);background:var(--bg-card);
+                     font-weight:600;cursor:pointer;transition:all 0.2s;">
         👤 Student
       </button>
-      <button id="roleBtnCr" class="role-btn" onclick="switchRole('cr')">
+      <button id="roleBtnCr"
+              onclick="switchRole('cr')"
+              style="padding:10px 20px;border-radius:var(--radius-md);
+                     border:1px solid var(--border);background:var(--bg-card);
+                     font-weight:600;cursor:pointer;transition:all 0.2s;">
         ⭐ Class Representative (CR)
       </button>
     </div>
@@ -138,47 +151,44 @@
     <p style="font-size:0.72rem;color:var(--text-muted);line-height:1.6;
               padding:10px 13px;background:rgba(188,111,55,0.06);
               border-radius:var(--radius-sm);border:1px solid rgba(188,111,55,0.15);">
-      ⚠️ CR role gives you extra permissions for your class section only.
-      Switching to CR will apply to your current program/year/semester.
-      Misuse of CR access may result in role revocation by admin.
+      ⚠️ CR role তোমার current program/year/semester-এর জন্য প্রযোজ্য।
+      Admin চাইলে CR status revoke করতে পারে।
     </p>
   </div>
 
-  <!-- ── Offline Sync Status Card ─────────────────────────────── -->
+  <!-- ── Offline Sync Status ───────────────────────────────── -->
   <div style="background:var(--bg-card);border:1px solid var(--border);
               border-radius:var(--radius-lg);padding:22px;margin-top:16px;max-width:760px;"
        class="scroll-reveal">
     <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">📡 Offline Sync Status</h3>
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">
-      Actions taken while offline are stored locally and synced when you reconnect.
+      Offline এ করা actions store হয় এবং internet আসলে auto-sync হয়।
     </p>
     <div id="syncStatusArea"
          style="font-size:0.83rem;color:var(--text-secondary);padding:12px 14px;
-                background:var(--bg-surface,#f5ede0);border-radius:var(--radius-sm);">
-      Checking sync queue…
+                background:rgba(188,111,55,0.05);border-radius:var(--radius-sm);
+                border:1px solid var(--border);">
+      Checking…
     </div>
     <button onclick="manualSync()"
             style="margin-top:12px;padding:9px 18px;border-radius:var(--radius-md);
                    border:1px solid var(--border);background:var(--bg-card);
-                   font-weight:600;font-size:0.83rem;cursor:pointer;transition:all 0.2s;">
+                   font-weight:600;font-size:0.83rem;cursor:pointer;">
       🔄 Sync Now
     </button>
   </div>
 
-  <!-- ── Email Notifications Info ─────────────────────────────── -->
+  <!-- ── Email Notifications Info ─────────────────────────── -->
   <div style="background:rgba(188,111,55,0.06);border:1px solid rgba(188,111,55,0.18);
-              border-radius:var(--radius-lg);padding:20px 22px;margin-top:16px;max-width:760px;"
-       class="scroll-reveal">
-    <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">
-      📧 Email Notifications
-    </h3>
+              border-radius:var(--radius-lg);padding:20px 22px;
+              margin-top:16px;max-width:760px;" class="scroll-reveal">
+    <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:8px;">📧 Email Notifications</h3>
     <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.65;">
-      প্রতিদিন <strong style="color:var(--terra);">সন্ধ্যা ৭টায়</strong> তোমার রেজিস্টার্ড ইমেইলে পাঠানো হবে:<br>
-      • <strong>আগামীকালের ক্লাস সিডিউল</strong> (12-ঘন্টা ফরম্যাটে সময় সহ)<br>
+      প্রতিদিন <strong style="color:var(--terra);">সন্ধ্যা ৭টায়</strong> ইমেইলে পাঠানো হবে:<br>
+      • <strong>আগামীকালের ক্লাস সিডিউল</strong><br>
       • <strong>পেন্ডিং টাস্কের তালিকা</strong><br><br>
-      ক্লাস শুরুর <strong style="color:var(--terra);">৩০ মিনিট পরে</strong> যদি তুমি এখনো join না করো,
-      তাহলে একটি class alert email যাবে।<br>
-      <em style="font-size:0.75rem;">ব্রাউজার বন্ধ থাকলেও এই ইমেইল যাবে।</em>
+      ক্লাস শুরুর <strong style="color:var(--terra);">৩০ মিনিট পরে</strong> join না করলে
+      class alert email আসবে।
     </p>
   </div>
 
@@ -194,40 +204,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   _user = UniSync.getUser();
   if (!_user) return;
 
-  // ── Populate header ────────────────────────────────────────
-  const initial = ((_user.full_name || _user.email || '?')[0] || '?').toUpperCase();
-  document.getElementById('bigAvatar').textContent           = initial;
+  // Header
+  const initials = ((_user.full_name || _user.email || '?')[0] || '?').toUpperCase();
+  document.getElementById('bigAvatar').textContent           = initials;
   document.getElementById('profileDisplayName').textContent  = _user.full_name || '—';
   document.getElementById('profileDisplayEmail').textContent = _user.email     || '—';
   document.getElementById('profileDisplayBadge').textContent =
-    `${_user.program||'BBA'} · Year ${_user.year||1} · Sem ${_user.semester||1}`;
+    `${_user.program || 'BBA'} · Year ${_user.year || 1} · Sem ${_user.semester || 1}`;
 
-  // CR badge in header
-  if (_user.role === 'cr' || _user.role === 'admin') {
-    document.getElementById('profileRoleBadge').classList.remove('hidden');
-  }
-
-  // Student ID display
   if (_user.student_id) {
-    document.getElementById('profileStudentId').textContent = `ID: ${_user.student_id}`;
+    document.getElementById('profileStudentIdDisplay').textContent = `ID: ${_user.student_id}`;
   }
 
-  // ── Populate form fields ───────────────────────────────────
-  document.getElementById('inp_name').value       = _user.full_name  || '';
-  document.getElementById('inp_program').value    = _user.program    || 'BBA';
-  document.getElementById('inp_student_id').value = _user.student_id || '';
+  if (_user.role === 'cr' || _user.role === 'admin') {
+    document.getElementById('headerCrBadge').style.display = 'inline-block';
+  }
+
+  // Form defaults
+  document.getElementById('inp_name').value        = _user.full_name  || '';
+  document.getElementById('inp_program').value     = _user.program    || 'BBA';
+  document.getElementById('inp_student_id').value  = _user.student_id || '';
   updateYearOptions();
-  document.getElementById('inp_year').value       = _user.year       || 1;
-  document.getElementById('inp_semester').value   = _user.semester   || 1;
+  document.getElementById('inp_year').value        = _user.year       || 1;
+  document.getElementById('inp_semester').value    = _user.semester   || 1;
 
-  // ── Role buttons ───────────────────────────────────────────
-  _updateRoleBtns(_user.role || 'student');
+  // Role buttons
+  _markRoleBtn(_user.role || 'student');
 
-  // ── Offline sync status ────────────────────────────────────
-  _loadSyncStatus();
+  // Sync status
+  await _refreshSyncStatus();
 });
 
-// ── Year options ───────────────────────────────────────────────
+// ── Year options ─────────────────────────────────────────────
 function updateYearOptions() {
   const prog = document.getElementById('inp_program').value;
   const max  = prog === 'BBA' ? 4 : 2;
@@ -239,7 +247,7 @@ function updateYearOptions() {
   }
 }
 
-// ── Save name ──────────────────────────────────────────────────
+// ── Save name ────────────────────────────────────────────────
 async function saveName() {
   const name  = document.getElementById('inp_name').value.trim();
   const msgEl = document.getElementById('nameMsg');
@@ -263,7 +271,7 @@ async function saveName() {
   } catch { _msg(msgEl, 'Connection error', 'error'); }
 }
 
-// ── Save academic info ─────────────────────────────────────────
+// ── Save academic info ───────────────────────────────────────
 async function saveAcademic() {
   const program  = document.getElementById('inp_program').value;
   const year     = parseInt(document.getElementById('inp_year').value);
@@ -276,21 +284,19 @@ async function saveAcademic() {
     });
     const data = await res.json();
     if (data.success) {
-      _user.program  = program;
-      _user.year     = year;
-      _user.semester = semester;
+      _user.program = program; _user.year = year; _user.semester = semester;
       localStorage.setItem('us_user', JSON.stringify(_user));
       document.getElementById('profileDisplayBadge').textContent =
         `${program} · Year ${year} · Sem ${semester}`;
       UniSync.hydrateUI();
-      _msg(msgEl, '✅ Academic info updated! Routine refreshed.', 'success');
+      _msg(msgEl, '✅ Updated! Routine refreshed.', 'success');
     } else {
       _msg(msgEl, data.error || 'Update failed', 'error');
     }
   } catch { _msg(msgEl, 'Connection error', 'error'); }
 }
 
-// ── Save student ID ────────────────────────────────────────────
+// ── Save student ID ──────────────────────────────────────────
 async function saveStudentId() {
   const sid   = document.getElementById('inp_student_id').value.trim().toUpperCase();
   const msgEl = document.getElementById('sidMsg');
@@ -304,87 +310,79 @@ async function saveStudentId() {
     if (data.success) {
       _user.student_id = sid;
       localStorage.setItem('us_user', JSON.stringify(_user));
-      document.getElementById('profileStudentId').textContent = `ID: ${sid}`;
+      document.getElementById('profileStudentIdDisplay').textContent = `ID: ${sid}`;
       _msg(msgEl, '✅ Student ID saved!', 'success');
     } else {
-      _msg(msgEl, data.error || 'Could not save ID', 'error');
+      _msg(msgEl, data.error || 'Could not save', 'error');
     }
   } catch { _msg(msgEl, 'Connection error', 'error'); }
 }
 
-// ── Role switching ─────────────────────────────────────────────
+// ── Role switching ───────────────────────────────────────────
 async function switchRole(newRole) {
   const msgEl = document.getElementById('roleMsg');
-  _msg(msgEl, `Updating role to ${newRole === 'cr' ? 'Class Representative' : 'Student'}…`, 'info');
-
+  _msg(msgEl, 'Updating…', 'info');
   try {
     const res  = await fetch('/auth/api/profile', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id:  _user.id,
-        role:     newRole,
-        program:  _user.program,
-        year:     _user.year,
-        semester: _user.semester,
+        user_id: _user.id, role: newRole,
+        program: _user.program, year: _user.year, semester: _user.semester,
       }),
     });
     const data = await res.json();
     if (data.success) {
       _user.role = newRole;
       localStorage.setItem('us_user', JSON.stringify(_user));
-
-      _updateRoleBtns(newRole);
+      _markRoleBtn(newRole);
 
       // Show/hide CR badge in header
-      const badge = document.getElementById('profileRoleBadge');
-      if (newRole === 'cr' || newRole === 'admin') {
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
+      const badge = document.getElementById('headerCrBadge');
+      if (badge) badge.style.display = (newRole === 'cr' || newRole === 'admin') ? 'inline-block' : 'none';
 
-      // Show/hide CR nav items immediately
+      // Show/hide CR nav items
       document.querySelectorAll('.cr-only').forEach(el => {
         el.classList.toggle('hidden', newRole !== 'cr' && newRole !== 'admin');
       });
 
       const label = newRole === 'cr' ? 'Class Representative (CR)' : 'Student';
-      _msg(msgEl, `✅ Role updated to ${label}. Page will reload in 2s…`, 'success');
-      setTimeout(() => location.reload(), 2000);
+      _msg(msgEl, `✅ Role changed to ${label}. Reloading…`, 'success');
+      setTimeout(() => location.reload(), 1800);
     } else {
       _msg(msgEl, data.error || 'Failed to update role', 'error');
     }
   } catch { _msg(msgEl, 'Connection error', 'error'); }
 }
 
-function _updateRoleBtns(role) {
-  const studentBtn = document.getElementById('roleBtnStudent');
-  const crBtn      = document.getElementById('roleBtnCr');
-  if (!studentBtn || !crBtn) return;
-  studentBtn.className = `role-btn ${role === 'student' ? 'active' : ''}`;
-  crBtn.className      = `role-btn ${role === 'cr' || role === 'admin' ? 'active' : ''}`;
+function _markRoleBtn(role) {
+  const s = document.getElementById('roleBtnStudent');
+  const c = document.getElementById('roleBtnCr');
+  const active = 'background:linear-gradient(135deg,var(--terra),var(--golden));color:white;border-color:transparent;';
+  const idle   = 'background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);';
+  if (s) s.style.cssText = (role === 'student' ? active : idle) + 'padding:10px 20px;border-radius:var(--radius-md);font-weight:600;cursor:pointer;transition:all 0.2s;';
+  if (c) c.style.cssText = (role === 'cr' || role === 'admin' ? active : idle) + 'padding:10px 20px;border-radius:var(--radius-md);font-weight:600;cursor:pointer;transition:all 0.2s;';
 }
 
-// ── Offline sync status ────────────────────────────────────────
-async function _loadSyncStatus() {
-  const area = document.getElementById('syncStatusArea');
+// ── Offline sync status ──────────────────────────────────────
+async function _refreshSyncStatus() {
+  const el = document.getElementById('syncStatusArea');
+  if (!el) return;
   try {
     const pending = await OfflineSync.getPending();
-    if (pending.length === 0) {
-      area.innerHTML = `<span style="color:var(--success,#38A169);">✅ All synced — no pending actions</span>`;
+    if (!pending.length) {
+      el.innerHTML = '<span style="color:var(--success,#38A169);">✅ All synced — no pending actions</span>';
     } else {
-      const byType = pending.reduce((acc, a) => {
+      const groups = pending.reduce((acc, a) => {
         acc[a.type] = (acc[a.type] || 0) + 1; return acc;
       }, {});
-      const lines = Object.entries(byType).map(([t, n]) =>
-        `• ${n} × ${t.replace(/_/g,' ')}`
-      ).join('<br>');
-      area.innerHTML = `
-        <span style="color:var(--terra);font-weight:700;">⏳ ${pending.length} action${pending.length!==1?'s':''} pending sync</span><br>
-        <span style="color:var(--text-muted);font-size:0.78rem;">${lines}</span>`;
+      const lines = Object.entries(groups)
+        .map(([t, n]) => `• ${n}× ${t.replace(/_/g,' ')}`)
+        .join('<br>');
+      el.innerHTML = `<span style="color:var(--terra);font-weight:700;">⏳ ${pending.length} pending</span>
+        <br><span style="font-size:0.76rem;color:var(--text-muted);">${lines}</span>`;
     }
   } catch {
-    area.textContent = 'Could not read sync queue.';
+    el.textContent = 'Could not read sync queue.';
   }
 }
 
@@ -395,23 +393,27 @@ async function manualSync() {
   }
   UniSync.toast('🔄 Syncing…', 'info', 2000);
   await OfflineSync.syncNow();
-  await _loadSyncStatus();
+  await _refreshSyncStatus();
 }
 
-// ── Shared helper ──────────────────────────────────────────────
+// ── Shared helper ────────────────────────────────────────────
 function _msg(el, msg, type) {
   el.innerHTML = msg;
-  const colors = {
-    success: ['var(--success-bg)', 'var(--success)'],
-    error:   ['var(--danger-bg)',  'var(--danger)'],
-    info:    ['rgba(205,169,106,0.12)', 'var(--terra)'],
-    warning: ['rgba(237,137,54,0.12)', '#C05621'],
+  const MAP = {
+    success: 'rgba(56,161,105,0.12)',
+    error:   'rgba(229,62,62,0.10)',
+    info:    'rgba(205,169,106,0.10)',
+    warning: 'rgba(237,137,54,0.10)',
   };
-  const [bg, color] = colors[type] || colors.info;
-  el.style.background = bg;
-  el.style.color      = color;
+  const COLORS = {
+    success: '#276749', error: '#C53030', info: 'var(--terra)', warning: '#C05621'
+  };
+  el.style.background = MAP[type]    || MAP.info;
+  el.style.color      = COLORS[type] || COLORS.info;
   el.classList.remove('hidden');
   if (type !== 'info') setTimeout(() => el.classList.add('hidden'), 6000);
 }
+
+function showMsg(el, msg, type) { _msg(el, msg, type); }
 </script>
 {% endblock %}
