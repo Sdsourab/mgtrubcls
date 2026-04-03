@@ -56,6 +56,29 @@ def create_app(config_name: str = None):
     def dashboard():
         return render_template('dashboard.html')
 
+    # ── Serve SW from root scope (needed for local dev) ──────────
+    # On Vercel this is handled by vercel.json routes.
+    # Locally Flask must serve /sw.js so the scope covers '/'.
+    @app.route('/sw.js')
+    def service_worker():
+        from flask import send_from_directory
+        resp = send_from_directory(
+            os.path.join(_root, 'static'), 'sw.js',
+            mimetype='application/javascript'
+        )
+        resp.headers['Service-Worker-Allowed'] = '/'
+        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return resp
+
+    # ── Serve manifest.json from root ─────────────────────────────
+    @app.route('/manifest.json')
+    def manifest():
+        from flask import send_from_directory
+        return send_from_directory(
+            os.path.join(_root, 'static'), 'manifest.json',
+            mimetype='application/manifest+json'
+        )
+
     # ════════════════════════════════════════════════════════
     # STEP 1: API key ঠিক আছে কিনা check
     # GET /api/email-check

@@ -1,312 +1,192 @@
 /**
- * UniSync Service Worker  —  sw.js
- * ─────────────────────────────────────────────────────────────
- * Cache Strategies:
- *   Static assets  →  Cache First  (CSS, JS, fonts)
- *   API calls      →  Network First + fallback cache
- *   HTML pages     →  Network First + fallback cache + offline page
+ * UniSync Service Worker  v4
+ * Cache strategies:
+ *   /static/**  →  Cache First
+ *   /api/**     →  Network First + cache fallback
+ *   pages       →  Network First + cache fallback
  *
- * Features:
- *   • Background Sync  (queued offline actions auto-retry)
- *   • Push Notifications
- *   • Cache versioning  (old caches auto-deleted on activate)
- *   • Stale-While-Revalidate for non-critical API data
- * ─────────────────────────────────────────────────────────────
+ * IMPORTANT: does NOT pre-cache auth-gated pages at install
+ * (they redirect to login and can't be cached without credentials)
  */
 
-const VERSION      = 'v3';
-const STATIC_CACHE = `us-static-${VERSION}`;
-const API_CACHE    = `us-api-${VERSION}`;
-const PAGE_CACHE   = `us-pages-${VERSION}`;
+const VER          = 'v4';
+const STATIC_CACHE = `us-static-${VER}`;
+const API_CACHE    = `us-api-${VER}`;
+const PAGE_CACHE   = `us-pages-${VER}`;
 
-// ── Assets to pre-cache at install time ────────────────────────
-const PRECACHE_STATIC = [
+/* Only pre-cache pure static assets — no HTML pages */
+const PRECACHE = [
   '/static/css/style.css',
   '/static/js/main.js',
   '/static/js/live_engine.js',
   '/static/js/offline-sync.js',
-  '/static/js/bg-animation.js',
   '/static/manifest.json',
 ];
 
-const PRECACHE_PAGES = [
-  '/dashboard',
-  '/academic/routine',
-  '/productivity/tasks',
-  '/notices/',
-  '/exams/',
-];
-
-// ── API routes to cache aggressively ──────────────────────────
-const API_CACHE_PATTERNS = [
-  '/academic/api/routine',
-  '/academic/api/holiday-check',
-  '/academic/api/mappings',
-  '/productivity/api/tasks',
-  '/notices/api/notices',
-  '/exams/api/exams',
-  '/exams/api/exams/upcoming',
-  '/classmanagement/api/class-changes',
-  '/auth/api/profile',
-];
-
-// ─────────────────────────────────────────────────────────────
-// INSTALL
-// ─────────────────────────────────────────────────────────────
+/* ── Install ────────────────────────────────────────────────── */
 self.addEventListener('install', event => {
   event.waitUntil(
-    Promise.all([
-      caches.open(STATIC_CACHE).then(cache =>
-        cache.addAll(PRECACHE_STATIC.map(url =>
-          new Request(url, { cache: 'reload' })
-        ))
-      ),
-      caches.open(PAGE_CACHE).then(cache =>
-        // Attempt to pre-cache pages — ignore failures (user may not be logged in)
-        Promise.allSettled(
-          PRECACHE_PAGES.map(url =>
-            fetch(url).then(r => r.ok ? cache.put(url, r) : null).catch(() => null)
-          )
+    caches.open(STATIC_CACHE)
+      .then(cache => Promise.allSettled(
+        PRECACHE.map(url =>
+          fetch(url, { cache: 'reload' })
+            .then(r => r.ok ? cache.put(url, r) : null)
+            .catch(() => null)
         )
-      ),
-    ]).then(() => self.skipWaiting())
+      ))
+      .then(() => self.skipWaiting())
   );
 });
 
-// ─────────────────────────────────────────────────────────────
-// ACTIVATE  — evict stale caches
-// ─────────────────────────────────────────────────────────────
+/* ── Activate: delete old caches ────────────────────────────── */
 self.addEventListener('activate', event => {
   const keep = new Set([STATIC_CACHE, API_CACHE, PAGE_CACHE]);
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => !keep.has(k)).map(k => caches.delete(k))
-      ))
+      .then(keys => Promise.all(keys.filter(k => !keep.has(k)).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// ─────────────────────────────────────────────────────────────
-// FETCH  — routing logic
-// ─────────────────────────────────────────────────────────────
+/* ── Fetch routing ──────────────────────────────────────────── */
 self.addEventListener('fetch', event => {
-  const { request } = event;
-  const url = new URL(request.url);
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // Only handle same-origin GET requests
-  if (request.method !== 'GET') return;
+  if (req.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
-  // ── Static assets: Cache First ──────────────────────────────
-  if (
-    url.pathname.startsWith('/static/') ||
-    url.pathname === '/static/manifest.json'
-  ) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+  /* Static assets → Cache First */
+  if (url.pathname.startsWith('/static/')) {
+    event.respondWith(cacheFirst(req, STATIC_CACHE));
     return;
   }
 
-  // ── API calls: Network First + cache fallback ───────────────
-  const isApiRoute = API_CACHE_PATTERNS.some(p => url.pathname.startsWith(p));
-  if (url.pathname.includes('/api/') || isApiRoute) {
-    event.respondWith(networkFirstAPI(request));
+  /* API routes → Network First + API cache */
+  if (url.pathname.includes('/api/')) {
+    event.respondWith(networkFirstAPI(req));
     return;
   }
 
-  // ── HTML pages: Network First + stale cache fallback ────────
-  event.respondWith(networkFirstPage(request));
+  /* HTML pages → Network First + page cache */
+  event.respondWith(networkFirstPage(req));
 });
 
-// ─────────────────────────────────────────────────────────────
-// STRATEGY IMPLEMENTATIONS
-// ─────────────────────────────────────────────────────────────
-
-/** Cache First: serve from cache, fetch & update if missing */
-async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
+async function cacheFirst(req, cacheName) {
+  const cached = await caches.match(req);
   if (cached) return cached;
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+    const resp = await fetch(req);
+    if (resp.ok) {
+      const c = await caches.open(cacheName);
+      c.put(req, resp.clone());
     }
-    return response;
+    return resp;
   } catch {
-    return new Response('Asset unavailable offline.', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    return new Response('Asset unavailable.', { status: 503 });
   }
 }
 
-/** Network First for API: try network, fall back to cache, return offline JSON */
-async function networkFirstAPI(request) {
+async function networkFirstAPI(req) {
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(API_CACHE);
-      cache.put(request, response.clone());
+    const resp = await fetch(req);
+    if (resp.ok) {
+      const c = await caches.open(API_CACHE);
+      c.put(req, resp.clone());
     }
-    return response;
+    return resp;
   } catch {
-    const cached = await caches.match(request);
+    const cached = await caches.match(req);
     if (cached) {
-      // Tag the response so client knows it's stale
-      const headers = new Headers(cached.headers);
-      headers.set('X-Cache-Status', 'STALE');
-      headers.set('X-Served-Offline', 'true');
+      const h = new Headers(cached.headers);
+      h.set('X-Served-Offline', 'true');
       const body = await cached.clone().blob();
-      return new Response(body, {
-        status:  cached.status,
-        headers,
-      });
+      return new Response(body, { status: cached.status, headers: h });
     }
-    // Total fallback: structured offline response
     return new Response(
-      JSON.stringify({
-        success: false,
-        offline: true,
-        cached:  false,
-        error:   'No internet connection and no cached data available.',
-      }),
-      {
-        status:  503,
-        headers: { 'Content-Type': 'application/json', 'X-Served-Offline': 'true' },
-      }
+      JSON.stringify({ success: false, offline: true, error: 'You are offline' }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-/** Network First for pages: try network, fall back to cached page */
-async function networkFirstPage(request) {
+async function networkFirstPage(req) {
   try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(PAGE_CACHE);
-      cache.put(request, response.clone());
+    const resp = await fetch(req);
+    if (resp.ok) {
+      const c = await caches.open(PAGE_CACHE);
+      c.put(req, resp.clone());
     }
-    return response;
+    return resp;
   } catch {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-
-    // Try root cached page as shell fallback
-    const shell = await caches.match('/dashboard');
-    return shell || new Response(
-      `<!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
+    const cached = await caches.match(req);
+    return cached || new Response(
+      `<!DOCTYPE html><html><head>
+        <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <title>Offline — UniSync</title>
         <style>
-          body{font-family:'Outfit',sans-serif;background:#FCF5E8;color:#2C1810;
-               display:flex;flex-direction:column;align-items:center;
-               justify-content:center;min-height:100vh;text-align:center;gap:16px;margin:0;padding:24px}
-          h1{font-size:2rem;font-weight:800;color:#BC6F37}
-          p{font-size:0.95rem;color:#6B5240;max-width:320px;line-height:1.6}
-          a{color:#BC6F37;font-weight:600}
-          .icon{font-size:3.5rem}
+          body{font-family:sans-serif;background:#FCF5E8;display:flex;flex-direction:column;
+               align-items:center;justify-content:center;min-height:100vh;text-align:center;
+               gap:16px;padding:24px;margin:0;color:#2C1810}
+          h1{color:#BC6F37;font-size:1.8rem}
+          p{color:#6B5240;max-width:300px;line-height:1.6}
+          button{padding:12px 28px;background:#BC6F37;color:#fff;border:none;
+                 border-radius:8px;font-size:1rem;cursor:pointer}
         </style>
-      </head>
-      <body>
-        <div class="icon">📡</div>
+      </head><body>
+        <div style="font-size:3rem">📡</div>
         <h1>You're Offline</h1>
-        <p>UniSync needs a connection to load this page for the first time.<br>
-           Try going to <a href="/dashboard">Dashboard</a> which may be cached.</p>
-        <button onclick="location.reload()"
-          style="padding:12px 24px;background:#BC6F37;color:white;border:none;
-                 border-radius:8px;font-weight:600;cursor:pointer;margin-top:8px;">
-          Try Again
-        </button>
-      </body>
-      </html>`,
+        <p>UniSync needs internet to load this page. Please reconnect and try again.</p>
+        <button onclick="location.reload()">Try Again</button>
+      </body></html>`,
       { status: 503, headers: { 'Content-Type': 'text/html' } }
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// BACKGROUND SYNC
-// ─────────────────────────────────────────────────────────────
+/* ── Background Sync ────────────────────────────────────────── */
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-offline-actions') {
-    event.waitUntil(triggerClientSync());
+    event.waitUntil(
+      self.clients.matchAll({ includeUncontrolled: true, type: 'window' })
+        .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_SYNC_NOW' })))
+    );
   }
 });
 
-async function triggerClientSync() {
-  const clientList = await self.clients.matchAll({
-    includeUncontrolled: true,
-    type: 'window',
-  });
-  clientList.forEach(client => {
-    client.postMessage({ type: 'SW_SYNC_NOW', source: 'background-sync' });
-  });
-}
-
-// ─────────────────────────────────────────────────────────────
-// PUSH NOTIFICATIONS
-// ─────────────────────────────────────────────────────────────
+/* ── Push Notifications ─────────────────────────────────────── */
 self.addEventListener('push', event => {
   let data = {};
-  try { data = event.data?.json() || {}; } catch { data = { title: 'UniSync', body: event.data?.text() }; }
-
-  const TYPE_ICONS = {
-    exam:         '📝',
-    class_cancel: '❌',
-    extra_class:  '📅',
-    urgent:       '🚨',
-    general:      '📢',
-  };
-  const icon = TYPE_ICONS[data.type] || '📢';
-
-  const options = {
-    body:    data.body    || 'You have a new update from UniSync.',
-    icon:    '/static/icons/icon-192.png',
-    badge:   '/static/icons/icon-192.png',
-    vibrate: [100, 50, 200, 50, 100],
-    tag:     data.tag     || `us-${data.type || 'general'}-${Date.now()}`,
-    renotify: true,
-    data:    {
-      url:  data.url  || '/notices/',
-      type: data.type || 'general',
-    },
-    actions: [
-      { action: 'view',    title: 'View Now' },
-      { action: 'dismiss', title: 'Dismiss'  },
-    ],
-  };
-
+  try { data = event.data?.json() || {}; } catch {}
+  const icons = { exam:'📝', class_cancel:'❌', extra_class:'📅', urgent:'🚨', general:'📢' };
+  const icon  = icons[data.type] || '📢';
   event.waitUntil(
-    self.registration.showNotification(`${icon} ${data.title || 'UniSync'}`, options)
+    self.registration.showNotification(`${icon} ${data.title || 'UniSync'}`, {
+      body:    data.body || 'New update from UniSync',
+      icon:    '/static/icons/icon-192.png',
+      badge:   '/static/icons/icon-192.png',
+      vibrate: [100, 50, 200],
+      tag:     data.tag || 'us-notif',
+      data:    { url: data.url || '/dashboard' },
+      actions: [{ action: 'view', title: 'View' }, { action: 'dismiss', title: 'Dismiss' }],
+    })
   );
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   if (event.action === 'dismiss') return;
-
-  const targetUrl = event.notification.data?.url || '/dashboard';
+  const url = event.notification.data?.url || '/dashboard';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const existing = list.find(c => c.url.includes(self.location.origin));
-      if (existing) {
-        existing.navigate(targetUrl);
-        return existing.focus();
-      }
-      return clients.openWindow(targetUrl);
+      const w = list.find(c => c.url.includes(self.location.origin));
+      if (w) { w.navigate(url); return w.focus(); }
+      return clients.openWindow(url);
     })
   );
 });
 
-// ─────────────────────────────────────────────────────────────
-// SW UPDATE MESSAGE
-// ─────────────────────────────────────────────────────────────
+/* SW update message from page */
 self.addEventListener('message', event => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#BC6F37">
 
   <!-- PWA Manifest + App Meta -->
-  <link rel="manifest" href="/static/manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -424,67 +424,42 @@
      SERVICE WORKER REGISTRATION
      ═══════════════════════════════════════════════════════ -->
 <script>
-(function registerSW() {
+(function () {
+  /* ── CR nav items ─────────────────────────────────────── */
+  try {
+    const u = JSON.parse(localStorage.getItem('us_user') || 'null');
+    if (u?.role === 'cr' || u?.role === 'admin') {
+      document.querySelectorAll('.cr-only').forEach(el => el.classList.remove('hidden'));
+    }
+  } catch {}
+
+  /* ── Service Worker registration ──────────────────────── */
   if (!('serviceWorker' in navigator)) return;
 
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('/static/sw.js', {
-        scope: '/',
-        updateViaCache: 'none',
-      });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+      .then(reg => {
+        /* Check for SW updates every 10 min */
+        setInterval(() => reg.update(), 10 * 60 * 1000);
 
-      // Check for updates every 10 minutes while page is open
-      setInterval(() => reg.update(), 10 * 60 * 1000);
-
-      // Prompt reload when new SW is waiting
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Show update notification
-            if (typeof UniSync !== 'undefined' && UniSync.toast) {
-              UniSync.toast(
-                '🔄 UniSync updated! <a href="" onclick="location.reload();return false;" style="color:var(--golden);font-weight:700;">Reload</a>',
-                'info', 0
-              );
+        /* Notify user when new version is ready */
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              if (typeof UniSync !== 'undefined' && UniSync.toast) {
+                UniSync.toast(
+                  '🔄 UniSync updated — <a href="" onclick="location.reload();return false;" style="color:var(--golden);font-weight:700;">Reload</a>',
+                  'info', 0
+                );
+              }
             }
-          }
+          });
         });
-      });
-
-      // Show/hide CR-only nav items based on role
-      const user = (() => {
-        try { return JSON.parse(localStorage.getItem('us_user')); } catch { return null; }
-      })();
-
-      if (user?.role === 'cr' || user?.role === 'admin') {
-        document.querySelectorAll('.cr-only').forEach(el => el.classList.remove('hidden'));
-      }
-
-      // Update nav badges for notices/exams
-      if (user) _updateNavBadges(user);
-
-    } catch (err) {
-      console.warn('[SW] Registration failed:', err.message);
-    }
+      })
+      .catch(err => console.warn('[SW] Registration failed:', err.message));
   });
-
-  async function _updateNavBadges(user) {
-    // Check for urgent exams (badge on Exams nav)
-    try {
-      const r = await fetch(
-        `/exams/api/exams/upcoming?program=${user.program}&year=${user.year}&semester=${user.semester}`
-      );
-      if (r.ok) {
-        const d = await r.json();
-        if (d.has_urgent) {
-          const b = document.getElementById('examNavBadge');
-          if (b) b.classList.remove('hidden');
-        }
-      }
-    } catch {}
-  }
 })();
 </script>
 

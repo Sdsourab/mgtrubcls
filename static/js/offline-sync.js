@@ -1,366 +1,197 @@
 /**
- * UniSync — Offline Sync Engine  (offline-sync.js)
- * ─────────────────────────────────────────────────────────────
- * Queues any action taken while offline into IndexedDB.
- * When connection is restored (or SW triggers a sync event),
- * all pending actions are batched and sent to the server.
- *
- * Usage:
- *   await OfflineSync.queue('create_notice', { title, content, ... });
- *   await OfflineSync.queue('cancel_class',  { course_code, change_date, ... });
- *   await OfflineSync.queue('create_exam',   { course_code, exam_date, ... });
- *   await OfflineSync.syncNow();   // called automatically on 'online' event
- *
- * Exposes: OfflineSync.queue | syncNow | getPending | getAll | clearSynced
- * ─────────────────────────────────────────────────────────────
+ * UniSync — Offline Sync Engine
+ * IndexedDB queue for offline actions. Auto-syncs on reconnect.
+ * Safe to load before DOM — all IDB ops are async.
  */
 
 const OfflineSync = (() => {
   'use strict';
 
-  const DB_NAME    = 'unisync-offline-db';
-  const DB_VERSION = 2;
-  const STORE      = 'action-queue';
+  const DB_NAME = 'us-offline-db', DB_VER = 2, STORE = 'queue';
+  let _db = null;
 
-  let _db    = null;
-  let _syncing = false;
-
-  // ── IndexedDB bootstrap ─────────────────────────────────────
-  function _openDB() {
+  /* ── Open DB ────────────────────────────────────────────── */
+  function _open() {
     if (_db) return Promise.resolve(_db);
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-      req.onupgradeneeded = e => {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, DB_VER);
+      r.onupgradeneeded = e => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE)) {
-          const store = db.createObjectStore(STORE, { keyPath: 'local_id' });
-          store.createIndex('status',     'status',     { unique: false });
-          store.createIndex('type',       'type',       { unique: false });
-          store.createIndex('created_at', 'created_at', { unique: false });
+          const s = db.createObjectStore(STORE, { keyPath: 'local_id' });
+          s.createIndex('status', 'status', { unique: false });
         }
       };
-
-      req.onsuccess = e => {
-        _db = e.target.result;
-        _db.onversionchange = () => { _db.close(); _db = null; };
-        resolve(_db);
-      };
-
-      req.onerror = e => reject(e.target.error);
+      r.onsuccess = e => { _db = e.target.result; res(_db); };
+      r.onerror   = e => rej(e.target.error);
     });
   }
 
-  function _tx(mode = 'readonly') {
-    return _db.transaction(STORE, mode).objectStore(STORE);
-  }
-
-  function _idbOp(req) {
-    return new Promise((resolve, reject) => {
-      req.onsuccess = e => resolve(e.target.result);
-      req.onerror   = e => reject(e.target.error);
+  function _op(req) {
+    return new Promise((res, rej) => {
+      req.onsuccess = e => res(e.target.result);
+      req.onerror   = e => rej(e.target.error);
     });
   }
 
-  // ── Queue an offline action ─────────────────────────────────
+  /* ── Public: queue an action ───────────────────────────── */
   async function queue(type, payload) {
-    const db = await _openDB();
+    await _open();
     const action = {
-      local_id:   `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      type,
-      payload:    { ...payload },
+      local_id:   `${type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      type, payload,
       status:     'pending',
-      retries:    0,
       created_at: new Date().toISOString(),
+      retries:    0,
     };
-
-    await _idbOp(_tx('readwrite').add(action));
-
-    // Update UI badge
-    _refreshBadge();
-
-    // Register background sync with SW (if supported)
+    await _op(_db.transaction(STORE,'readwrite').objectStore(STORE).add(action));
+    _badge();
+    /* Register background sync */
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready
-        .then(reg => {
-          if ('sync' in reg) return reg.sync.register('sync-offline-actions');
-        })
+        .then(r => r.sync?.register('sync-offline-actions'))
         .catch(() => {});
     }
-
-    _log(`Queued "${type}" (local_id: ${action.local_id})`);
     return action;
   }
 
-  // ── Retrieve all pending actions ────────────────────────────
+  /* ── Public: get pending ───────────────────────────────── */
   async function getPending() {
-    await _openDB();
-    return new Promise((resolve, reject) => {
-      const req = _tx('readonly').index('status').getAll('pending');
-      req.onsuccess = e => resolve(e.target.result || []);
-      req.onerror   = e => reject(e.target.error);
+    await _open();
+    return new Promise((res, rej) => {
+      const r = _db.transaction(STORE,'readonly')
+                   .objectStore(STORE)
+                   .index('status')
+                   .getAll('pending');
+      r.onsuccess = e => res(e.target.result || []);
+      r.onerror   = e => rej(e.target.error);
     });
   }
 
-  // ── Retrieve ALL actions (for debug / settings page) ────────
   async function getAll() {
-    await _openDB();
-    return _idbOp(_tx('readonly').getAll());
+    await _open();
+    return _op(_db.transaction(STORE,'readonly').objectStore(STORE).getAll());
   }
 
-  // ── Mark a single action as synced ─────────────────────────
   async function markSynced(local_id) {
-    await _openDB();
-    const store  = _tx('readwrite');
-    const record = await _idbOp(store.get(local_id));
-    if (record) {
-      record.status    = 'synced';
-      record.synced_at = new Date().toISOString();
-      await _idbOp(_tx('readwrite').put(record));
+    await _open();
+    const s = _db.transaction(STORE,'readwrite').objectStore(STORE);
+    const r = await _op(s.get(local_id));
+    if (r) { r.status = 'synced'; r.synced_at = new Date().toISOString(); await _op(s.put(r)); }
+  }
+
+  async function markFailed(local_id, err) {
+    await _open();
+    const s = _db.transaction(STORE,'readwrite').objectStore(STORE);
+    const r = await _op(s.get(local_id));
+    if (r) {
+      r.retries++;
+      r.status     = r.retries >= 3 ? 'failed' : 'pending';
+      r.last_error = err;
+      await _op(s.put(r));
     }
   }
 
-  // ── Mark a single action as failed ─────────────────────────
-  async function markFailed(local_id, errorMsg) {
-    await _openDB();
-    const store  = _tx('readwrite');
-    const record = await _idbOp(store.get(local_id));
-    if (record) {
-      record.retries++;
-      // After 3 retries, mark permanently failed
-      record.status      = record.retries >= 3 ? 'failed' : 'pending';
-      record.last_error  = errorMsg;
-      record.last_retry  = new Date().toISOString();
-      await _idbOp(_tx('readwrite').put(record));
-    }
-  }
+  /* ── Sync ──────────────────────────────────────────────── */
+  let _syncing = false;
 
-  // ── Delete synced records older than 7 days ─────────────────
-  async function clearSynced() {
-    await _openDB();
-    const all = await getAll();
-    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
-    for (const r of all) {
-      if (r.status === 'synced' && new Date(r.synced_at).getTime() < cutoff) {
-        await _idbOp(_tx('readwrite').delete(r.local_id));
-      }
-    }
-  }
-
-  // ── Main sync function ──────────────────────────────────────
   async function syncNow() {
-    if (_syncing || !navigator.onLine) return { synced: 0, failed: 0, skipped: 0 };
+    if (_syncing || !navigator.onLine) return { synced: 0, failed: 0 };
     _syncing = true;
 
     const pending = await getPending();
-    if (!pending.length) {
-      _syncing = false;
-      return { synced: 0, failed: 0, skipped: 0 };
-    }
+    if (!pending.length) { _syncing = false; return { synced: 0, failed: 0 }; }
 
-    const user = _getUser();
-    if (!user?.id) {
-      _syncing = false;
-      return { synced: 0, failed: 0, skipped: pending.length };
-    }
+    let user;
+    try { user = JSON.parse(localStorage.getItem('us_user')); } catch {}
+    if (!user?.id) { _syncing = false; return { synced: 0, failed: pending.length }; }
 
-    _log(`Starting sync: ${pending.length} pending actions`);
-    _setSyncIndicator('syncing');
+    const ENDPOINTS = {
+      'create_notice': { url: '/notices/api/notices/sync',             key: 'drafts'  },
+      'cancel_class':  { url: '/classmanagement/api/class-changes/sync', key: 'actions' },
+      'extra_class':   { url: '/classmanagement/api/class-changes/sync', key: 'actions' },
+      'create_exam':   { url: '/exams/api/exams/sync',                  key: 'exams'   },
+    };
 
-    let totalSynced = 0, totalFailed = 0;
-
-    // Group actions by endpoint type for batch requests
     const groups = {};
-    for (const action of pending) {
-      const endpoint = _endpointFor(action.type);
-      if (!endpoint) continue;
-      groups[endpoint] = groups[endpoint] || { endpoint, payloadKey: _payloadKey(action.type), actions: [] };
-      groups[endpoint].actions.push(action);
+    for (const a of pending) {
+      const ep = ENDPOINTS[a.type];
+      if (!ep) continue;
+      groups[a.type] = groups[a.type] || { ...ep, actions: [] };
+      groups[a.type].actions.push(a);
     }
 
-    for (const { endpoint, payloadKey, actions } of Object.values(groups)) {
+    let total = 0, failed = 0;
+
+    for (const { url, key, actions } of Object.values(groups)) {
       try {
-        const body = {
-          user_id: user.id,
-          [payloadKey]: actions.map(a => ({
-            ...a.payload,
-            local_id: a.local_id,
-          })),
-        };
-
-        const resp = await fetch(endpoint, {
-          method:  'POST',
+        const resp = await fetch(url, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(body),
-          // Don't cache sync requests
-          cache: 'no-store',
+          body: JSON.stringify({
+            user_id: user.id,
+            [key]: actions.map(a => ({ ...a.payload, local_id: a.local_id })),
+          }),
         });
-
         if (resp.ok) {
           const result = await resp.json();
-          const syncedIds = result.synced || [];
-
-          for (const id of syncedIds) {
-            await markSynced(id);
-            totalSynced++;
-          }
-          for (const f of (result.failed || [])) {
-            await markFailed(f.local_id, f.error);
-            totalFailed++;
-          }
+          for (const id of (result.synced || [])) { await markSynced(id); total++; }
+          for (const f  of (result.failed || [])) { await markFailed(f.local_id, f.error); failed++; }
         } else {
-          // HTTP error — mark all as failed
-          for (const action of actions) {
-            await markFailed(action.local_id, `HTTP ${resp.status}`);
-            totalFailed++;
-          }
+          for (const a of actions) { await markFailed(a.local_id, `HTTP ${resp.status}`); failed++; }
         }
-      } catch (networkErr) {
-        _log(`Network error during sync to ${endpoint}:`, networkErr);
-        for (const action of actions) {
-          await markFailed(action.local_id, networkErr.message);
-          totalFailed++;
-        }
+      } catch (e) {
+        for (const a of actions) { await markFailed(a.local_id, e.message); failed++; }
       }
     }
 
-    _refreshBadge();
-    _setSyncIndicator(totalFailed > 0 ? 'error' : 'synced');
+    _badge();
     _syncing = false;
 
-    if (totalSynced > 0) {
-      _toast(`✅ ${totalSynced} offline action${totalSynced !== 1 ? 's' : ''} synced successfully`, 'success');
+    if (total > 0 && typeof UniSync !== 'undefined' && UniSync.toast) {
+      UniSync.toast(`✅ ${total} offline action${total!==1?'s':''} synced`, 'success', 4000);
     }
-    if (totalFailed > 0) {
-      _toast(`⚠️ ${totalFailed} action${totalFailed !== 1 ? 's' : ''} failed to sync`, 'warning');
-    }
-
-    // Clean up old synced records
-    clearSynced().catch(() => {});
-
-    _log(`Sync complete: ${totalSynced} synced, ${totalFailed} failed`);
-    return { synced: totalSynced, failed: totalFailed };
+    return { synced: total, failed };
   }
 
-  // ── Endpoint map ────────────────────────────────────────────
-  function _endpointFor(type) {
-    const MAP = {
-      'create_notice': '/notices/api/notices/sync',
-      'cancel_class':  '/classmanagement/api/class-changes/sync',
-      'extra_class':   '/classmanagement/api/class-changes/sync',
-      'create_exam':   '/exams/api/exams/sync',
-    };
-    return MAP[type] || null;
-  }
-
-  function _payloadKey(type) {
-    if (type === 'create_notice')        return 'drafts';
-    if (type.includes('class'))          return 'actions';
-    if (type === 'create_exam')          return 'exams';
-    return 'actions';
-  }
-
-  // ── Badge count refresh ──────────────────────────────────────
-  async function _refreshBadge() {
+  /* ── Badge ─────────────────────────────────────────────── */
+  async function _badge() {
     try {
-      const pending = await getPending();
-      const count   = pending.length;
-
-      // Badge on offline bar
-      const badge = document.getElementById('offlineQueueBadge');
-      if (badge) badge.textContent = count || '';
-
-      // Queue count in bar text
-      const queueText = document.getElementById('offlineQueueCount');
-      if (queueText) queueText.textContent = count;
-
-      // Show/hide the bar if online but queue not empty
-      if (count > 0 && navigator.onLine) {
-        const bar = document.getElementById('offlineBar');
-        if (bar) {
-          bar.classList.add('has-queue');
-          const label = bar.querySelector('.offline-bar-label');
-          if (label) label.textContent = `${count} action${count !== 1 ? 's' : ''} pending sync`;
-        }
-      }
-    } catch (e) { /* silent */ }
+      const p = await getPending();
+      const n = p.length;
+      const b = document.getElementById('offlineQueueBadge');
+      if (b) b.textContent = n > 0 ? n : '';
+      const bar = document.getElementById('offlineBar');
+      if (bar) bar.classList.toggle('has-queue', n > 0);
+    } catch {}
   }
 
-  // ── Sync indicator state ──────────────────────────────────────
-  function _setSyncIndicator(state) {
-    const dot = document.getElementById('offlineSyncDot');
-    if (!dot) return;
-    dot.className = `sync-dot sync-dot--${state}`;
-    dot.title = { syncing: 'Syncing…', synced: 'Synced', error: 'Sync failed' }[state] || '';
-  }
-
-  // ── Utility helpers ──────────────────────────────────────────
-  function _getUser() {
-    try { return JSON.parse(localStorage.getItem('us_user')); } catch { return null; }
-  }
-
-  function _toast(msg, type) {
-    if (typeof UniSync !== 'undefined' && UniSync.toast) {
-      UniSync.toast(msg, type, 4500);
-    }
-  }
-
-  function _log(...args) {
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      console.log('[OfflineSync]', ...args);
-    }
-  }
-
-  // ── Online / offline event listeners ────────────────────────
+  /* ── Online / offline ──────────────────────────────────── */
   window.addEventListener('online', () => {
     document.body.classList.remove('is-offline');
-    const bar = document.getElementById('offlineBar');
-    if (bar) bar.classList.remove('is-offline-active');
-    _toast('🌐 Back online! Syncing…', 'info');
-    // Small delay to let network stabilise
-    setTimeout(() => syncNow(), 1500);
+    const lbl = document.getElementById('offlineBarLabel');
+    if (lbl) lbl.textContent = 'Syncing…';
+    setTimeout(syncNow, 1500);
   });
-
   window.addEventListener('offline', () => {
     document.body.classList.add('is-offline');
-    const bar = document.getElementById('offlineBar');
-    if (bar) bar.classList.add('is-offline-active');
-    _toast('📡 You are offline. Actions will sync when connection returns.', 'warning');
+    const lbl = document.getElementById('offlineBarLabel');
+    if (lbl) lbl.textContent = 'Offline Mode';
   });
 
-  // ── Listen for SW background sync trigger ───────────────────
+  /* SW message trigger */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', event => {
-      if (event.data?.type === 'SW_SYNC_NOW') {
-        _log('Background sync triggered by service worker');
-        syncNow();
-      }
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SW_SYNC_NOW') syncNow();
     });
   }
 
-  // ── Periodic sync attempt (every 3 min while page is open) ──
-  setInterval(() => {
-    if (navigator.onLine) syncNow();
-  }, 3 * 60 * 1000);
+  /* Periodic sync every 3 min */
+  setInterval(() => { if (navigator.onLine) syncNow(); }, 3 * 60 * 1000);
 
-  // ── Init: set correct online/offline state ───────────────────
-  if (!navigator.onLine) {
-    document.body.classList.add('is-offline');
-  }
+  /* Init state */
+  if (!navigator.onLine) document.body.classList.add('is-offline');
+  document.addEventListener('DOMContentLoaded', _badge);
 
-  // Refresh badge on load
-  document.addEventListener('DOMContentLoaded', () => {
-    _refreshBadge();
-  });
-
-  // ── Public API ───────────────────────────────────────────────
-  return {
-    queue,
-    syncNow,
-    getPending,
-    getAll,
-    markSynced,
-    clearSynced,
-  };
-
+  return { queue, syncNow, getPending, getAll, markSynced };
 })();
