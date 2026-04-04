@@ -5,24 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}UniSync{% endblock %} — Rabindra University</title>
   <meta name="description" content="UniSync Academic Portal — Rabindra University, Bangladesh, Dept. of Management">
-  <meta name="theme-color" content="#BC6F37">
 
-  <!-- PWA Manifest + App Meta -->
+  <!-- ═══════════════════════════════════════════════════════
+       PWA — Manifest & Theme
+       ═══════════════════════════════════════════════════════ -->
   <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3C2A21">
+
+  <!-- Standard PWA -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="UniSync">
+
+  <!-- iOS / Safari PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="UniSync">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 
-  <!-- Fonts: Playfair Display + Outfit + JetBrains Mono -->
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/static/icons/icon-128x128.png">
+
+  <!-- iOS Splash Screens -->
+  <link rel="apple-touch-startup-image"
+        href="/static/icons/splash-1125x2436.png"
+        media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3)">
+  <link rel="apple-touch-startup-image"
+        href="/static/icons/splash-750x1334.png"
+        media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2)">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-48x48.png">
+  <link rel="shortcut icon" href="/static/icons/icon-48x48.png">
+
+  <!-- Windows Tile -->
+  <meta name="msapplication-TileColor"  content="#3C2A21">
+  <meta name="msapplication-TileImage"  content="/static/icons/icon-192x192.png">
+  <meta name="msapplication-config"     content="none">
+
+  <!-- OG / Social -->
+  <meta property="og:title"       content="UniSync — Rabindra University">
+  <meta property="og:description" content="Academic management portal for Rabindra University Bangladesh.">
+  <meta property="og:image"       content="/static/icons/icon-512x512.png">
+  <meta property="og:type"        content="website">
+  <meta name="twitter:card"       content="summary">
+
+  <!-- ═══════════════════════════════════════════════════════
+       Fonts: Playfair Display + Outfit + JetBrains Mono
+       ═══════════════════════════════════════════════════════ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
+  <!-- ═══════════════════════════════════════════════════════
+       Core Stylesheets
+       ═══════════════════════════════════════════════════════ -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/scroll-animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/pwa.css') }}">
+
   {% block extra_css %}{% endblock %}
 </head>
 
@@ -33,11 +74,11 @@
   window.__VAPID_PUBLIC_KEY = '{{ config.VAPID_PUBLIC_KEY | default("") }}';
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════
      ANIMATED BACKGROUND
      Fixed z-index 0 · cream base · warm blob morphing
      Canvas orbs drift slowly — terracotta / golden / olive
-     ═══════════════════════════════════════════════════════════ -->
+     ═══════════════════════════════════════════════════════ -->
 <div id="bgLayer" aria-hidden="true">
   <canvas id="bgCanvas"></canvas>
   <div id="bgBlobs"></div>
@@ -376,31 +417,51 @@
 
 </div><!-- /.app-shell -->
 
-<!-- Toast notifications -->
+<!-- ═══════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+     ═══════════════════════════════════════════════════════ -->
 <div class="toast-container" id="toastContainer"
      role="region" aria-label="Notifications" aria-live="polite"></div>
 
 <!-- ═══════════════════════════════════════════════════════
-     SCRIPTS
+     OFFLINE STATUS BAR
+     Shown when body.is-offline or sync queue has items
+     ═══════════════════════════════════════════════════════ -->
+<div id="offlineBar" class="offline-bar" role="status" aria-live="polite">
+  <span class="offline-bar-icon">📡</span>
+  <span class="offline-bar-label" id="offlineBarLabel">Offline Mode</span>
+  <span class="offline-queue-badge" id="offlineQueueBadge"></span>
+  <span class="sync-dot" id="offlineSyncDot"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     CORE SCRIPTS
      ═══════════════════════════════════════════════════════ -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/live_engine.js') }}"></script>
+
 <!-- Background animation: organic blob morphing + floating orbs -->
 <script src="{{ url_for('static', filename='js/bg-animation.js') }}" defer></script>
+
 <!-- AI preloader: silently warms Transformers.js MiniLM model in background -->
 <script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
+
+<!-- Push notification client -->
 <script src="{{ url_for('static', filename='js/push-client.js') }}" defer></script>
+
 <!-- Offline sync engine — must load before extra_js blocks -->
 <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
 
-<!-- Scroll-reveal IntersectionObserver -->
+<!-- ═══════════════════════════════════════════════════════
+     SCROLL REVEAL — IntersectionObserver
+     ═══════════════════════════════════════════════════════ -->
 <script>
 (function(){
   const els = document.querySelectorAll('.scroll-reveal');
-  if(!els.length) return;
+  if (!els.length) return;
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => {
-      if(e.isIntersecting){
+      if (e.isIntersecting) {
         e.target.classList.add('is-visible');
         io.unobserve(e.target);
       }
@@ -411,57 +472,29 @@
 </script>
 
 <!-- ═══════════════════════════════════════════════════════
-     OFFLINE BAR — shown by body.is-offline or pending queue
-     ═══════════════════════════════════════════════════════ -->
-<div id="offlineBar" class="offline-bar" role="status" aria-live="polite">
-  <span class="offline-bar-icon">📡</span>
-  <span class="offline-bar-label" id="offlineBarLabel">Offline Mode</span>
-  <span class="offline-queue-badge" id="offlineQueueBadge"></span>
-  <span class="sync-dot" id="offlineSyncDot"></span>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     SERVICE WORKER REGISTRATION
+     CR / ADMIN NAV VISIBILITY
+     Shows hidden nav items based on user role in localStorage
      ═══════════════════════════════════════════════════════ -->
 <script>
 (function () {
-  /* ── CR nav items ─────────────────────────────────────── */
   try {
     const u = JSON.parse(localStorage.getItem('us_user') || 'null');
     if (u?.role === 'cr' || u?.role === 'admin') {
       document.querySelectorAll('.cr-only').forEach(el => el.classList.remove('hidden'));
     }
-  } catch {}
-
-  /* ── Service Worker registration ──────────────────────── */
-  if (!('serviceWorker' in navigator)) return;
-
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/', updateViaCache: 'none' })
-      .then(reg => {
-        /* Check for SW updates every 10 min */
-        setInterval(() => reg.update(), 10 * 60 * 1000);
-
-        /* Notify user when new version is ready */
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              if (typeof UniSync !== 'undefined' && UniSync.toast) {
-                UniSync.toast(
-                  '🔄 UniSync updated — <a href="" onclick="location.reload();return false;" style="color:var(--golden);font-weight:700;">Reload</a>',
-                  'info', 0
-                );
-              }
-            }
-          });
-        });
-      })
-      .catch(err => console.warn('[SW] Registration failed:', err.message));
-  });
+    if (u?.role === 'admin') {
+      document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+    }
+  } catch (e) {}
 })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════
+     SERVICE WORKER REGISTRATION (PWA)
+     /sw.js is served from root scope via Flask route +
+     Service-Worker-Allowed: / header in vercel.json
+     ═══════════════════════════════════════════════════════ -->
+<script src="{{ url_for('static', filename='js/pwa-register.js') }}" defer></script>
 
 {% block extra_js %}{% endblock %}
 

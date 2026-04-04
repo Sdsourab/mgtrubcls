@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#3C2A21">
+  <title>UniSync — Offline</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:   #FCF5E8;
+      --cream-2: #F5EAD7;
+      --espresso:#3C2A21;
+      --mocha:   #7C5C4B;
+      --latte:   #C9A98A;
+      --accent:  #A0522D;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body:    'Outfit', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      color: var(--espresso);
+      font-family: var(--font-body);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle grain texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Decorative background circles */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-orb-1 {
+      width: 500px; height: 500px;
+      top: -200px; right: -150px;
+      background: radial-gradient(circle, rgba(201,169,138,0.18) 0%, transparent 70%);
+    }
+    .bg-orb-2 {
+      width: 400px; height: 400px;
+      bottom: -150px; left: -100px;
+      background: radial-gradient(circle, rgba(60,42,33,0.08) 0%, transparent 70%);
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(201,169,138,0.3);
+      border-radius: 20px;
+      padding: 3rem 2.5rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 8px 40px rgba(60,42,33,0.12);
+      animation: cardIn 0.6s cubic-bezier(.22,.68,0,1.2) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    .icon-wrap {
+      width: 80px; height: 80px;
+      background: var(--cream-2);
+      border: 2px solid rgba(201,169,138,0.4);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-6px); }
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--espresso);
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--mocha);
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      font-weight: 300;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--mocha);
+      margin-bottom: 1.75rem;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #C0392B;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.875rem 1.5rem;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--espresso);
+      color: var(--cream);
+    }
+    .btn-primary:hover {
+      background: var(--mocha);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(60,42,33,0.25);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--mocha);
+      border: 1px solid rgba(201,169,138,0.5);
+    }
+    .btn-secondary:hover {
+      background: rgba(201,169,138,0.15);
+    }
+
+    .tips {
+      margin-top: 1.75rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(201,169,138,0.3);
+      text-align: left;
+    }
+
+    .tips-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--latte);
+      margin-bottom: 0.75rem;
+    }
+
+    .tip-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--mocha);
+      margin-bottom: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .tip-icon { flex-shrink: 0; margin-top: 1px; }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      margin-top: 1.5rem;
+      font-size: 0.78rem;
+      color: var(--latte);
+      font-family: var(--font-body);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+
+  <div class="card">
+    <div class="icon-wrap">📚</div>
+
+    <h1>You're Offline</h1>
+    <p class="subtitle">
+      UniSync couldn't reach the server. Your cached content is still available, 
+      and your changes will sync when you reconnect.
+    </p>
+
+    <div class="status-row">
+      <div class="dot"></div>
+      <span id="status-text">No internet connection detected</span>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="retryConnection()">
+        🔄 Try Again
+      </button>
+      <a href="/" class="btn btn-secondary">
+        🏠 Go to Dashboard
+      </a>
+    </div>
+
+    <div class="tips">
+      <div class="tips-title">What's still available offline</div>
+      <div class="tip-item">
+        <span class="tip-icon">✅</span>
+        <span>Previously loaded pages and resources</span>
+      </div>
+      <div class="tip-item">
+        <span class="tip-icon">✅</span>
+        <span>Your task planner (syncs on reconnect)</span>
+      </div>
+      <div class="tip-item">
+        <span class="tip-icon">⏳</span>
+        <span>Live notices and new academic data require internet</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    UniSync · Rabindra University Bangladesh · Department of Management
+  </footer>
+
+  <script>
+    // Live online/offline detection
+    const statusText = document.getElementById('status-text');
+    const dot = document.querySelector('.dot');
+
+    function updateStatus() {
+      if (navigator.onLine) {
+        statusText.textContent = 'Connection restored — you can reload now';
+        dot.style.background = '#27AE60';
+        dot.style.animationPlayState = 'paused';
+      } else {
+        statusText.textContent = 'No internet connection detected';
+        dot.style.background = '#C0392B';
+        dot.style.animationPlayState = 'running';
+      }
+    }
+
+    function retryConnection() {
+      if (navigator.onLine) {
+        window.history.length > 1 ? window.history.back() : (window.location.href = '/');
+      } else {
+        window.location.reload();
+      }
+    }
+
+    window.addEventListener('online',  updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+
+    // Auto-redirect when connection comes back
+    window.addEventListener('online', () => {
+      setTimeout(() => {
+        window.history.length > 1 ? window.history.back() : (window.location.href = '/');
+      }, 1200);
+    });
+  </script>
+</body>
+</html>

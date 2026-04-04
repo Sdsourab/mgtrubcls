@@ -378,3 +378,138 @@ def get_mappings():
         return jsonify({'success': True, 'data': resp.data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@academic_bp.route('/api/dashboard-schedule', methods=['GET'])
+def dashboard_schedule():
+    """
+    Dashboard Schedule Widget Endpoint.
+ 
+    BST Time Logic:
+      07:00 – 18:59 → return today's classes
+      19:00 – 06:59 → return tomorrow's classes
+ 
+    Query params (all optional — falls back to unfiltered routine if omitted):
+      program  : e.g. 'BBA'
+      year     : e.g. '1'
+      semester : e.g. '1'
+ 
+    Response shape:
+      {
+        "success": true,
+        "mode":    "today" | "tomorrow",
+        "day":     "Monday",
+        "label":   "Today's Classes — Monday",
+        "bst_time": "14:35",
+        "is_holiday": false,
+        "holiday_name": null,
+        "classes": [
+          {
+            "course_code":   "MGT-101",
+            "course_name":   "Principles of Management",
+            "teacher_code":  "MRK",
+            "teacher_name":  "Dr. Md. Rakibul Karim",
+            "time_start":    "09:00",
+            "time_end":      "10:30",
+            "time_start_12h":"9:00 AM",
+            "time_end_12h":  "10:30 AM",
+            "room_no":       "301",
+            "duration_mins": 90,
+            "status":        "live" | "upcoming" | "done",
+            "progress":      45,
+            "mins_until":    null,
+            "mins_left":     42
+          },
+          ...
+        ]
+      }
+    """
+    # ── Import schedule utilities ──────────────────────────────────────────────
+    from core.schedule_utils import get_schedule_target, fmt12h, classify_class_status
+    from core.holidays import is_holiday
+ 
+    # ── 1. Determine target day via BST time window ────────────────────────────
+    target   = get_schedule_target()
+    day_name = target['day_name']     # e.g. 'Monday'
+    mode     = target['mode']         # 'today' | 'tomorrow'
+    bst_time = target['bst_time']     # 'HH:MM'
+    label    = target['display_label']
+ 
+    # ── 2. Holiday check (only relevant for today) ─────────────────────────────
+    is_hol, hol_name = is_holiday(target['date'])
+    if is_hol:
+        return jsonify({
+            'success':      True,
+            'mode':         mode,
+            'day':          day_name,
+            'label':        label,
+            'bst_time':     bst_time,
+            'is_holiday':   True,
+            'holiday_name': hol_name,
+            'classes':      [],
+        })
+ 
+    # ── 3. Get user profile params from query string ──────────────────────────
+    program  = request.args.get('program',  '').strip()
+    year     = request.args.get('year',     '').strip()
+    semester = request.args.get('semester', '').strip()
+ 
+    # ── 4. Query Supabase `routines` table ────────────────────────────────────
+    sb = get_supabase_admin()
+    try:
+        q = sb.table('routines').select('*').eq('day', day_name)
+ 
+        # Apply user-specific filter only when all three params are present
+        if program and year and semester:
+            try:
+                q = q.eq('program', program) \
+                     .eq('course_year', int(year)) \
+                     .eq('course_semester', int(semester))
+            except (ValueError, TypeError):
+                pass  # Ignore bad params, fall back to day-only filter
+ 
+        resp = q.order('time_start').execute()
+        rows = resp.data or []
+ 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+ 
+    # ── 5. Enrich: resolve course_code + teacher_code → full names ─────────────
+    # Re-using the existing _enrich() from this file — no duplication needed.
+    rows = _enrich(rows, sb)
+ 
+    # ── 6. Annotate each class with time formatting + live status ──────────────
+    enriched = []
+    for cls in rows:
+        ts  = cls.get('time_start', '') or ''
+        te  = cls.get('time_end',   '') or ''
+ 
+        # Time formatting
+        cls['time_start_12h'] = fmt12h(ts)
+        cls['time_end_12h']   = fmt12h(te)
+ 
+        # Duration in minutes
+        try:
+            sh, sm = map(int, ts.split(':'))
+            eh, em = map(int, te.split(':'))
+            cls['duration_mins'] = (eh * 60 + em) - (sh * 60 + sm)
+        except Exception:
+            cls['duration_mins'] = 0
+ 
+        # Class status (live / upcoming / done) — only meaningful for today
+        status_info = classify_class_status(ts, te, bst_time, mode)
+        cls.update(status_info)   # merges: status, progress, mins_until, mins_left
+ 
+        enriched.append(cls)
+ 
+    # ── 7. Return ──────────────────────────────────────────────────────────────
+    return jsonify({
+        'success':      True,
+        'mode':         mode,
+        'day':          day_name,
+        'label':        label,
+        'bst_time':     bst_time,
+        'is_holiday':   False,
+        'holiday_name': None,
+        'classes':      enriched,
+    })
+ 

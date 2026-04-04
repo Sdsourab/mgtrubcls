@@ -1,57 +1,108 @@
 {
   "name": "UniSync — Rabindra University",
   "short_name": "UniSync",
-  "description": "Academic portal for Rabindra University students — routines, tasks, notices & exams.",
-  "start_url": "/dashboard",
+  "description": "Academic management portal for Rabindra University Bangladesh, Department of Management.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#FCF5E8",
-  "theme_color": "#BC6F37",
   "orientation": "portrait-primary",
-  "lang": "en",
+  "theme_color": "#3C2A21",
+  "background_color": "#FCF5E8",
+  "lang": "en-BD",
+  "dir": "ltr",
   "categories": ["education", "productivity"],
+
   "icons": [
     {
-      "src": "/static/icons/icon-192.png",
+      "src": "/static/icons/icon-48x48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/icons/icon-512.png",
+      "src": "/static/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "shortcuts": [
+
+  "screenshots": [
     {
-      "name": "My Routine",
-      "short_name": "Routine",
-      "description": "View today's class schedule",
-      "url": "/academic/routine",
-      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+      "src": "/static/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "UniSync Dashboard"
     },
     {
-      "name": "Tasks",
-      "short_name": "Tasks",
-      "description": "Manage your academic tasks",
-      "url": "/productivity/tasks",
-      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+      "src": "/static/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "UniSync on Mobile"
+    }
+  ],
+
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "Go to your academic dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Planner",
+      "short_name": "Planner",
+      "description": "Open your AI task planner",
+      "url": "/planner",
+      "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
       "name": "Notices",
       "short_name": "Notices",
-      "description": "Class notices from your CR",
-      "url": "/notices/",
-      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Exam Schedule",
-      "short_name": "Exams",
-      "description": "Upcoming exam schedule & countdown",
-      "url": "/exams/",
-      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+      "description": "View department notices",
+      "url": "/notices",
+      "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
     }
-  ]
+  ],
+
+  "prefer_related_applications": false,
+
+  "related_applications": [],
+
+  "display_override": ["standalone", "minimal-ui", "browser"],
+
+  "protocol_handlers": []
 }

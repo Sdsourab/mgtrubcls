@@ -252,3 +252,13 @@ def create_app(config_name: str = None):
         return jsonify({'error': 'Forbidden'}), 403
 
     return app
+    
+    @app.route('/offline')
+    def offline_page():
+        """
+        This page is pre-cached by the service worker during install.
+        When a navigation request fails (no network + no cached version),
+        the SW serves this URL instead of an ugly browser error.
+        """
+        return render_template('errors/offline.html'), 200
+    
