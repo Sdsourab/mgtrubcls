@@ -1,15 +1,19 @@
 /**
- * UniSync Service Worker — v2.0.0
+ * UniSync Service Worker — v2.1.0
  * Strategy:
  *   • Cache-First  → static assets (CSS, JS, fonts, images)
  *   • Network-First → API routes, dynamic Flask blueprints
  *   • Offline fallback → /offline for navigation failures
  *
  * Scope: / (granted via Service-Worker-Allowed header in Flask + vercel.json)
+ *
+ * FIX v2.1.0:
+ *   - Changed /static/manifest.json → /manifest.json in STATIC_PRECACHE
+ *     (manifest is served at root via Flask route, not from /static/)
  */
 
 // ─── Cache Configuration ────────────────────────────────────────────────────
-const CACHE_VERSION   = 'v2.0.0';
+const CACHE_VERSION   = 'v2.1.0';
 const STATIC_CACHE    = `unisync-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE   = `unisync-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL     = '/offline';
@@ -17,6 +21,8 @@ const OFFLINE_URL     = '/offline';
 /**
  * Static assets pre-cached on install.
  * Update CACHE_VERSION whenever these files change to bust the cache.
+ *
+ * FIX: manifest lives at /manifest.json (Flask route), NOT /static/manifest.json
  */
 const STATIC_PRECACHE = [
   '/',
@@ -24,11 +30,12 @@ const STATIC_PRECACHE = [
   '/static/css/style.css',
   '/static/css/modules/auth.css',
   '/static/css/modules/pwa.css',
+  '/static/css/modules/scroll-animations.css',
   '/static/js/main.js',
   '/static/js/bg-animation.js',
   '/static/js/live_engine.js',
   '/static/js/offline-sync.js',
-  '/static/manifest.json',
+  '/manifest.json',   // ← FIXED: was /static/manifest.json (404)
 ];
 
 /** URL prefixes that should NEVER be cached (always network-first) */
@@ -74,8 +81,7 @@ self.addEventListener('install', event => {
 
   event.waitUntil(
     caches.open(STATIC_CACHE).then(cache => {
-      // addAll() is atomic — if one fails, none are cached.
-      // Use individual add() so a 404 on one asset doesn't block the SW.
+      // allSettled: if one URL fails (404), others still cache — SW still installs
       return Promise.allSettled(
         STATIC_PRECACHE.map(url =>
           cache.add(url).catch(err =>
@@ -85,7 +91,6 @@ self.addEventListener('install', event => {
       );
     }).then(() => {
       console.log('[SW] Pre-cache complete');
-      // Take control immediately without waiting for old SW to unload
       return self.skipWaiting();
     })
   );
@@ -108,7 +113,6 @@ self.addEventListener('activate', event => {
       );
     }).then(() => {
       console.log('[SW] Old caches cleared. Claiming clients.');
-      // Immediately control all open pages under this SW scope
       return self.clients.claim();
     })
   );
@@ -147,15 +151,9 @@ self.addEventListener('fetch', event => {
 });
 
 // ─── Strategy: Cache First ────────────────────────────────────────────────────
-/**
- * Tries the cache first. On miss, fetches from network and stores the result.
- * Perfect for versioned static assets that never change between deploys.
- */
 async function cacheFirst(request) {
   const cached = await caches.match(request);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   try {
     const networkResponse = await fetch(request);
@@ -171,15 +169,9 @@ async function cacheFirst(request) {
 }
 
 // ─── Strategy: Network First ──────────────────────────────────────────────────
-/**
- * Always tries network first for fresh data. Falls back to cache on failure.
- * Ideal for API endpoints and dynamic routes.
- */
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-
-    // Only cache successful responses
     if (networkResponse && networkResponse.status === 200) {
       const cache = await caches.open(DYNAMIC_CACHE);
       cache.put(request, networkResponse.clone());
@@ -196,32 +188,25 @@ async function networkFirst(request) {
 }
 
 // ─── Strategy: Network First + Offline Fallback ───────────────────────────────
-/**
- * For navigation requests. On full offline failure, shows the /offline page.
- */
 async function networkFirstWithOfflineFallback(request) {
   try {
     const networkResponse = await fetch(request);
-
     if (networkResponse && networkResponse.status === 200) {
       const cache = await caches.open(DYNAMIC_CACHE);
       cache.put(request, networkResponse.clone());
     }
     return networkResponse;
   } catch (error) {
-    // Try cache first
     const cached = await caches.match(request);
     if (cached) {
       console.warn('[SW] Serving cached page:', request.url);
       return cached;
     }
 
-    // Final fallback: serve the dedicated offline page
     console.warn('[SW] Offline fallback triggered for:', request.url);
     const offlinePage = await caches.match(OFFLINE_URL);
     if (offlinePage) return offlinePage;
 
-    // Absolute last resort: minimal inline response
     return new Response(
       `<!DOCTYPE html>
       <html lang="en">
@@ -254,10 +239,6 @@ async function networkFirstWithOfflineFallback(request) {
 }
 
 // ─── Background Sync ──────────────────────────────────────────────────────────
-/**
- * Replays queued requests (e.g., task saves while offline).
- * Triggered when connectivity is restored.
- */
 self.addEventListener('sync', event => {
   console.log('[SW] Background sync event:', event.tag);
 
@@ -271,15 +252,13 @@ self.addEventListener('sync', event => {
 
 async function syncPendingTasks() {
   try {
-    // This hook is for offline-sync.js to integrate with.
-    // Broadcast to the page so it can flush its IndexedDB queue.
     const clients = await self.clients.matchAll({ type: 'window' });
     clients.forEach(client =>
       client.postMessage({ type: 'SW_SYNC', tag: 'sync-pending-tasks' })
     );
   } catch (err) {
     console.error('[SW] Background sync failed:', err);
-    throw err; // Rethrow so the browser retries
+    throw err;
   }
 }
 
@@ -330,13 +309,11 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(clients => {
-        // Focus existing tab if already open
         for (const client of clients) {
           if (client.url === targetUrl && 'focus' in client) {
             return client.focus();
           }
         }
-        // Open new tab
         if (self.clients.openWindow) {
           return self.clients.openWindow(targetUrl);
         }
@@ -345,10 +322,6 @@ self.addEventListener('notificationclick', event => {
 });
 
 // ─── Message Handler ──────────────────────────────────────────────────────────
-/**
- * Listens for messages from the main thread.
- * Supports: SKIP_WAITING, CACHE_URLS, CLEAR_CACHE
- */
 self.addEventListener('message', event => {
   const { type, payload } = event.data || {};
 

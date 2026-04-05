@@ -92,26 +92,116 @@
   padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
 }
 
-/* ── PWA install banner ────────────────────────────────────── */
-.pwa-banner {
-  display: none; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 18px;
-  background: linear-gradient(135deg,rgba(188,111,55,0.08),rgba(205,169,106,0.05));
-  border: 1px solid rgba(188,111,55,0.22);
-  border-radius: var(--radius-lg); margin-bottom: 14px;
+/* ═══════════════════════════════════════════════════════════════
+   PWA INSTALL CARD — Always visible, smart state switching
+   ═══════════════════════════════════════════════════════════════ */
+.pwa-install-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg,
+    rgba(188,111,55,0.10),
+    rgba(205,169,106,0.07));
+  border: 1.5px solid rgba(188,111,55,0.28);
+  border-radius: var(--radius-lg, 14px);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.4s, transform 0.3s;
 }
-.pwa-banner.visible { display: flex; }
-.pwa-banner-text h4 { font-size: 0.9rem; font-weight: 700; margin: 0 0 2px; }
-.pwa-banner-text p  { font-size: 0.73rem; color: var(--text-muted); margin: 0; }
-.pwa-install-btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 18px;
+
+/* subtle shimmer strip */
+.pwa-install-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* hide when app is already installed in standalone mode */
+.pwa-install-card.pwa-hidden {
+  display: none;
+}
+
+.pwa-install-card__icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.pwa-install-card__text {
+  flex: 1;
+  min-width: 0;
+}
+.pwa-install-card__text h4 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+}
+.pwa-install-card__text p {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Install Now button ── */
+#pwaInstallBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
   background: linear-gradient(135deg, #BC6F37, #CDA96A);
-  color: white; border: none; border-radius: var(--radius-md);
-  font-weight: 700; font-size: 0.83rem; cursor: pointer; white-space: nowrap;
-  transition: opacity 0.2s;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 3px 12px rgba(188,111,55,0.35);
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
 }
-.pwa-install-btn:hover { opacity: 0.88; }
+#pwaInstallBtn:hover  {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 18px rgba(188,111,55,0.45);
+}
+#pwaInstallBtn:active { transform: translateY(0); }
+#pwaInstallBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* waiting state — prompt not yet captured */
+#pwaInstallBtn.waiting {
+  background: linear-gradient(135deg, rgba(188,111,55,0.25), rgba(205,169,106,0.2));
+  color: var(--text-muted);
+  box-shadow: none;
+  border: 1px solid rgba(188,111,55,0.3);
+}
+
+/* already-installed state */
+.pwa-installed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(56,161,105,0.12);
+  color: #276749;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
 </style>
 {% endblock %}
 
@@ -143,16 +233,21 @@
     </div>
   </div>
 
-  <!-- PWA Install Banner -->
-  <div id="pwaInstallBanner" class="pwa-banner">
-    <div class="pwa-banner-text">
-      <h4>📲 Install UniSync App</h4>
-      <p>Works offline · Opens instantly · No app store needed</p>
+  <!-- ═══════════════════════════════════════════════════════════
+       PWA INSTALL CARD — always rendered, JS controls visibility
+       ═══════════════════════════════════════════════════════════ -->
+  <div id="pwaInstallCard" class="pwa-install-card">
+    <div class="pwa-install-card__icon">📲</div>
+    <div class="pwa-install-card__text">
+      <h4>Install UniSync App</h4>
+      <p id="pwaInstallHint">Works offline · Opens instantly · No app store needed</p>
     </div>
-    <button class="pwa-install-btn" onclick="_pwaInstall()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+    <button id="pwaInstallBtn" class="waiting" title="Install UniSync as an app">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           width="14" height="14">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       Install Now
     </button>
@@ -293,6 +388,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     _loadTasks(),
     _loadExamAlerts(),
   ]);
+
+  // Init PWA install card after page content is ready
+  _initPwaInstallCard();
 });
 
 /* ── Holiday banner ──────────────────────────────────────────── */
@@ -375,12 +473,7 @@ async function _done(id, btn) {
   } catch { UniSync.toast('Error', 'error'); }
 }
 
-/* ── Exam Alerts ─────────────────────────────────────────────
-   Tries /exams/api/exams/upcoming first.
-   If that 404s or fails → tries /notices/api/notices?type=exam.
-   If both fail → uses localStorage cache.
-   Shows nothing if no upcoming exams within 7 days.
-   ────────────────────────────────────────────────────────── */
+/* ── Exam Alerts ─────────────────────────────────────────────── */
 async function _loadExamAlerts() {
   const section = document.getElementById('examAlertSection');
   if (!section || !_user) return;
@@ -388,7 +481,6 @@ async function _loadExamAlerts() {
   const KEY = `exam_cache_${_user.program}_${_user.year}_${_user.semester}`;
   let exams = [];
 
-  /* --- Try primary endpoint --- */
   if (navigator.onLine) {
     try {
       const p   = new URLSearchParams({
@@ -397,13 +489,10 @@ async function _loadExamAlerts() {
       const res = await fetch(`/exams/api/exams/upcoming?${p}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && data.data?.length) {
-          exams = data.data;
-        }
+        if (data.success && data.data?.length) exams = data.data;
       }
     } catch {}
 
-    /* --- Fallback: check notices table for exam-type notices --- */
     if (!exams.length) {
       try {
         const p   = new URLSearchParams({
@@ -414,12 +503,10 @@ async function _loadExamAlerts() {
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
-            /* Convert exam notices to exam objects */
             const today = new Date();
             exams = (data.data || [])
               .filter(n => n.type === 'exam')
               .map(n => {
-                /* Try to extract date from title e.g. "📝 Midterm Exam: HRM — 2025-06-10" */
                 const dateMatch = (n.title || '').match(/(\d{4}-\d{2}-\d{2})/);
                 const exam_date = dateMatch ? dateMatch[1] : null;
                 if (!exam_date) return null;
@@ -439,12 +526,10 @@ async function _loadExamAlerts() {
       } catch {}
     }
 
-    /* Cache whatever we found */
     if (exams.length) {
       localStorage.setItem(KEY, JSON.stringify({ data: exams, ts: Date.now() }));
     }
   } else {
-    /* Offline — use cache + recalculate days */
     try {
       const c = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (c?.data) {
@@ -496,30 +581,146 @@ async function _loadExamAlerts() {
   }).join('')}`;
 }
 
-/* ── PWA Install prompt ──────────────────────────────────────── */
-let _pwaDeferred = null;
+/* ═══════════════════════════════════════════════════════════════
+   PWA INSTALL CARD — Robust implementation
+   ═══════════════════════════════════════════════════════════════
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _pwaDeferred = e;
-  if (!window.matchMedia('(display-mode: standalone)').matches) {
-    document.getElementById('pwaInstallBanner')?.classList.add('visible');
+   States:
+   1. Already installed (standalone) → hide card entirely
+   2. beforeinstallprompt captured   → show enabled "Install Now" button
+   3. Waiting for prompt event       → show waiting state (greyed button)
+   4. After install accepted         → hide card with success toast
+
+   ═══════════════════════════════════════════════════════════════ */
+
+let _pwaDeferred = null;  // holds the BeforeInstallPromptEvent
+
+function _initPwaInstallCard() {
+  const card   = document.getElementById('pwaInstallCard');
+  const btn    = document.getElementById('pwaInstallBtn');
+  const hint   = document.getElementById('pwaInstallHint');
+
+  if (!card || !btn) return;
+
+  // ── If already running as installed PWA, hide the card ──────
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone) {
+    card.classList.add('pwa-hidden');
+    return;
   }
-});
 
-window.addEventListener('appinstalled', () => {
-  document.getElementById('pwaInstallBanner')?.classList.remove('visible');
-  _pwaDeferred = null;
-  UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
-});
+  // ── If browser doesn't support install prompts at all, hide ─
+  // (Firefox, Safari without A2HS support etc.)
+  // We'll wait 4 seconds for beforeinstallprompt; if it never
+  // fires AND UniSyncPWA also has nothing, hide to avoid confusion.
+  let promptTimeout = setTimeout(() => {
+    // If we still have no prompt after 4s, check UniSyncPWA as fallback
+    if (!_pwaDeferred && window.UniSyncPWA) {
+      // pwa-register.js may have captured it earlier
+      if (typeof UniSyncPWA.requestInstall === 'function') {
+        // Proxy through UniSyncPWA
+        btn.classList.remove('waiting');
+        btn.onclick = async () => {
+          btn.disabled = true;
+          const ok = await UniSyncPWA.requestInstall();
+          if (ok) {
+            card.classList.add('pwa-hidden');
+            UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
+          } else {
+            btn.disabled = false;
+          }
+        };
+        hint.textContent = 'Works offline · Opens instantly · No app store needed';
+        return;
+      }
+    }
+    // No way to install — hide card silently (don't confuse user)
+    if (!_pwaDeferred) {
+      card.classList.add('pwa-hidden');
+    }
+  }, 4000);
 
-function _pwaInstall() {
-  if (!_pwaDeferred) return;
-  _pwaDeferred.prompt();
-  _pwaDeferred.userChoice.then(() => {
-    _pwaDeferred = null;
-    document.getElementById('pwaInstallBanner')?.classList.remove('visible');
+  // ── Listen for the install prompt event ─────────────────────
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    clearTimeout(promptTimeout);
+    _pwaDeferred = e;
+
+    // Activate the button
+    btn.classList.remove('waiting');
+    btn.disabled = false;
+    hint.textContent = 'Works offline · Opens instantly · No app store needed';
+
+    btn.onclick = _triggerInstall;
   });
+
+  // ── Listen for successful install ────────────────────────────
+  window.addEventListener('appinstalled', () => {
+    _pwaDeferred = null;
+    card.classList.add('pwa-hidden');
+    UniSync.toast('✅ UniSync installed! Find it on your home screen.', 'success', 5000);
+  });
+
+  // ── Also check if UniSyncPWA already has the prompt ─────────
+  // (pwa-register.js loads with defer and may capture it first)
+  // Poll once after a short delay
+  setTimeout(() => {
+    if (!_pwaDeferred && window.UniSyncPWA && typeof UniSyncPWA.requestInstall === 'function') {
+      clearTimeout(promptTimeout);
+      btn.classList.remove('waiting');
+      btn.onclick = async () => {
+        btn.disabled = true;
+        const ok = await UniSyncPWA.requestInstall();
+        if (ok) {
+          card.classList.add('pwa-hidden');
+          UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
+        } else {
+          btn.disabled = false;
+        }
+      };
+    }
+  }, 1500);
+}
+
+async function _triggerInstall() {
+  const card = document.getElementById('pwaInstallCard');
+  const btn  = document.getElementById('pwaInstallBtn');
+
+  if (!_pwaDeferred) {
+    // Fallback: try UniSyncPWA
+    if (window.UniSyncPWA && typeof UniSyncPWA.requestInstall === 'function') {
+      btn.disabled = true;
+      const ok = await UniSyncPWA.requestInstall();
+      if (ok) {
+        card.classList.add('pwa-hidden');
+        UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
+      } else {
+        btn.disabled = false;
+      }
+    }
+    return;
+  }
+
+  btn.disabled = true;
+
+  try {
+    _pwaDeferred.prompt();
+    const { outcome } = await _pwaDeferred.userChoice;
+
+    if (outcome === 'accepted') {
+      _pwaDeferred = null;
+      card.classList.add('pwa-hidden');
+      UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
+    } else {
+      // User dismissed — re-enable button so they can try again
+      btn.disabled = false;
+    }
+  } catch (err) {
+    btn.disabled = false;
+  }
 }
 
 /* ── Duration Search ─────────────────────────────────────────── */

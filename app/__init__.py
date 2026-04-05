@@ -56,6 +56,18 @@ def create_app(config_name: str = None):
     def dashboard():
         return render_template('dashboard.html')
 
+    # ── PWA: Offline fallback page ─────────────────────────────────
+    # CRITICAL: must be BEFORE return app — previously was AFTER return app
+    # so it was dead code and /offline returned 404, breaking SW pre-cache.
+    @app.route('/offline')
+    def offline_page():
+        """
+        Pre-cached by the service worker during install.
+        When a navigation request fails (no network + no cached version),
+        the SW serves this URL instead of an ugly browser error.
+        """
+        return render_template('errors/offline.html'), 200
+
     # ── Serve SW from root scope (needed for local dev) ──────────
     # On Vercel this is handled by vercel.json routes.
     # Locally Flask must serve /sw.js so the scope covers '/'.
@@ -251,14 +263,4 @@ def create_app(config_name: str = None):
     def forbidden(e):
         return jsonify({'error': 'Forbidden'}), 403
 
-    return app
-    
-    @app.route('/offline')
-    def offline_page():
-        """
-        This page is pre-cached by the service worker during install.
-        When a navigation request fails (no network + no cached version),
-        the SW serves this URL instead of an ugly browser error.
-        """
-        return render_template('errors/offline.html'), 200
-    
+    return app  # ← return app is HERE — all routes are registered above
