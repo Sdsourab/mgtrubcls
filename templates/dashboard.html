@@ -7,150 +7,62 @@
 <style>
 /* ── Schedule List ─────────────────────────────────────────── */
 .schedule-list { display:flex; flex-direction:column; gap:0; }
-
-.sched-item {
-  display: flex; gap: 0; align-items: stretch;
-  padding: 0; min-height: 64px;
-}
-
-.sched-time {
-  flex-shrink: 0; width: 68px; padding: 12px 0;
-  display: flex; flex-direction: column;
-  align-items: flex-end; gap: 2px;
-}
-.sched-t-start { font-size: 0.75rem; font-weight: 700; color: var(--text-primary); }
-.sched-t-end   { font-size: 0.68rem; color: var(--text-muted); }
-
-.sched-divider {
-  flex-shrink: 0; width: 28px;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 14px 0 0;
-}
-.sched-dot {
-  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  background: var(--border); border: 2px solid var(--bg-card);
-  z-index: 1;
-}
-.sched-dot.running { background: #E53E3E; box-shadow: 0 0 0 3px rgba(229,62,62,0.2); }
-.sched-dot.done    { background: #68D391; }
-.sched-line {
-  width: 2px; flex: 1; background: var(--border); margin-top: 4px;
-  min-height: 24px;
-}
-.sched-item:last-child .sched-line { display: none; }
-
-.sched-body {
-  flex: 1; padding: 10px 0 10px 10px;
-}
-.sched-course {
-  font-size: 0.88rem; font-weight: 700; color: var(--text-primary);
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.sched-meta { font-size: 0.74rem; color: var(--text-muted); }
-
-.sched-badge {
-  font-size: 0.65rem; font-weight: 700; padding: 2px 8px;
-  border-radius: 999px; letter-spacing: 0.03em;
-}
-.sched-badge.running { background: rgba(229,62,62,0.12); color: #C53030; }
-.sched-badge.done    { background: rgba(56,161,105,0.12); color: #276749; }
-.sched-badge.soon    { background: rgba(237,137,54,0.12); color: #C05621; }
-
-.sched-item.running .sched-body { background: rgba(229,62,62,0.03); border-radius: var(--radius-sm); }
-.sched-item.done    { opacity: 0.55; }
-
-.schedule-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 18px 20px;
-  margin-bottom: 0;
-}
+.sched-item { display:flex; gap:0; align-items:stretch; padding:0; min-height:64px; }
+.sched-time { flex-shrink:0; width:68px; padding:12px 0; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.sched-t-start { font-size:.75rem; font-weight:700; color:var(--text-primary); }
+.sched-t-end   { font-size:.68rem; color:var(--text-muted); }
+.sched-divider { flex-shrink:0; width:28px; display:flex; flex-direction:column; align-items:center; padding:14px 0 0; }
+.sched-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--border); border:2px solid var(--bg-card); z-index:1; }
+.sched-dot.running { background:#E53E3E; box-shadow:0 0 0 3px rgba(229,62,62,.2); }
+.sched-dot.done    { background:#68D391; }
+.sched-line { width:2px; flex:1; background:var(--border); margin-top:4px; min-height:24px; }
+.sched-item:last-child .sched-line { display:none; }
+.sched-body { flex:1; padding:10px 0 10px 10px; }
+.sched-course { font-size:.88rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.sched-meta { font-size:.74rem; color:var(--text-muted); }
+.sched-badge { font-size:.65rem; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em; }
+.sched-badge.running { background:rgba(229,62,62,.12); color:#C53030; }
+.sched-badge.done    { background:rgba(56,161,105,.12); color:#276749; }
+.sched-badge.soon    { background:rgba(237,137,54,.12); color:#C05621; }
+.sched-item.running .sched-body { background:rgba(229,62,62,.03); border-radius:var(--radius-sm); }
+.sched-item.done { opacity:.55; }
+.schedule-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px; margin-bottom:0; }
 
 /* ── Exam alert cards ──────────────────────────────────────── */
-.exam-alert-card {
-  display: flex; align-items: center; gap: 16px;
-  padding: 14px 18px;
-  background: linear-gradient(135deg,rgba(188,111,55,0.07),rgba(229,62,62,0.06));
-  border: 1px solid rgba(229,62,62,0.25);
-  border-radius: var(--radius-md); margin-bottom: 10px; cursor: default;
-  transition: transform 0.2s;
-}
-.exam-alert-card:hover { transform: translateY(-1px); }
-.exam-countdown {
-  font-size: 2rem; font-weight: 800; color: #E53E3E;
-  font-family: 'JetBrains Mono', monospace;
-  min-width: 52px; text-align: center; flex-shrink: 0;
-}
-.exam-today { animation: examPulse 1.2s ease-in-out infinite; }
+.exam-alert-card { display:flex; align-items:center; gap:16px; padding:14px 18px; background:linear-gradient(135deg,rgba(188,111,55,.07),rgba(229,62,62,.06)); border:1px solid rgba(229,62,62,.25); border-radius:var(--radius-md); margin-bottom:10px; cursor:default; transition:transform .2s; }
+.exam-alert-card:hover { transform:translateY(-1px); }
+.exam-countdown { font-size:2rem; font-weight:800; color:#E53E3E; font-family:'JetBrains Mono',monospace; min-width:52px; text-align:center; flex-shrink:0; }
+.exam-today { animation:examPulse 1.2s ease-in-out infinite; }
 @keyframes examPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
-.exam-info { flex: 1; min-width: 0; }
-.exam-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
-.exam-meta { font-size: 0.75rem; color: var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
-.exam-type-chip {
-  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
-  background: rgba(229,62,62,0.1); color: #C53030;
-  padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
-}
+.exam-info { flex:1; min-width:0; }
+.exam-name { font-size:.9rem; font-weight:700; margin-bottom:4px; }
+.exam-meta { font-size:.75rem; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
+.exam-type-chip { font-size:.65rem; font-weight:700; letter-spacing:.06em; background:rgba(229,62,62,.1); color:#C53030; padding:2px 8px; border-radius:999px; text-transform:uppercase; }
 
 /* ═══════════════════════════════════════════════════════════════
-   PWA INSTALL CARD — Always visible, smart state switching
+   PWA INSTALL CARD
    ═══════════════════════════════════════════════════════════════ */
 .pwa-install-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 14px;
   padding: 16px 20px;
-  background: linear-gradient(135deg,
-    rgba(188,111,55,0.10),
-    rgba(205,169,106,0.07));
+  background: linear-gradient(135deg, rgba(188,111,55,0.10), rgba(205,169,106,0.07));
   border: 1.5px solid rgba(188,111,55,0.28);
   border-radius: var(--radius-lg, 14px);
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
-  transition: opacity 0.4s, transform 0.3s;
+  transition: opacity 0.3s;
 }
+.pwa-install-card.pwa-hidden { display: none !important; }
 
-/* subtle shimmer strip */
-.pwa-install-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
-  pointer-events: none;
-}
+.pwa-install-card__icon { font-size: 2rem; flex-shrink: 0; line-height: 1; }
 
-/* hide when app is already installed in standalone mode */
-.pwa-install-card.pwa-hidden {
-  display: none;
-}
+.pwa-install-card__text { flex: 1; min-width: 0; }
+.pwa-install-card__text h4 { font-size: .92rem; font-weight: 700; color: var(--text-primary); margin: 0 0 3px; }
+.pwa-install-card__text p  { font-size: .74rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
 
-.pwa-install-card__icon {
-  font-size: 2rem;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.pwa-install-card__text {
-  flex: 1;
-  min-width: 0;
-}
-.pwa-install-card__text h4 {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 3px;
-}
-.pwa-install-card__text p {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* ── Install Now button ── */
 #pwaInstallBtn {
   display: inline-flex;
   align-items: center;
@@ -162,45 +74,23 @@
   border-radius: var(--radius-md, 10px);
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: .85rem;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
   box-shadow: 0 3px 12px rgba(188,111,55,0.35);
-  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  transition: opacity .2s, transform .15s;
 }
-#pwaInstallBtn:hover  {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 5px 18px rgba(188,111,55,0.45);
-}
+#pwaInstallBtn:hover  { opacity: .9; transform: translateY(-1px); }
 #pwaInstallBtn:active { transform: translateY(0); }
-#pwaInstallBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
+#pwaInstallBtn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 
-/* waiting state — prompt not yet captured */
+/* greyed state while waiting for prompt */
 #pwaInstallBtn.waiting {
-  background: linear-gradient(135deg, rgba(188,111,55,0.25), rgba(205,169,106,0.2));
+  background: rgba(188,111,55,0.15);
   color: var(--text-muted);
   box-shadow: none;
-  border: 1px solid rgba(188,111,55,0.3);
-}
-
-/* already-installed state */
-.pwa-installed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(56,161,105,0.12);
-  color: #276749;
-  border-radius: var(--radius-md, 10px);
-  font-size: 0.82rem;
-  font-weight: 700;
-  flex-shrink: 0;
+  border: 1px dashed rgba(188,111,55,0.4);
 }
 </style>
 {% endblock %}
@@ -208,7 +98,7 @@
 {% block content %}
 <div class="page-wrapper">
 
-  <!-- ── HERO: Happening Now ─────────────────────────────────── -->
+  <!-- HERO: Happening Now -->
   <section class="hero-section anim-fade-up">
     <div class="hero-card scroll-reveal" id="liveCard">
       <div class="hero-bg-glow"></div>
@@ -234,17 +124,19 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════
-       PWA INSTALL CARD — always rendered, JS controls visibility
+       PWA INSTALL CARD
+       Starts hidden. base.html's beforeinstallprompt listener
+       removes 'pwa-hidden' when the browser fires the event.
+       If already installed (standalone), JS hides it immediately.
        ═══════════════════════════════════════════════════════════ -->
-  <div id="pwaInstallCard" class="pwa-install-card">
+  <div id="pwaInstallCard" class="pwa-install-card pwa-hidden">
     <div class="pwa-install-card__icon">📲</div>
     <div class="pwa-install-card__text">
       <h4>Install UniSync App</h4>
-      <p id="pwaInstallHint">Works offline · Opens instantly · No app store needed</p>
+      <p>Works offline · Opens instantly · No app store needed</p>
     </div>
-    <button id="pwaInstallBtn" class="waiting" title="Install UniSync as an app">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-           width="14" height="14">
+    <button id="pwaInstallBtn" class="waiting" onclick="_pwaInstall()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
@@ -253,10 +145,10 @@
     </button>
   </div>
 
-  <!-- ── EXAM ALERTS (only when exam within 7 days) ──────────── -->
+  <!-- Exam Alerts -->
   <div id="examAlertSection"></div>
 
-  <!-- ── STATS ────────────────────────────────────────────────── -->
+  <!-- STATS -->
   <section class="stats-grid stagger">
     <div class="stat-card">
       <div class="stat-header">
@@ -295,10 +187,10 @@
     </div>
   </section>
 
-  <!-- ── TODAY / TOMORROW SCHEDULE (driven by live_engine) ────── -->
+  <!-- TODAY / TOMORROW SCHEDULE -->
   <div id="dayScheduleSection" class="schedule-card scroll-reveal"></div>
 
-  <!-- ── UPCOMING TASKS ───────────────────────────────────────── -->
+  <!-- UPCOMING TASKS -->
   <section class="tasks-section scroll-reveal" style="margin-top:20px;">
     <div class="section-header scroll-reveal">
       <h2>Upcoming Tasks</h2>
@@ -315,7 +207,7 @@
     </div>
   </section>
 
-  <!-- ── DURATION SEARCH ──────────────────────────────────────── -->
+  <!-- DURATION SEARCH -->
   <section class="time-search-section">
     <div class="section-header scroll-reveal">
       <h2>⏱ Duration Search</h2>
@@ -360,382 +252,244 @@
 {% block extra_js %}
 <script>
 /* ════════════════════════════════════════════════════════════
-   Dashboard extra logic
+   Dashboard JS
    ════════════════════════════════════════════════════════════ */
 
-let _user = null;
+var _user = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', function () {
   UniSync.requireAuth();
   _user = UniSync.getUser();
   if (!_user) return;
 
-  // Fill stat cards
   document.getElementById('statProgram').textContent = _user.program || 'BBA';
   document.getElementById('statYearSem').textContent =
-    `Year ${_user.year||1} · Semester ${_user.semester||1}`;
+    'Year ' + (_user.year || 1) + ' · Semester ' + (_user.semester || 1);
 
-  // Pre-select today in duration search
-  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const WORK = new Set(['Sunday','Monday','Tuesday','Wednesday','Thursday']);
-  const tod  = DAYS[new Date().getDay()];
-  const sel  = document.getElementById('dsDay');
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var WORK = new Set(['Sunday','Monday','Tuesday','Wednesday','Thursday']);
+  var tod  = DAYS[new Date().getDay()];
+  var sel  = document.getElementById('dsDay');
   if (sel && WORK.has(tod)) sel.value = tod;
 
-  // Kick off parallel loads
-  await Promise.allSettled([
+  Promise.allSettled([
     _checkHoliday(),
     _loadTasks(),
     _loadExamAlerts(),
+    _initInstallCard(),
   ]);
-
-  // Init PWA install card after page content is ready
-  _initPwaInstallCard();
 });
 
-/* ── Holiday banner ──────────────────────────────────────────── */
+/* ── Holiday banner ────────────────────────────────────────── */
 async function _checkHoliday() {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const res   = await fetch(`/academic/api/holiday-check?date=${today}`);
+    var today = new Date().toISOString().split('T')[0];
+    var res   = await fetch('/academic/api/holiday-check?date=' + today);
     if (!res.ok) return;
-    const data  = await res.json();
+    var data  = await res.json();
     if (data.is_holiday) {
       document.getElementById('holidayBanner').classList.remove('hidden');
       document.getElementById('holidayBannerName').textContent = data.name || 'Public Holiday';
     }
-  } catch {}
+  } catch(e) {}
 }
 
-/* ── Tasks (with localStorage cache) ────────────────────────── */
+/* ── Tasks ─────────────────────────────────────────────────── */
 async function _loadTasks() {
   if (!_user?.id) return;
-  const KEY = `dash_tasks_${_user.id}`;
+  var KEY = 'dash_tasks_' + _user.id;
   try {
-    const res  = await fetch(`/productivity/api/tasks?user_id=${_user.id}`);
-    const data = await res.json();
+    var res  = await fetch('/productivity/api/tasks?user_id=' + _user.id);
+    var data = await res.json();
     if (data.success) {
       _renderTasks(data.data);
       localStorage.setItem(KEY, JSON.stringify(data.data));
     }
-  } catch {
-    const c = localStorage.getItem(KEY);
+  } catch(e) {
+    var c = localStorage.getItem(KEY);
     if (c) _renderTasks(JSON.parse(c));
   }
 }
 
 function _renderTasks(tasks) {
-  const list    = document.getElementById('dashTasksList');
-  const pending = tasks.filter(t => t.status !== 'done');
-  document.getElementById('pendingCount').textContent = `${pending.length} Pending`;
+  var list    = document.getElementById('dashTasksList');
+  var pending = tasks.filter(function(t){ return t.status !== 'done'; });
+  document.getElementById('pendingCount').textContent = pending.length + ' Pending';
   document.getElementById('statPending').textContent  = pending.length;
 
   if (!pending.length) {
     list.innerHTML = '<div class="empty-state"><p>✅ No pending tasks! <a href="/productivity/tasks">Add one →</a></p></div>';
     return;
   }
-
-  list.innerHTML = pending.slice(0,5).map(t => {
-    const dl  = t.deadline ? new Date(t.deadline) : null;
-    const dls = dl ? dl.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
-    const p   = t.priority || 'medium';
-    return `
-    <div class="task-item">
-      <div class="task-item-left">
-        <span class="priority-badge ${p}">${p.toUpperCase()}</span>
-        <span class="task-date">${dls}</span>
-      </div>
-      <div class="task-item-body">
-        <div class="task-title">${t.title}</div>
-        ${t.description ? `<div class="task-desc">${t.description}</div>` : ''}
-      </div>
-      <div class="task-item-actions">
-        <button class="task-action-btn" onclick="_done('${t.id}',this)" title="Mark done">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </button>
-      </div>
-    </div>`;
+  list.innerHTML = pending.slice(0,5).map(function(t) {
+    var dl  = t.deadline ? new Date(t.deadline) : null;
+    var dls = dl ? dl.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+    var p   = t.priority || 'medium';
+    return '<div class="task-item">'
+      + '<div class="task-item-left">'
+      + '<span class="priority-badge ' + p + '">' + p.toUpperCase() + '</span>'
+      + '<span class="task-date">' + dls + '</span>'
+      + '</div>'
+      + '<div class="task-item-body">'
+      + '<div class="task-title">' + t.title + '</div>'
+      + (t.description ? '<div class="task-desc">' + t.description + '</div>' : '')
+      + '</div>'
+      + '<div class="task-item-actions">'
+      + '<button class="task-action-btn" onclick="_done(\'' + t.id + '\',this)" title="Mark done">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
+      + '</button></div></div>';
   }).join('');
 }
 
 async function _done(id, btn) {
   try {
-    await fetch(`/productivity/api/tasks/${id}`, {
+    await fetch('/productivity/api/tasks/' + id, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({status:'done'}),
     });
-    const item = btn.closest('.task-item');
-    item.style.cssText = 'opacity:0;transform:translateX(14px);transition:all 0.3s';
-    setTimeout(() => item.remove(), 320);
+    var item = btn.closest('.task-item');
+    item.style.cssText = 'opacity:0;transform:translateX(14px);transition:all .3s';
+    setTimeout(function(){ item.remove(); }, 320);
     UniSync.toast('✓ Task done!', 'success');
-  } catch { UniSync.toast('Error', 'error'); }
+  } catch(e) { UniSync.toast('Error', 'error'); }
 }
 
-/* ── Exam Alerts ─────────────────────────────────────────────── */
+/* ── Exam Alerts ───────────────────────────────────────────── */
 async function _loadExamAlerts() {
-  const section = document.getElementById('examAlertSection');
+  var section = document.getElementById('examAlertSection');
   if (!section || !_user) return;
-
-  const KEY = `exam_cache_${_user.program}_${_user.year}_${_user.semester}`;
-  let exams = [];
+  var KEY   = 'exam_cache_' + _user.program + '_' + _user.year + '_' + _user.semester;
+  var exams = [];
 
   if (navigator.onLine) {
     try {
-      const p   = new URLSearchParams({
-        program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1
-      });
-      const res = await fetch(`/exams/api/exams/upcoming?${p}`);
+      var p   = new URLSearchParams({ program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1 });
+      var res = await fetch('/exams/api/exams/upcoming?' + p);
       if (res.ok) {
-        const data = await res.json();
+        var data = await res.json();
         if (data.success && data.data?.length) exams = data.data;
       }
-    } catch {}
+    } catch(e) {}
 
     if (!exams.length) {
       try {
-        const p   = new URLSearchParams({
-          program: _user.program||'BBA', year: _user.year||1,
-          semester: _user.semester||1
-        });
-        const res = await fetch(`/notices/api/notices?${p}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            const today = new Date();
-            exams = (data.data || [])
-              .filter(n => n.type === 'exam')
-              .map(n => {
-                const dateMatch = (n.title || '').match(/(\d{4}-\d{2}-\d{2})/);
-                const exam_date = dateMatch ? dateMatch[1] : null;
-                if (!exam_date) return null;
-                const daysLeft = Math.round((new Date(exam_date) - today) / 86400000);
-                if (daysLeft < 0 || daysLeft > 7) return null;
-                return {
-                  course_name:    n.title.replace(/^[^:]+:\s*/, '').replace(/\s*—.*/, '').trim(),
-                  exam_date,
-                  exam_type:      'exam',
-                  days_remaining: daysLeft,
-                  is_today:       daysLeft === 0,
-                  is_urgent:      true,
-                };
-              }).filter(Boolean);
+        var p2   = new URLSearchParams({ program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1 });
+        var res2 = await fetch('/notices/api/notices?' + p2);
+        if (res2.ok) {
+          var d2 = await res2.json();
+          if (d2.success) {
+            var today = new Date();
+            exams = (d2.data || []).filter(function(n){ return n.type === 'exam'; }).map(function(n){
+              var dm = (n.title||'').match(/(\d{4}-\d{2}-\d{2})/);
+              if (!dm) return null;
+              var dl = Math.round((new Date(dm[1]) - today) / 86400000);
+              if (dl < 0 || dl > 7) return null;
+              return { course_name: n.title.replace(/^[^:]+:\s*/,'').replace(/\s*—.*/,'').trim(), exam_date: dm[1], exam_type:'exam', days_remaining: dl, is_today: dl===0, is_urgent: true };
+            }).filter(Boolean);
           }
         }
-      } catch {}
+      } catch(e) {}
     }
-
-    if (exams.length) {
-      localStorage.setItem(KEY, JSON.stringify({ data: exams, ts: Date.now() }));
-    }
+    if (exams.length) localStorage.setItem(KEY, JSON.stringify({ data: exams, ts: Date.now() }));
   } else {
     try {
-      const c = JSON.parse(localStorage.getItem(KEY) || 'null');
+      var c = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (c?.data) {
-        const today = new Date();
-        exams = c.data.map(e => ({
-          ...e,
-          days_remaining: Math.round((new Date(e.exam_date) - today) / 86400000),
-          is_today:   new Date(e.exam_date).toDateString() === today.toDateString(),
-          is_urgent:  Math.round((new Date(e.exam_date) - today) / 86400000) <= 7,
-        })).filter(e => (e.days_remaining ?? 999) >= 0 && e.is_urgent);
+        var today2 = new Date();
+        exams = c.data.map(function(e){ return Object.assign({}, e, { days_remaining: Math.round((new Date(e.exam_date) - today2) / 86400000), is_today: new Date(e.exam_date).toDateString() === today2.toDateString(), is_urgent: Math.round((new Date(e.exam_date) - today2) / 86400000) <= 7 }); }).filter(function(e){ return (e.days_remaining??999) >= 0 && e.is_urgent; });
       }
-    } catch {}
+    } catch(e) {}
   }
 
-  const urgent = exams.filter(e => (e.days_remaining ?? 999) >= 0 && e.is_urgent);
+  var urgent = exams.filter(function(e){ return (e.days_remaining??999) >= 0 && e.is_urgent; });
   if (!urgent.length) return;
 
-  section.innerHTML = `
-  <div class="section-header scroll-reveal" style="margin-top:16px;">
-    <h2>📝 Exam Countdown</h2>
-    <a href="/exams/" class="view-all-link">Full Schedule →</a>
-  </div>
-  ${urgent.slice(0,3).map(ex => {
-    const d = ex.days_remaining ?? 0;
-    const countdown = d === 0
-      ? `<div class="exam-countdown exam-today">🔥</div>`
-      : `<div class="exam-countdown">${d}d</div>`;
-    const urgLabel = d === 0
-      ? '<strong style="color:#E53E3E">TODAY</strong>'
-      : d === 1
-        ? '<strong style="color:#DD6B20">TOMORROW</strong>'
-        : `<span style="color:#E53E3E">${d} days left</span>`;
-    return `
-    <div class="exam-alert-card scroll-reveal">
-      ${countdown}
-      <div class="exam-info">
-        <div class="exam-name">
-          ${ex.course_name || ex.course_code || '—'}
-          <span class="exam-type-chip">${(ex.exam_type||'EXAM').toUpperCase()}</span>
-        </div>
-        <div class="exam-meta">
-          <span>📅 ${ex.exam_date}</span>
-          ${ex.start_time ? `<span>⏰ ${ex.start_time}</span>` : ''}
-          ${ex.room_no    ? `<span>🏛 ${ex.room_no}</span>`   : ''}
-          <span>${urgLabel}</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('')}`;
+  section.innerHTML = '<div class="section-header scroll-reveal" style="margin-top:16px;"><h2>📝 Exam Countdown</h2><a href="/exams/" class="view-all-link">Full Schedule →</a></div>'
+    + urgent.slice(0,3).map(function(ex){
+      var d = ex.days_remaining ?? 0;
+      var cd = d===0 ? '<div class="exam-countdown exam-today">🔥</div>' : '<div class="exam-countdown">' + d + 'd</div>';
+      var ul = d===0 ? '<strong style="color:#E53E3E">TODAY</strong>' : d===1 ? '<strong style="color:#DD6B20">TOMORROW</strong>' : '<span style="color:#E53E3E">' + d + ' days left</span>';
+      return '<div class="exam-alert-card scroll-reveal">' + cd + '<div class="exam-info"><div class="exam-name">' + (ex.course_name||ex.course_code||'—') + ' <span class="exam-type-chip">' + (ex.exam_type||'EXAM').toUpperCase() + '</span></div><div class="exam-meta"><span>📅 ' + ex.exam_date + '</span>' + (ex.start_time ? '<span>⏰ ' + ex.start_time + '</span>' : '') + (ex.room_no ? '<span>🏛 ' + ex.room_no + '</span>' : '') + '<span>' + ul + '</span></div></div></div>';
+    }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PWA INSTALL CARD — Robust implementation
-   ═══════════════════════════════════════════════════════════════
-
-   States:
-   1. Already installed (standalone) → hide card entirely
-   2. beforeinstallprompt captured   → show enabled "Install Now" button
-   3. Waiting for prompt event       → show waiting state (greyed button)
-   4. After install accepted         → hide card with success toast
-
+   PWA Install Card
+   Uses window.__pwaPrompt set by base.html's beforeinstallprompt
+   listener. Simple and reliable — same pattern as oclock.
    ═══════════════════════════════════════════════════════════════ */
-
-let _pwaDeferred = null;  // holds the BeforeInstallPromptEvent
-
-function _initPwaInstallCard() {
-  const card   = document.getElementById('pwaInstallCard');
-  const btn    = document.getElementById('pwaInstallBtn');
-  const hint   = document.getElementById('pwaInstallHint');
-
+function _initInstallCard() {
+  var card = document.getElementById('pwaInstallCard');
+  var btn  = document.getElementById('pwaInstallBtn');
   if (!card || !btn) return;
 
-  // ── If already running as installed PWA, hide the card ──────
-  const isStandalone =
+  // Already installed as standalone PWA → hide forever
+  var isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
-
   if (isStandalone) {
     card.classList.add('pwa-hidden');
     return;
   }
 
-  // ── If browser doesn't support install prompts at all, hide ─
-  // (Firefox, Safari without A2HS support etc.)
-  // We'll wait 4 seconds for beforeinstallprompt; if it never
-  // fires AND UniSyncPWA also has nothing, hide to avoid confusion.
-  let promptTimeout = setTimeout(() => {
-    // If we still have no prompt after 4s, check UniSyncPWA as fallback
-    if (!_pwaDeferred && window.UniSyncPWA) {
-      // pwa-register.js may have captured it earlier
-      if (typeof UniSyncPWA.requestInstall === 'function') {
-        // Proxy through UniSyncPWA
-        btn.classList.remove('waiting');
-        btn.onclick = async () => {
-          btn.disabled = true;
-          const ok = await UniSyncPWA.requestInstall();
-          if (ok) {
-            card.classList.add('pwa-hidden');
-            UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
-          } else {
-            btn.disabled = false;
-          }
-        };
-        hint.textContent = 'Works offline · Opens instantly · No app store needed';
-        return;
-      }
-    }
-    // No way to install — hide card silently (don't confuse user)
-    if (!_pwaDeferred) {
-      card.classList.add('pwa-hidden');
-    }
-  }, 4000);
-
-  // ── Listen for the install prompt event ─────────────────────
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    clearTimeout(promptTimeout);
-    _pwaDeferred = e;
-
-    // Activate the button
+  // If prompt already captured by base.html before this ran
+  if (window.__pwaPrompt) {
+    card.classList.remove('pwa-hidden');
     btn.classList.remove('waiting');
-    btn.disabled = false;
-    hint.textContent = 'Works offline · Opens instantly · No app store needed';
+  }
 
-    btn.onclick = _triggerInstall;
+  // Also listen directly in case it fires after DOMContentLoaded
+  // (base.html already calls preventDefault & sets window.__pwaPrompt,
+  //  we just need to update the UI here)
+  window.addEventListener('beforeinstallprompt', function () {
+    card.classList.remove('pwa-hidden');
+    btn.classList.remove('waiting');
   });
-
-  // ── Listen for successful install ────────────────────────────
-  window.addEventListener('appinstalled', () => {
-    _pwaDeferred = null;
-    card.classList.add('pwa-hidden');
-    UniSync.toast('✅ UniSync installed! Find it on your home screen.', 'success', 5000);
-  });
-
-  // ── Also check if UniSyncPWA already has the prompt ─────────
-  // (pwa-register.js loads with defer and may capture it first)
-  // Poll once after a short delay
-  setTimeout(() => {
-    if (!_pwaDeferred && window.UniSyncPWA && typeof UniSyncPWA.requestInstall === 'function') {
-      clearTimeout(promptTimeout);
-      btn.classList.remove('waiting');
-      btn.onclick = async () => {
-        btn.disabled = true;
-        const ok = await UniSyncPWA.requestInstall();
-        if (ok) {
-          card.classList.add('pwa-hidden');
-          UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
-        } else {
-          btn.disabled = false;
-        }
-      };
-    }
-  }, 1500);
 }
 
-async function _triggerInstall() {
-  const card = document.getElementById('pwaInstallCard');
-  const btn  = document.getElementById('pwaInstallBtn');
+async function _pwaInstall() {
+  var btn  = document.getElementById('pwaInstallBtn');
+  var card = document.getElementById('pwaInstallCard');
 
-  if (!_pwaDeferred) {
-    // Fallback: try UniSyncPWA
-    if (window.UniSyncPWA && typeof UniSyncPWA.requestInstall === 'function') {
-      btn.disabled = true;
-      const ok = await UniSyncPWA.requestInstall();
-      if (ok) {
-        card.classList.add('pwa-hidden');
-        UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
-      } else {
-        btn.disabled = false;
-      }
-    }
+  if (!window.__pwaPrompt) {
+    UniSync.toast('Install prompt not available. Try from browser menu.', 'info', 4000);
     return;
   }
 
   btn.disabled = true;
 
   try {
-    _pwaDeferred.prompt();
-    const { outcome } = await _pwaDeferred.userChoice;
+    window.__pwaPrompt.prompt();
+    var result = await window.__pwaPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      _pwaDeferred = null;
+    if (result.outcome === 'accepted') {
+      window.__pwaPrompt = null;
       card.classList.add('pwa-hidden');
       UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
     } else {
-      // User dismissed — re-enable button so they can try again
+      // User dismissed → re-enable so they can try again
       btn.disabled = false;
     }
-  } catch (err) {
+  } catch(e) {
     btn.disabled = false;
+    console.error('[PWA] install error:', e);
   }
 }
 
-/* ── Duration Search ─────────────────────────────────────────── */
+/* ── Duration Search ───────────────────────────────────────── */
 function _t12h(t) {
   if (!t) return '';
-  const [h, m] = String(t).split(':').map(Number);
+  var parts = String(t).split(':').map(Number);
+  var h = parts[0], m = parts[1];
   if (isNaN(h)) return t;
-  return `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
+  return (h%12||12) + ':' + String(m).padStart(2,'0') + ' ' + (h<12?'AM':'PM');
 }
 
 async function runDurationSearch() {
-  const from = document.getElementById('dsFrom').value;
-  const to   = document.getElementById('dsTo').value;
-  const day  = document.getElementById('dsDay').value;
-  const div  = document.getElementById('dsResults');
+  var from = document.getElementById('dsFrom').value;
+  var to   = document.getElementById('dsTo').value;
+  var day  = document.getElementById('dsDay').value;
+  var div  = document.getElementById('dsResults');
 
   if (!from || !to) { UniSync.toast('Select From and To time', 'warning'); return; }
   if (from >= to)   { UniSync.toast('From must be before To', 'warning'); return; }
@@ -744,38 +498,38 @@ async function runDurationSearch() {
   div.classList.remove('hidden');
 
   try {
-    const p = new URLSearchParams({ from, to });
+    var p = new URLSearchParams({ from: from, to: to });
     if (day)             p.set('day', day);
     if (_user?.program)  p.set('program',  _user.program);
     if (_user?.year)     p.set('year',      _user.year);
     if (_user?.semester) p.set('semester',  _user.semester);
 
-    const res  = await fetch(`/academic/api/duration-search?${p}`);
-    const data = await res.json();
+    var res  = await fetch('/academic/api/duration-search?' + p);
+    var data = await res.json();
 
     if (!data.success || !data.data?.length) {
       div.innerHTML = '<div class="ts-empty">✅ No classes in this time window.</div>';
       return;
     }
 
-    let html = data.data.map(c => `
-    <div class="ts-result-item">
-      <div class="ts-result-code">${c.course_code}</div>
-      <div class="ts-result-info">
-        <div class="ts-result-name">${c.course_name||c.course_code}</div>
-        <div class="ts-result-meta">Room ${c.room_no} · ${c.teacher_name||c.teacher_code} · ${c.day}</div>
-      </div>
-      <div class="ts-result-time">${_t12h(c.time_start)} – ${_t12h(c.time_end)}</div>
-    </div>`).join('');
+    var html = data.data.map(function(c) {
+      return '<div class="ts-result-item">'
+        + '<div class="ts-result-code">' + c.course_code + '</div>'
+        + '<div class="ts-result-info">'
+        + '<div class="ts-result-name">' + (c.course_name||c.course_code) + '</div>'
+        + '<div class="ts-result-meta">Room ' + c.room_no + ' · ' + (c.teacher_name||c.teacher_code) + ' · ' + c.day + '</div>'
+        + '</div>'
+        + '<div class="ts-result-time">' + _t12h(c.time_start) + ' – ' + _t12h(c.time_end) + '</div>'
+        + '</div>';
+    }).join('');
 
     if (data.ml?.suggestions?.length) {
-      html += `<div class="ml-suggestion-box">
-        <div class="ml-suggestion-title">🧠 Smart Suggestions</div>
-        ${data.ml.suggestions.map(s=>`<div class="ml-suggestion-item">${s.suggestion}</div>`).join('')}
-      </div>`;
+      html += '<div class="ml-suggestion-box"><div class="ml-suggestion-title">🧠 Smart Suggestions</div>'
+        + data.ml.suggestions.map(function(s){ return '<div class="ml-suggestion-item">' + s.suggestion + '</div>'; }).join('')
+        + '</div>';
     }
     div.innerHTML = html;
-  } catch {
+  } catch(e) {
     div.innerHTML = '<div class="ts-empty">📡 Offline — duration search unavailable.</div>';
   }
 }
