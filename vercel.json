@@ -1,6 +1,5 @@
 {
   "version": 2,
-
   "builds": [
     {
       "src": "api/index.py",
@@ -18,31 +17,17 @@
       }
     }
   ],
-
   "routes": [
-
     {
-      "comment": "──────────────────────────────────────────────────────────────",
-      "comment2": "PWA: Service Worker — served from root with mandatory headers.",
-      "comment3": "Service-Worker-Allowed: / grants the SW scope over the entire",
-      "comment4": "origin, not just /static/ where the file physically lives.",
-      "comment5": "Cache-Control: no-cache ensures browsers always re-validate",
-      "comment6": "the SW script so updates are picked up immediately.",
-      "comment7": "──────────────────────────────────────────────────────────────",
       "src": "/sw\\.js$",
       "headers": {
         "Service-Worker-Allowed": "/",
         "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-        "Content-Type": "application/javascript; charset=utf-8",
-        "X-Content-Type-Options": "nosniff"
+        "Content-Type": "application/javascript; charset=utf-8"
       },
       "dest": "api/index.py"
     },
-
     {
-      "comment": "PWA: Web App Manifest",
       "src": "/manifest\\.json$",
       "headers": {
         "Cache-Control": "public, max-age=86400",
@@ -50,41 +35,31 @@
       },
       "dest": "api/index.py"
     },
-
     {
-      "comment": "Static assets: CSS / JS — long-lived, content-addressed.",
       "src": "/static/(css|js)/(.+)\\.(css|js)$",
       "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "X-Content-Type-Options": "nosniff"
+        "Cache-Control": "public, max-age=31536000, immutable"
       },
       "dest": "api/index.py"
     },
-
     {
-      "comment": "Static assets: Images, fonts, icons — long cache.",
       "src": "/static/(.+)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot)$",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
       },
       "dest": "api/index.py"
     },
-
     {
-      "comment": "All other requests (Flask blueprints, API, auth, pages) → Lambda.",
       "src": "/(.*)",
       "dest": "api/index.py"
     }
-
   ],
-
   "crons": [
     {
       "path": "/api/cron/daily",
       "schedule": "0 13 * * 0-4"
     }
   ],
-
   "env": {
     "FLASK_ENV": "production"
   }
