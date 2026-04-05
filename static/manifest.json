@@ -2,7 +2,7 @@
   "name": "UniSync — Rabindra University",
   "short_name": "UniSync",
   "description": "Academic management portal for Rabindra University Bangladesh, Department of Management.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -11,6 +11,7 @@
   "lang": "en-BD",
   "dir": "ltr",
   "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
 
   "icons": [
     {
@@ -57,23 +58,6 @@
     }
   ],
 
-  "screenshots": [
-    {
-      "src": "/static/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "UniSync Dashboard"
-    },
-    {
-      "src": "/static/screenshots/mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "UniSync on Mobile"
-    }
-  ],
-
   "shortcuts": [
     {
       "name": "Dashboard",
@@ -86,23 +70,15 @@
       "name": "Planner",
       "short_name": "Planner",
       "description": "Open your AI task planner",
-      "url": "/planner",
+      "url": "/planner/",
       "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
       "name": "Notices",
       "short_name": "Notices",
       "description": "View department notices",
-      "url": "/notices",
+      "url": "/notices/",
       "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
     }
-  ],
-
-  "prefer_related_applications": false,
-
-  "related_applications": [],
-
-  "display_override": ["standalone", "minimal-ui", "browser"],
-
-  "protocol_handlers": []
+  ]
 }
