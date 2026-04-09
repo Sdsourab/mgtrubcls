@@ -132,23 +132,32 @@ def create_app(config_name: str = None):
                 classes = []
                 if not is_hol:
                     try:
+                        # FIX: Removed .eq('course_year') and .eq('course_semester')
+                        # — those columns don't exist in routines table and caused
+                        # empty results (showing "No classes" for everyone).
                         rows = sb.table('routines').select('*') \
                             .eq('day', day_name) \
-                            .eq('program', user.get('program','BBA')) \
-                            .eq('course_year', user.get('year',1)) \
-                            .eq('course_semester', user.get('semester',1)) \
+                            .eq('program', user.get('program', 'BBA')) \
                             .order('time_start').execute()
                         classes = rows.data or []
-                    except Exception:
+                    except Exception as e:
+                        app.logger.error(f'[Cron] routines query error: {e}')
                         classes = []
                     for cls in classes:
+                        # Course full name
                         try:
-                            c = sb.table('mappings').select('full_name').eq('code', cls.get('course_code','')).execute()
-                            cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code','')
+                            c = sb.table('mappings').select('full_name').eq('code', cls.get('course_code', '')).execute()
+                            cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
                         except Exception:
-                            cls['course_name'] = cls.get('course_code','')
-                        cls['time_start_12h'] = _fmt12h(cls.get('time_start',''))
-                        cls['time_end_12h']   = _fmt12h(cls.get('time_end',''))
+                            cls['course_name'] = cls.get('course_code', '')
+                        # Teacher full name
+                        try:
+                            t = sb.table('mappings').select('full_name').eq('code', cls.get('teacher_code', '')).execute()
+                            cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
+                        except Exception:
+                            cls['teacher_name'] = cls.get('teacher_code', '')
+                        cls['time_start_12h'] = _fmt12h(cls.get('time_start', ''))
+                        cls['time_end_12h']   = _fmt12h(cls.get('time_end', ''))
                 try:
                     tasks = sb.table('tasks').select('*').eq('user_id', user['id']).neq('status','done').order('deadline').execute().data or []
                 except Exception:

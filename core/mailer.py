@@ -3,6 +3,8 @@ core/mailer.py — UniSync Email via Resend API
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Resend (resend.com) — instant activation, no SMTP needed.
 Free: 3000 emails/month. Works on Vercel serverless perfectly.
+
+FIX: resend v2.x returns Email object (not dict) — use .id attribute.
 """
 import os
 import resend
@@ -35,6 +37,15 @@ def _render(template: str, **ctx) -> str:
     return render_template(template, **ctx)
 
 
+def _get_resp_id(resp) -> str | None:
+    """Extract email ID from resend response (works for both dict and object)."""
+    if resp is None:
+        return None
+    if isinstance(resp, dict):
+        return resp.get('id')
+    return getattr(resp, 'id', None)
+
+
 def send_raw(to_email: str, subject: str, html: str) -> dict:
     """
     Send email via Resend API.
@@ -56,13 +67,14 @@ def send_raw(to_email: str, subject: str, html: str) -> dict:
             'subject': subject,
             'html':    html,
         })
-        # Resend returns {'id': 'email_id'} on success
-        if resp and resp.get('id'):
-            return {'ok': True, 'id': resp['id'], 'error': None}
+        # resend v2.x returns Email object; v1.x returns dict
+        resp_id = _get_resp_id(resp)
+        if resp and resp_id:
+            return {'ok': True, 'id': resp_id, 'error': None}
         else:
             return {'ok': False, 'error': f'Unexpected response: {resp}'}
 
-    except resend.exceptions.ResendError as e:
+    except Exception as e:
         msg = str(e)
         fix = 'Resend dashboard → API Keys চেক করুন।'
         if '401' in msg or 'Unauthorized' in msg:
@@ -72,9 +84,6 @@ def send_raw(to_email: str, subject: str, html: str) -> dict:
         elif '429' in msg:
             fix = 'Rate limit — কিছুক্ষণ পরে চেষ্টা করুন।'
         return {'ok': False, 'error': msg, 'fix': fix}
-
-    except Exception as e:
-        return {'ok': False, 'error': f'{type(e).__name__}: {e}'}
 
 
 def _send(subject: str, to: str, template: str, **ctx) -> bool:
@@ -114,14 +123,13 @@ def test_connection() -> dict:
         }
 
     try:
-        # List domains — lightweight authenticated request
         resend.Domains.list()
         return {
             'ok':      True,
             'message': '✅ Resend API key valid. Email system ready.',
             'from':    _from_addr(),
         }
-    except resend.exceptions.ResendError as e:
+    except Exception as e:
         msg = str(e)
         if '401' in msg or 'Unauthorized' in msg:
             return {
@@ -130,8 +138,6 @@ def test_connection() -> dict:
                 'fix':     'resend.com → API Keys → নতুন key তৈরি করুন এবং Vercel এ দিন।',
             }
         return {'ok': False, 'message': msg}
-    except Exception as e:
-        return {'ok': False, 'message': f'{type(e).__name__}: {e}'}
 
 
 # ── Public API ───────────────────────────────────────────────

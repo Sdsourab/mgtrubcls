@@ -6,6 +6,11 @@ Job 2 : Class alert 30 minutes after each class starts (checks every 5 min)
 
 Both jobs run in persistent background threads inside the Flask process.
 They work even when the user's browser is closed.
+
+FIX: Removed broken .eq('course_year') and .eq('course_semester') filters
+     — those columns do not exist in the routines table and caused the
+     query to return empty results (showing "No classes" for everyone).
+     Now filters by day + program only, which is correct.
 """
 from flask_apscheduler import APScheduler
 from datetime import datetime, date, timedelta
@@ -52,6 +57,35 @@ def _format_time_12h(time_str: str) -> str:
         return time_str
 
 
+def _enrich_classes(sb, classes: list) -> list:
+    """
+    Resolve course_name and teacher_name from mappings table,
+    and convert times to 12h format.
+    """
+    for cls in classes:
+        # Course full name
+        try:
+            c = sb.table('mappings').select('full_name') \
+                .eq('code', cls.get('course_code', '')).execute()
+            cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
+        except Exception:
+            cls['course_name'] = cls.get('course_code', '')
+
+        # Teacher full name
+        try:
+            t = sb.table('mappings').select('full_name') \
+                .eq('code', cls.get('teacher_code', '')).execute()
+            cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
+        except Exception:
+            cls['teacher_name'] = cls.get('teacher_code', '')
+
+        # 12h time format
+        cls['time_start_12h'] = _format_time_12h(cls.get('time_start', ''))
+        cls['time_end_12h']   = _format_time_12h(cls.get('time_end', ''))
+
+    return classes
+
+
 def job_daily_summary(app):
     """Send tomorrow's schedule to all users at 7 PM every academic evening."""
     with app.app_context():
@@ -78,48 +112,32 @@ def job_daily_summary(app):
 
             sent_count = 0
             for user in users:
-                email = user.get('email', '')
+                email = (user.get('email') or '').strip()
                 if not email:
+                    app.logger.warning(f'[Scheduler] No email for user id={user.get("id")} — skipping')
                     continue
 
-                program  = user.get('program', 'BBA')
-                year     = user.get('year', 1)
-                semester = user.get('semester', 1)
+                program = user.get('program', 'BBA')
 
                 # ── Get tomorrow's classes ─────────────────────────────
                 if is_hol:
                     classes = []
+                    app.logger.info(f'[Scheduler] Holiday ({hol_name}) — no classes for {email}')
                 else:
                     try:
+                        # FIX: Only filter by day + program.
+                        # Do NOT filter by course_year/course_semester —
+                        # those columns don't exist in the routines table.
                         classes_resp = sb.table('routines').select('*') \
                             .eq('day', day_name) \
                             .eq('program', program) \
-                            .eq('course_year', year) \
-                            .eq('course_semester', semester) \
                             .order('time_start').execute()
                         classes = classes_resp.data or []
-                    except Exception:
+                    except Exception as e:
+                        app.logger.error(f'[Scheduler] routines query error: {e}')
                         classes = []
 
-                    # Enrich with full names + 12h times
-                    for cls in classes:
-                        try:
-                            c = sb.table('mappings').select('full_name') \
-                                .eq('code', cls.get('course_code', '')).execute()
-                            cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
-                        except Exception:
-                            cls['course_name'] = cls.get('course_code', '')
-
-                        try:
-                            t = sb.table('mappings').select('full_name') \
-                                .eq('code', cls.get('teacher_code', '')).execute()
-                            cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
-                        except Exception:
-                            cls['teacher_name'] = cls.get('teacher_code', '')
-
-                        # Convert times to 12h format for email display
-                        cls['time_start_12h'] = _format_time_12h(cls.get('time_start', ''))
-                        cls['time_end_12h']   = _format_time_12h(cls.get('time_end', ''))
+                    classes = _enrich_classes(sb, classes)
 
                 # ── Get pending tasks ──────────────────────────────────
                 try:
@@ -140,6 +158,7 @@ def job_daily_summary(app):
                     app=app,
                 )
                 sent_count += 1
+                app.logger.info(f'[Scheduler] Summary sent → {email} ({len(classes)} classes)')
 
             app.logger.info(f'[Scheduler] Daily summary sent to {sent_count} users.')
 
@@ -181,48 +200,23 @@ def job_class_alert_checker(app):
             if not classes:
                 return
 
-            # Enrich class info
-            for cls in classes:
-                try:
-                    c = sb.table('mappings').select('full_name') \
-                        .eq('code', cls.get('course_code', '')).execute()
-                    cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
-                except Exception:
-                    cls['course_name'] = cls.get('course_code', '')
-
-                try:
-                    t = sb.table('mappings').select('full_name') \
-                        .eq('code', cls.get('teacher_code', '')).execute()
-                    cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
-                except Exception:
-                    cls['teacher_name'] = cls.get('teacher_code', '')
-
-                cls['time_start_12h'] = _format_time_12h(cls.get('time_start', ''))
-                cls['time_end_12h']   = _format_time_12h(cls.get('time_end', ''))
+            classes = _enrich_classes(sb, classes)
 
             users_resp = sb.table('profiles').select('*').execute()
             users = users_resp.data or []
 
             for cls in classes:
                 cls_program = cls.get('program', 'ALL')
-                cls_year    = cls.get('course_year', 0)
-                cls_sem     = cls.get('course_semester', 0)
 
                 for user in users:
-                    email = user.get('email', '')
+                    email = (user.get('email') or '').strip()
                     if not email:
                         continue
 
                     user_program = user.get('program', 'BBA')
-                    user_year    = user.get('year', 0)
-                    user_sem     = user.get('semester', 0)
 
-                    # Match by program + year + semester
-                    if cls_program not in [user_program, 'ALL']:
-                        continue
-                    if cls_year and cls_year != user_year:
-                        continue
-                    if cls_sem and cls_sem != user_sem:
+                    # Match by program (ALL = universal class, matches everyone)
+                    if cls_program != 'ALL' and cls_program != user_program:
                         continue
 
                     send_class_alert(
