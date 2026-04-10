@@ -72,7 +72,6 @@
 
 {% block extra_js %}
 <script>
-// ── FIX: Room 1001 (Computer Lab) — was wrongly '100', now '1001' ──
 const ROOMS = ['101', '201', '1001'];
 const ROOM_LABELS = {
   '101':  'Room 101',
@@ -84,12 +83,23 @@ const TEACHER_MAP = {
   FA:  'Prof. Dr. Feroz Ahmed',
   HR:  'Habibur Rahaman',
   MK:  'Malina Khatun',
-  PKP: 'Prashanta Kumar Podder',
+  PKP: 'Proshanta Kumar Podder',
   TI:  'Md. Tarequl Islam',
   AH:  'Alamgir Hossain',
   KHR: 'Md. Kazi Hafizur Rahman',
   THT: 'Tamima Hasan Taishi',
 };
+
+// ── New time slots effective 06 April 2026 ──────────────────
+// Matches exactly what is stored in DB time_start/time_end
+const TIME_SLOTS = [
+  { key: '09:00-10:10', label: '9:00–10:10 AM',  start: '09:00', end: '10:10' },
+  { key: '10:15-11:25', label: '10:15–11:25 AM', start: '10:15', end: '11:25' },
+  { key: '11:30-12:40', label: '11:30–12:40 PM', start: '11:30', end: '12:40' },
+  // Prayer & Lunch break: 12:40–1:35 (not a slot)
+  { key: '13:35-14:45', label: '1:35–2:45 PM',   start: '13:35', end: '14:45' },
+  { key: '14:50-16:00', label: '2:50–4:00 PM',   start: '14:50', end: '16:00' },
+];
 
 let mappings    = {};
 let userProfile = null;
@@ -106,15 +116,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('programTag').textContent =
       `${prog} · Year ${yr} · Semester ${sem}`;
 
-    // FIX: show effective date in subtitle
     document.getElementById('routineSubtitle').textContent =
-      `${prog} Y${yr} S${sem} · Effective: 25 March 2026`;
+      `${prog} Y${yr} S${sem} · Effective: 06 April 2026`;
   }
 
   await loadMappings();
   await checkHoliday();
 
-  // Auto-select today (or Sunday if weekend)
+  // Auto-select today's tab (Sunday–Thursday), fallback to Sunday
   const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const VALID = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
   const today = DAYS[new Date().getDay()];
@@ -189,14 +198,17 @@ async function loadRoutine(day, btn) {
 function renderRoutine(rows, day) {
   const content = document.getElementById('routineContent');
 
-  // room_no → time_slot → row
+  // Build lookup: room_no → time_start → row
+  // Key by time_start (e.g. "09:00") for reliable matching
   const lookup = {};
   rows.forEach(r => {
-    if (!lookup[r.room_no]) lookup[r.room_no] = {};
-    lookup[r.room_no][r.time_slot] = r;
+    const rm = r.room_no;
+    const ts = r.time_start; // "09:00", "10:15", etc.
+    if (!lookup[rm]) lookup[rm] = {};
+    lookup[rm][ts] = r;
   });
 
-  // Only rooms that actually have a class today
+  // Only show rooms that have classes today
   const activeRooms = ROOMS.filter(r => lookup[r] && Object.keys(lookup[r]).length > 0);
   if (!activeRooms.length) {
     content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);">
@@ -216,13 +228,33 @@ function renderRoutine(rows, day) {
   <table class="routine-table">
     <thead>
       <tr>
+        <th>Room</th>`;
+
+  // Render all 5 slot headers
+  TIME_SLOTS.forEach(slot => {
+    html += `<th>${slot.label}</th>`;
+  });
+
+  // Insert Prayer & Lunch column header after 3rd slot (index 2)
+  // Rebuild with lunch inserted between slot 2 and slot 3
+  html = `
+  <div class="routine-day-title">
+    ${day}
+    <span class="routine-program-tag">
+      ${userProfile.program} Y${userProfile.year} S${userProfile.semester}
+    </span>
+  </div>
+  <div class="routine-table-wrap">
+  <table class="routine-table">
+    <thead>
+      <tr>
         <th>Room</th>
-        <th>9:00–10:30 AM</th>
-        <th>10:30 AM–12:00 PM</th>
-        <th>12:00–1:30 PM</th>
-        <th style="width:68px;font-size:0.58rem;">Prayer &amp;<br>Lunch</th>
-        <th>2:00–3:30 PM</th>
-        <th>3:30–5:00 PM</th>
+        <th>${TIME_SLOTS[0].label}</th>
+        <th>${TIME_SLOTS[1].label}</th>
+        <th>${TIME_SLOTS[2].label}</th>
+        <th style="width:64px;font-size:0.57rem;line-height:1.4;">Prayer &amp;<br>Lunch<br><span style="opacity:0.6;">12:40–1:35</span></th>
+        <th>${TIME_SLOTS[3].label}</th>
+        <th>${TIME_SLOTS[4].label}</th>
       </tr>
     </thead>
     <tbody>`;
@@ -230,15 +262,22 @@ function renderRoutine(rows, day) {
   activeRooms.forEach(room => {
     const rd = lookup[room] || {};
     html += `<tr><td class="room-cell">${ROOM_LABELS[room] || room}</td>`;
-    ['9:00-10:30', '10:30-12:00', '12:00-1:30'].forEach(slot => {
-      const e = rd[slot];
+
+    // First 3 slots
+    [TIME_SLOTS[0], TIME_SLOTS[1], TIME_SLOTS[2]].forEach(slot => {
+      const e = rd[slot.start];
       html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
+
+    // Prayer & Lunch cell
     html += `<td class="lunch-cell"><div class="lunch-label">PRAYER &<br>LUNCH</div></td>`;
-    ['2:00-3:30', '3:30-5:00'].forEach(slot => {
-      const e = rd[slot];
+
+    // Last 2 slots
+    [TIME_SLOTS[3], TIME_SLOTS[4]].forEach(slot => {
+      const e = rd[slot.start];
       html += e ? `<td>${buildCell(e)}</td>` : '<td class="empty-cell">—</td>';
     });
+
     html += '</tr>';
   });
 
@@ -256,11 +295,12 @@ function to12h(t24) {
 function buildCell(e) {
   const name  = mappings[e.course_code] || e.course_name || e.course_code;
   const short = name.length > 24 ? name.substring(0, 24) + '…' : name;
+  const tName = mappings[e.teacher_code] || e.teacher_name || e.teacher_code;
   return `
   <div class="class-badge">
     <div class="class-code">${e.course_code}</div>
     <div class="class-name" title="${name}">${short}</div>
-    <div class="class-teacher">${e.teacher_code}</div>
+    <div class="class-teacher">${e.teacher_code} · ${tName.split(' ').pop()}</div>
     <div class="class-teacher" style="font-size:0.58rem;opacity:0.72;margin-top:1px;">
       ${to12h(e.time_start)}–${to12h(e.time_end)}
     </div>
