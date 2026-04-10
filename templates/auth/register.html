@@ -68,20 +68,34 @@
           </div>
         </div>
 
-        <!-- Student ID -->
+        <!-- ── Student ID ─────────────────────────────────────────────
+             Plain integer. User picks their own number at registration.
+             This becomes their permanent identity number in the system.
+        ──────────────────────────────────────────────────────────── -->
         <div class="input-group">
-          <label for="student_id">Student ID <span style="color:var(--text-muted);font-weight:400;">(Recommended)</span></label>
+          <label for="student_id">
+            Student ID
+            <span style="color:var(--terra);font-weight:500;font-size:0.8rem;"> *</span>
+          </label>
           <div class="input-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <rect x="2" y="7" width="20" height="14" rx="2"/>
               <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
             </svg>
-            <input type="text" id="student_id" placeholder="e.g. RU2024BBA001"
-                   autocomplete="off" maxlength="24"
-                   oninput="this.value=this.value.toUpperCase()">
+            <input
+              type="text"
+              id="student_id"
+              placeholder="e.g. 12345"
+              inputmode="numeric"
+              pattern="[0-9]+"
+              required
+              autocomplete="off"
+              oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+            >
           </div>
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;padding-left:2px;">
-            Used for CR identification and verification. Must be unique.
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;padding-left:2px;line-height:1.5;">
+            তোমার স্থায়ী পরিচয় নম্বর — শুধু সংখ্যা, ভবিষ্যতে এটিই তোমার ID হিসেবে ব্যবহার হবে।
+            <strong style="color:var(--terra);">অবশ্যই unique হতে হবে।</strong>
           </div>
         </div>
 
@@ -182,7 +196,7 @@
           </div>
         </div>
 
-        <!-- Info note: auto profile save -->
+        <!-- Info note -->
         <div style="background:rgba(188,111,55,0.07);border:1px solid rgba(188,111,55,0.20);
                     border-radius:var(--radius-sm);padding:10px 13px;font-size:0.78rem;
                     color:var(--text-secondary);line-height:1.55;display:flex;gap:8px;align-items:flex-start;">
@@ -220,10 +234,23 @@
   async function handleRegister(e) {
     e.preventDefault();
 
-    const btn  = document.getElementById('regBtn');
-    const wrap = btn.closest('.reg-btn-wrap');
-    const errDiv = document.getElementById('authError');
-    const sucDiv = document.getElementById('authSuccess');
+    const btn     = document.getElementById('regBtn');
+    const wrap    = btn.closest('.reg-btn-wrap');
+    const errDiv  = document.getElementById('authError');
+    const sucDiv  = document.getElementById('authSuccess');
+
+    // ── Client-side validation ───────────────────────────────────
+    const studentIdRaw = document.getElementById('student_id').value.trim();
+    if (!studentIdRaw) {
+      errDiv.textContent = 'Student ID is required.';
+      errDiv.classList.remove('hidden');
+      return;
+    }
+    if (!/^\d+$/.test(studentIdRaw)) {
+      errDiv.textContent = 'Student ID must be numbers only (e.g. 12345).';
+      errDiv.classList.remove('hidden');
+      return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = `<div class="btn-spinner"></div><span>Creating account…</span>`;
@@ -232,7 +259,7 @@
 
     const payload = {
       full_name:  document.getElementById('full_name').value.trim(),
-      student_id: document.getElementById('student_id').value.trim() || null,
+      student_id: parseInt(studentIdRaw, 10),   // ← plain integer
       email:      document.getElementById('email').value.trim(),
       password:   document.getElementById('password').value,
       dept:       document.getElementById('dept').value.trim() || 'Management',
@@ -275,7 +302,7 @@
   }
 
   function resetBtn() {
-    const btn  = document.getElementById('regBtn');
+    const btn = document.getElementById('regBtn');
     btn.disabled = false;
     btn.classList.remove('btn-success');
     const wrap = btn.closest('.reg-btn-wrap');

@@ -2,8 +2,14 @@
 app/auth/routes.py
 ══════════════════
 Registration saves program/year/semester immediately to profile.
-Welcome email sent via Brevo SMTP on successful registration.
+Welcome email sent via Resend API on successful registration.
 Login always returns full profile from DB.
+
+ID FORMAT:
+  - student_id is a plain integer (any number, e.g. 12345).
+  - Entered by the user at registration time.
+  - Acts as their permanent identity number — never changes.
+  - Must be numeric and unique across all profiles.
 """
 
 from flask import Blueprint, jsonify, request, render_template, current_app
@@ -52,14 +58,15 @@ def api_login():
             'success':      True,
             'access_token': sess.access_token,
             'user': {
-                'id':        user.id,
-                'email':     user.email,
-                'full_name': profile.get('full_name') or '',
-                'role':      profile.get('role')      or 'student',
-                'dept':      profile.get('dept')      or 'Management',
-                'program':   profile.get('program')   or 'BBA',
-                'year':      profile.get('year')      or 1,
-                'semester':  profile.get('semester')  or 1,
+                'id':         user.id,
+                'email':      user.email,
+                'full_name':  profile.get('full_name')  or '',
+                'role':       profile.get('role')       or 'student',
+                'dept':       profile.get('dept')       or 'Management',
+                'program':    profile.get('program')    or 'BBA',
+                'year':       profile.get('year')       or 1,
+                'semester':   profile.get('semester')   or 1,
+                'student_id': profile.get('student_id') or None,
             },
         })
     except Exception as e:
@@ -75,20 +82,34 @@ def api_login():
 
 @auth_bp.route('/api/register', methods=['POST'])
 def api_register():
-    data      = request.get_json() or {}
-    email     = data.get('email',     '').strip()
-    password  = data.get('password',  '')
-    full_name = data.get('full_name', '').strip()
-    dept      = data.get('dept',      'Management')
-    program   = data.get('program',   'BBA')
-    year      = int(data.get('year',     1))
-    semester  = int(data.get('semester', 1))
+    data       = request.get_json() or {}
+    email      = data.get('email',      '').strip()
+    password   = data.get('password',   '')
+    full_name  = data.get('full_name',  '').strip()
+    dept       = data.get('dept',       'Management')
+    program    = data.get('program',    'BBA')
+    year       = int(data.get('year',      1))
+    semester   = int(data.get('semester',  1))
+    student_id = data.get('student_id',  None)   # plain integer from frontend
 
+    # ── Basic required field checks ────────────────────────────
     if not all([email, password, full_name]):
-        return jsonify({'error': 'All fields are required'}), 400
+        return jsonify({'error': 'Name, email and password are required'}), 400
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
+    # ── Student ID validation ──────────────────────────────────
+    # Must be present and must be a valid integer
+    if student_id is None or str(student_id).strip() == '':
+        return jsonify({'error': 'Student ID is required'}), 400
+    try:
+        student_id = int(student_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Student ID must be a number (e.g. 12345)'}), 400
+    if student_id <= 0:
+        return jsonify({'error': 'Student ID must be a positive number'}), 400
+
+    # ── Year range check ───────────────────────────────────────
     max_year = 4 if program == 'BBA' else 2
     if not (1 <= year <= max_year):
         return jsonify({'error': f'{program} year must be 1–{max_year}'}), 400
@@ -96,7 +117,25 @@ def api_register():
         return jsonify({'error': 'Semester must be 1 or 2'}), 400
 
     try:
-        sb   = get_supabase()
+        sb = get_supabase()
+
+        # ── Uniqueness check: student_id must not already exist ─
+        try:
+            existing = get_supabase_admin() \
+                .table('profiles') \
+                .select('id') \
+                .eq('student_id', student_id) \
+                .execute()
+            if existing.data:
+                return jsonify({
+                    'error': f'Student ID {student_id} is already taken. '
+                             f'Please use a different ID number.'
+                }), 400
+        except Exception as e:
+            current_app.logger.warning(f'[Auth] student_id uniqueness check failed: {e}')
+            # Non-fatal on check failure — Supabase unique constraint will still catch it
+
+        # ── Create auth user ───────────────────────────────────
         resp = sb.auth.sign_up({
             'email':    email,
             'password': password,
@@ -106,22 +145,23 @@ def api_register():
         if not user:
             return jsonify({'error': 'Registration failed. Try again.'}), 400
 
-        # ── Save program/year/semester to profile immediately ──────────
+        # ── Save profile with student_id ───────────────────────
         try:
             get_supabase_admin().table('profiles').upsert({
-                'id':        user.id,
-                'email':     email,
-                'full_name': full_name,
-                'role':      'student',
-                'dept':      dept,
-                'program':   program,
-                'year':      year,
-                'semester':  semester,
+                'id':         user.id,
+                'email':      email,
+                'full_name':  full_name,
+                'role':       'student',
+                'dept':       dept,
+                'program':    program,
+                'year':       year,
+                'semester':   semester,
+                'student_id': student_id,   # ← permanent integer identity number
             }).execute()
         except Exception as e:
             current_app.logger.warning(f'[Auth] Profile upsert failed: {e}')
 
-        # ── Send welcome email via Brevo ───────────────────────────────
+        # ── Send welcome email ─────────────────────────────────
         try:
             from core.mailer import send_welcome
             ok = send_welcome(to_email=email, user_name=full_name)
@@ -160,30 +200,20 @@ def get_profile():
 @auth_bp.route('/api/profile', methods=['PATCH'])
 def update_profile():
     data    = request.get_json() or {}
-    user_id = data.get('user_id', '')
+    user_id = data.get('user_id', '').strip()
     if not user_id:
         return jsonify({'error': 'user_id required'}), 400
 
-    allowed = ['full_name', 'year', 'semester', 'program', 'dept']
-    payload = {k: data[k] for k in allowed if k in data and data[k] is not None}
-    if 'year'     in payload: payload['year']     = int(payload['year'])
-    if 'semester' in payload: payload['semester'] = int(payload['semester'])
+    # Build update payload — student_id is NOT patchable after registration
+    allowed = {'full_name', 'dept', 'program', 'year', 'semester', 'role',
+               'push_subscription', 'avatar_url', 'bio'}
+    payload = {k: v for k, v in data.items() if k in allowed}
+
     if not payload:
-        return jsonify({'error': 'Nothing to update'}), 400
+        return jsonify({'error': 'No valid fields to update'}), 400
 
     try:
         resp = get_supabase_admin().table('profiles').update(payload).eq('id', user_id).execute()
         return jsonify({'success': True, 'data': resp.data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ── Logout ─────────────────────────────────────────────────────
-
-@auth_bp.route('/api/logout', methods=['POST'])
-def api_logout():
-    try:
-        get_supabase().auth.sign_out()
-    except Exception:
-        pass
-    return jsonify({'success': True})
