@@ -18,7 +18,7 @@ from flask import Blueprint, jsonify, request, render_template
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from core.supabase_client import get_supabase_admin
-from core.excel_parser import parse_routine_excel, get_seed_routines, get_seed_mappings
+from core.excel_parser import parse_routine_excel, parse_routine_word, get_seed_routines, get_seed_mappings
 from core.mailer import send_raw
 import tempfile
 
@@ -308,28 +308,56 @@ def upload_routine():
 
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
-    file = request.files['file']
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        return jsonify({'error': 'Only .xlsx/.xls accepted'}), 400
+    file     = request.files['file']
+    filename = (file.filename or '').lower()
 
-    sb = get_supabase_admin()
+    if filename.endswith('.docx'):
+        suffix = '.docx'
+        parser = parse_routine_word
+    elif filename.endswith(('.xlsx', '.xls')):
+        suffix = '.xlsx'
+        parser = parse_routine_excel
+    else:
+        return jsonify({'error': 'Only .docx (Word) or .xlsx/.xls accepted'}), 400
+
+    sb       = get_supabase_admin()
+    tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             file.save(tmp.name)
             tmp_path = tmp.name
 
-        entries = parse_routine_excel(tmp_path)
-        os.unlink(tmp_path)
+        entries = parser(tmp_path)
 
         if not entries:
-            return jsonify({'error': 'No valid entries found'}), 400
+            return jsonify({'error': 'No entries found. Use official RUB format: '
+                            'Day | Room No. | time-slot columns, '
+                            'cells like PKP (MGT-3102).'}), 400
+
+        try:
+            mappings = get_seed_mappings()
+            sb.table('mappings').upsert(mappings, on_conflict='code').execute()
+        except Exception:
+            pass
 
         sb.table('routines').delete() \
           .neq('id', '00000000-0000-0000-0000-000000000000').execute()
-        sb.table('routines').insert(entries).execute()
-        return jsonify({'success': True, 'inserted': len(entries)})
+
+        for i in range(0, len(entries), 20):
+            sb.table('routines').insert(entries[i:i+20]).execute()
+
+        return jsonify({
+            'success':  True,
+            'inserted': len(entries),
+            'format':   'word' if suffix == '.docx' else 'excel',
+            'message':  f'Uploaded {len(entries)} routine entries.',
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if tmp_path:
+            try: os.unlink(tmp_path)
+            except Exception: pass
 
 
 @admin_bp.route('/api/send-welcome-all', methods=['POST'])

@@ -233,7 +233,9 @@
     <div class="admin-card">
       <div class="admin-card-header">
         <h3>📤 Upload Routine Excel</h3>
-        <p>Upload a new .xlsx routine file to replace the current schedule.</p>
+        <p>Upload the official class routine file to replace the schedule.<br>
+          <strong>✅ Word (.docx)</strong> — official RUB table format (recommended)<br>
+          <strong>Excel (.xlsx)</strong> — flat table format (day, room_no, time_start, time_end, course_code, teacher_code columns)</p>
       </div>
       <div class="upload-zone" id="uploadZone" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
@@ -242,7 +244,7 @@
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
         <p>Drag & drop .xlsx here or <label for="excelFile" class="file-label">browse</label></p>
-        <input type="file" id="excelFile" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(this)">
+        <input type="file" id="excelFile" accept=".docx,.xlsx,.xls" class="hidden" onchange="handleFileSelect(this)">
         <div id="uploadFileName" class="upload-filename hidden"></div>
       </div>
       <div id="uploadResult" class="admin-result hidden"></div>
@@ -534,7 +536,7 @@ function handleFileSelect(input) {
 function handleDrop(e) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+    if (file && (file.name.endsWith('.docx') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
         selectedFile = file;
         document.getElementById('uploadFileName').textContent = file.name;
         document.getElementById('uploadFileName').classList.remove('hidden');
@@ -560,7 +562,7 @@ async function uploadRoutine() {
         if (res.status === 401) { adminLogout(); return; }
         const data = await res.json();
         resDiv.textContent = data.success
-            ? `✅ Uploaded ${data.inserted} routine entries successfully.`
+            ? `✅ Uploaded ${data.inserted} routine entries (${data.format || 'file'}).`
             : '❌ ' + (data.error || 'Upload failed');
         resDiv.className = 'admin-result ' + (data.success ? 'success' : 'error');
         resDiv.classList.remove('hidden');
