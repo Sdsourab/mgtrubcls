@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+{% block title %}Teacher Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Teacher Profile Layout ──────────────────────────────── */
+.teacher-hero {
+    background: linear-gradient(135deg, rgba(188,111,55,.12), rgba(205,169,106,.07));
+    border: 1px solid rgba(188,111,55,.25);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.teacher-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#BC6F37,#CDA96A);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.7rem; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+    letter-spacing: -1px;
+}
+.teacher-info { flex: 1; min-width: 0; }
+.teacher-name { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+.teacher-meta { font-size: .8rem; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.teacher-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .06em;
+    background: rgba(188,111,55,.12); color: var(--terra);
+    border: 1px solid rgba(188,111,55,.25); border-radius: 20px;
+    padding: 3px 10px; text-transform: uppercase;
+}
+
+/* ── Schedule Grid ───────────────────────────────────────── */
+.teacher-schedule-grid {
+    display: flex; flex-direction: column; gap: 10px;
+}
+.schedule-row {
+    display: grid;
+    grid-template-columns: 90px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    transition: border-color .2s;
+}
+.schedule-row:hover { border-color: rgba(188,111,55,.35); }
+.sched-day-chip {
+    font-size: .7rem; font-weight: 700; letter-spacing: .07em;
+    background: rgba(188,111,55,.1); color: var(--terra);
+    border-radius: 8px; padding: 4px 8px; text-align: center;
+    text-transform: uppercase;
+}
+.sched-course-name { font-size: .9rem; font-weight: 700; margin-bottom: 2px; }
+.sched-course-meta { font-size: .74rem; color: var(--text-muted); }
+.sched-time-badge {
+    font-size: .75rem; font-weight: 600;
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 10px; white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+/* ── Cancel Button ───────────────────────────────────────── */
+.btn-cancel-class {
+    font-size: .72rem; font-weight: 700; color: #E53E3E;
+    background: rgba(229,62,62,.08); border: 1px solid rgba(229,62,62,.22);
+    border-radius: 8px; padding: 5px 10px; cursor: pointer;
+    white-space: nowrap; transition: background .15s;
+}
+.btn-cancel-class:hover { background: rgba(229,62,62,.15); }
+
+/* ── Edit Profile Form ───────────────────────────────────── */
+.profile-form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 20px;
+}
+.profile-form-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+@media (max-width: 600px) { .profile-form-grid { grid-template-columns: 1fr; } }
+.form-field label { font-size: .78rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 5px; }
+.form-field input, .form-field select {
+    width: 100%; box-sizing: border-box;
+    padding: 9px 12px;
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-primary);
+    font-size: .88rem; font-family: inherit;
+    transition: border-color .2s;
+}
+.form-field input:focus, .form-field select:focus {
+    outline: none; border-color: var(--terra);
+}
+
+/* ── Cancel Modal ────────────────────────────────────────── */
+.cancel-modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+}
+.cancel-modal-overlay.hidden { display: none; }
+.cancel-modal-box {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 28px 24px;
+    width: 100%; max-width: 420px;
+    animation: slideUp .2s ease;
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.cancel-modal-box h3 { margin: 0 0 16px; font-size: 1.05rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Teacher Profile</h1>
+      <p class="page-sub">Your teaching schedule and profile settings</p>
+    </div>
+    <button class="btn-primary" onclick="toggleEditForm()">✏️ Edit Profile</button>
+  </div>
+
+  <!-- Hero Card -->
+  <div class="teacher-hero" id="teacherHero">
+    <div class="teacher-avatar" id="avatarInitials">—</div>
+    <div class="teacher-info">
+      <div class="teacher-name" id="teacherName">Loading…</div>
+      <div class="teacher-meta">
+        <span id="teacherDesignation">—</span>
+        <span id="teacherDegree">—</span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="teacher-badge">👨‍🏫 Teacher</span>
+        <span class="teacher-badge" id="teacherCode">Code: —</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Profile Form (hidden by default) -->
+  <div class="profile-form-card hidden" id="editFormCard">
+    <h3 style="margin:0 0 18px;font-size:1rem;">Update Profile</h3>
+    <div class="profile-form-grid">
+      <div class="form-field">
+        <label>Full Name *</label>
+        <input type="text" id="ef_name" placeholder="Dr. Md. Rakibul Karim">
+      </div>
+      <div class="form-field">
+        <label>Degree</label>
+        <input type="text" id="ef_degree" placeholder="PhD in Management">
+      </div>
+      <div class="form-field">
+        <label>Designation</label>
+        <input type="text" id="ef_designation" placeholder="Assistant Professor">
+      </div>
+      <div class="form-field">
+        <label>Teacher Code <small style="color:var(--text-muted)">(matches routine)</small></label>
+        <input type="text" id="ef_code" placeholder="e.g. MRK" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div class="form-field" style="margin-top:14px;">
+      <label>Short Bio (optional)</label>
+      <input type="text" id="ef_bio" placeholder="Research interests, specialization…">
+    </div>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+      <button class="btn-sm" style="padding:9px 18px;" onclick="toggleEditForm()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- My Schedule -->
+  <div class="section-header scroll-reveal" style="margin-top:24px;">
+    <h2>📅 My Teaching Schedule</h2>
+    <span class="section-sub" id="scheduleCount">Loading…</span>
+  </div>
+
+  <div id="scheduleContainer" class="teacher-schedule-grid">
+    <div class="resource-skeleton"></div>
+    <div class="resource-skeleton"></div>
+  </div>
+
+  <!-- Assign New Course -->
+  <div class="admin-card" style="margin-top:24px;">
+    <div class="admin-card-header">
+      <h3>➕ Assign Yourself to a Course Slot</h3>
+      <p>Fill in the details to add a new class to your schedule. This will update the master routine.</p>
+    </div>
+    <div class="profile-form-grid" style="margin-bottom:14px;">
+      <div class="form-field">
+        <label>Day</label>
+        <select id="as_day">
+          <option>Sunday</option><option>Monday</option><option>Tuesday</option>
+          <option>Wednesday</option><option>Thursday</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Course Code</label>
+        <input type="text" id="as_course" placeholder="e.g. MGT-3103">
+      </div>
+      <div class="form-field">
+        <label>Program</label>
+        <select id="as_program"><option>BBA</option><option>MBA</option></select>
+      </div>
+      <div class="form-field">
+        <label>Year</label>
+        <select id="as_year">
+          <option value="1">Year 1</option><option value="2">Year 2</option>
+          <option value="3">Year 3</option><option value="4">Year 4</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Semester</label>
+        <select id="as_sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select>
+      </div>
+      <div class="form-field">
+        <label>Room No.</label>
+        <input type="text" id="as_room" placeholder="e.g. 301">
+      </div>
+      <div class="form-field">
+        <label>Start Time</label>
+        <input type="time" id="as_start">
+      </div>
+      <div class="form-field">
+        <label>End Time</label>
+        <input type="time" id="as_end">
+      </div>
+    </div>
+    <div id="assignResult" class="admin-result hidden"></div>
+    <button class="btn-primary" onclick="assignCourse()">Add to Routine</button>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- Cancel Class Modal -->
+<div class="cancel-modal-overlay hidden" id="cancelModal">
+  <div class="cancel-modal-box">
+    <h3>❌ Cancel a Class</h3>
+    <div class="form-field" style="margin-bottom:14px;">
+      <label>Course</label>
+      <input type="text" id="cm_course" readonly style="background:var(--bg-secondary);opacity:.7;">
+    </div>
+    <div class="form-field" style="margin-bottom:14px;">
+      <label>Batch (Program / Year / Semester)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <select id="cm_program"><option>BBA</option><option>MBA</option></select>
+        <select id="cm_year">
+          <option value="1">Y1</option><option value="2">Y2</option>
+          <option value="3">Y3</option><option value="4">Y4</option>
+        </select>
+        <select id="cm_sem"><option value="1">S1</option><option value="2">S2</option></select>
+      </div>
+    </div>
+    <div class="form-field" style="margin-bottom:14px;">
+      <label>Date of Cancellation</label>
+      <input type="date" id="cm_date">
+    </div>
+    <div class="form-field" style="margin-bottom:18px;">
+      <label>Reason (shown to students)</label>
+      <input type="text" id="cm_reason" placeholder="e.g. Official duty, personal leave…">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="background:linear-gradient(135deg,#C53030,#E53E3E);" onclick="submitCancel()">Cancel Class & Notify Batch</button>
+      <button class="btn-sm" style="padding:9px 18px;" onclick="closeCancel()">Back</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var _user = null;
+var _profile = null;
+var _selectedCourseCode = '';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    UniSync.requireAuth();
+    _user = UniSync.getUser();
+    if (!_user) return;
+
+    // Guard: only teachers can access this page
+    if (_user.role !== 'teacher' && _user.role !== 'admin') {
+        UniSync.toast('This page is for teachers only.', 'error');
+        setTimeout(() => window.location.href = '/dashboard', 1500);
+        return;
+    }
+
+    await loadProfile();
+
+    // Set today's date as default for cancel modal
+    document.getElementById('cm_date').value = new Date().toISOString().split('T')[0];
+});
+
+// ── Load profile ──────────────────────────────────────────────
+async function loadProfile() {
+    try {
+        const res  = await fetch(`/teachers/api/profile?user_id=${_user.id}`);
+        const data = await res.json();
+        if (!data.success) return;
+
+        _profile = data.profile;
+        const base = data.base || {};
+        const name = base.full_name || _user.full_name || '?';
+
+        // Hero
+        document.getElementById('teacherName').textContent = name;
+        document.getElementById('avatarInitials').textContent =
+            name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+        if (_profile) {
+            document.getElementById('teacherDesignation').textContent = _profile.designation || 'No designation set';
+            document.getElementById('teacherDegree').textContent      = _profile.degree      || '';
+            document.getElementById('teacherCode').textContent        = 'Code: ' + (_profile.teacher_code || '—');
+
+            // Pre-fill edit form
+            document.getElementById('ef_name').value        = name;
+            document.getElementById('ef_degree').value      = _profile.degree      || '';
+            document.getElementById('ef_designation').value = _profile.designation || '';
+            document.getElementById('ef_code').value        = _profile.teacher_code || '';
+            document.getElementById('ef_bio').value         = _profile.bio          || '';
+        }
+
+        renderSchedule(data.schedule || []);
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+// ── Render schedule ───────────────────────────────────────────
+function renderSchedule(classes) {
+    const container = document.getElementById('scheduleContainer');
+    const countEl   = document.getElementById('scheduleCount');
+    countEl.textContent = classes.length + ' class slot' + (classes.length !== 1 ? 's' : '');
+
+    if (!classes.length) {
+        container.innerHTML = `
+        <div class="empty-state-full">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+          </svg>
+          <h3>No classes found</h3>
+          <p>Set your Teacher Code above and classes from the routine will appear here.</p>
+        </div>`;
+        return;
+    }
+
+    const DAY_ORDER = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+    classes.sort((a,b) => {
+        const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
+        return di !== 0 ? di : a.time_start.localeCompare(b.time_start);
+    });
+
+    container.innerHTML = classes.map(c => `
+    <div class="schedule-row">
+      <div class="sched-day-chip">${c.day}</div>
+      <div>
+        <div class="sched-course-name">${c.course_name || c.course_code}</div>
+        <div class="sched-course-meta">
+          ${c.course_code} &nbsp;·&nbsp; Room ${c.room_no || '—'}
+          &nbsp;·&nbsp; ${c.program || ''} Year ${c.course_year || '?'} Sem ${c.course_semester || '?'}
+        </div>
+      </div>
+      <div class="sched-time-badge">${c.time_start_12h} – ${c.time_end_12h}</div>
+      <button class="btn-cancel-class" onclick="openCancel('${c.course_code}', '${c.program||'BBA'}', ${c.course_year||1}, ${c.course_semester||1})">
+        Cancel
+      </button>
+    </div>`).join('');
+}
+
+// ── Edit profile ──────────────────────────────────────────────
+function toggleEditForm() {
+    document.getElementById('editFormCard').classList.toggle('hidden');
+}
+
+async function saveProfile() {
+    const payload = {
+        user_id:      _user.id,
+        full_name:    document.getElementById('ef_name').value.trim(),
+        degree:       document.getElementById('ef_degree').value.trim(),
+        designation:  document.getElementById('ef_designation').value.trim(),
+        teacher_code: document.getElementById('ef_code').value.trim().toUpperCase(),
+        bio:          document.getElementById('ef_bio').value.trim(),
+    };
+
+    if (!payload.full_name) {
+        UniSync.toast('Name is required', 'error'); return;
+    }
+
+    try {
+        const res  = await fetch('/teachers/api/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            UniSync.toast('Profile updated!', 'success');
+            toggleEditForm();
+            loadProfile();
+        } else {
+            UniSync.toast(data.error || 'Update failed', 'error');
+        }
+    } catch(e) {
+        UniSync.toast('Connection error', 'error');
+    }
+}
+
+// ── Assign course ─────────────────────────────────────────────
+async function assignCourse() {
+    const payload = {
+        user_id:          _user.id,
+        day:              document.getElementById('as_day').value,
+        course_code:      document.getElementById('as_course').value.trim().toUpperCase(),
+        room_no:          document.getElementById('as_room').value.trim(),
+        program:          document.getElementById('as_program').value,
+        course_year:      parseInt(document.getElementById('as_year').value),
+        course_semester:  parseInt(document.getElementById('as_sem').value),
+        time_start:       document.getElementById('as_start').value,
+        time_end:         document.getElementById('as_end').value,
+    };
+
+    const resultEl = document.getElementById('assignResult');
+    resultEl.classList.add('hidden');
+
+    if (!payload.course_code || !payload.time_start || !payload.time_end || !payload.room_no) {
+        UniSync.toast('Please fill in all required fields', 'error'); return;
+    }
+
+    try {
+        const res  = await fetch('/teachers/api/assign-course', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            resultEl.textContent = '✅ Course slot added to the routine!';
+            resultEl.className   = 'admin-result success';
+            resultEl.classList.remove('hidden');
+            loadProfile(); // Refresh schedule
+        } else {
+            resultEl.textContent = '❌ ' + (data.error || 'Failed');
+            resultEl.className   = 'admin-result error';
+            resultEl.classList.remove('hidden');
+        }
+    } catch(e) {
+        UniSync.toast('Connection error', 'error');
+    }
+}
+
+// ── Cancel class modal ────────────────────────────────────────
+function openCancel(courseCode, program, year, sem) {
+    _selectedCourseCode = courseCode;
+    document.getElementById('cm_course').value  = courseCode;
+    document.getElementById('cm_program').value = program;
+    document.getElementById('cm_year').value    = year;
+    document.getElementById('cm_sem').value     = sem;
+    document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+function closeCancel() {
+    document.getElementById('cancelModal').classList.add('hidden');
+    _selectedCourseCode = '';
+}
+
+async function submitCancel() {
+    const payload = {
+        user_id:      _user.id,
+        course_code:  _selectedCourseCode,
+        change_date:  document.getElementById('cm_date').value,
+        program:      document.getElementById('cm_program').value,
+        year:         parseInt(document.getElementById('cm_year').value),
+        semester:     parseInt(document.getElementById('cm_sem').value),
+        reason:       document.getElementById('cm_reason').value.trim(),
+    };
+
+    if (!payload.change_date) {
+        UniSync.toast('Please select a date', 'error'); return;
+    }
+
+    try {
+        const res  = await fetch('/teachers/api/cancel-class', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            UniSync.toast('Class cancelled — batch notified! 📢', 'success', 4000);
+            closeCancel();
+        } else {
+            UniSync.toast(data.error || 'Failed to cancel', 'error');
+        }
+    } catch(e) {
+        UniSync.toast('Connection error', 'error');
+    }
+}
+</script>
+{% endblock %}

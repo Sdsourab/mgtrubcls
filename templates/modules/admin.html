@@ -2,85 +2,491 @@
 {% block title %}Admin Panel{% endblock %}
 {% block nav_admin %}active{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── Admin Login Wall ──────────────────────────────────────── */
+.admin-login-wall {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.admin-login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    animation: loginSlideIn 0.35s ease;
+}
+@keyframes loginSlideIn {
+    from { opacity:0; transform:translateY(16px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.admin-lock-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg,rgba(188,111,55,.15),rgba(205,169,106,.1));
+    border: 1.5px solid rgba(188,111,55,.3);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 1.5rem;
+}
+.admin-login-title {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+.admin-login-sub {
+    text-align: center;
+    font-size: .78rem;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+}
+.login-input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: .9rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    transition: border-color .2s;
+}
+.login-input:focus {
+    outline: none;
+    border-color: var(--terra);
+}
+.login-error {
+    background: rgba(229,62,62,.1);
+    border: 1px solid rgba(229,62,62,.3);
+    color: #E53E3E;
+    border-radius: var(--radius-sm);
+    padding: 9px 14px;
+    font-size: .82rem;
+    margin-bottom: 12px;
+    display: none;
+}
+.login-error.show { display: block; }
+.forgot-link {
+    display: block;
+    text-align: right;
+    font-size: .78rem;
+    color: var(--terra);
+    cursor: pointer;
+    margin-bottom: 18px;
+    text-decoration: none;
+}
+.forgot-link:hover { text-decoration: underline; }
+
+/* ── Forgot password view ──────────────────────────────────── */
+#forgotView, #resetView { display: none; }
+#forgotView.active, #resetView.active { display: block; }
+.back-link {
+    font-size: .78rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.back-link:hover { color: var(--terra); }
+.success-msg {
+    background: rgba(56,161,105,.1);
+    border: 1px solid rgba(56,161,105,.3);
+    color: #276749;
+    border-radius: var(--radius-sm);
+    padding: 9px 14px;
+    font-size: .82rem;
+    margin-bottom: 12px;
+    display: none;
+}
+.success-msg.show { display: block; }
+
+/* ── Admin Panel ───────────────────────────────────────────── */
+#adminPanel { display: none; }
+#adminPanel.active { display: block; }
+
+.admin-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.admin-session-info {
+    font-size: .78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.admin-session-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #68D391;
+    box-shadow: 0 0 0 2px rgba(104,211,145,.25);
+    flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-wrapper">
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOGIN WALL — shown until authenticated
+       ═══════════════════════════════════════════════════════ -->
+  <div id="loginWall" class="admin-login-wall">
+    <div class="admin-login-card">
+
+      <div class="admin-lock-icon">🔐</div>
+      <div class="admin-login-title">Admin Access</div>
+      <div class="admin-login-sub">Rabindra University · UniSync</div>
+
+      <!-- Login view -->
+      <div id="loginView">
+        <div class="login-error" id="loginError"></div>
+        <input type="email"    id="adminEmail"    class="login-input" placeholder="Admin email">
+        <input type="password" id="adminPassword" class="login-input" placeholder="Password"
+               onkeydown="if(event.key==='Enter') adminLogin()">
+        <span class="forgot-link" onclick="showForgot()">Forgot password?</span>
+        <button class="btn-primary btn-full" id="loginBtn" onclick="adminLogin()">Sign In</button>
+      </div>
+
+      <!-- Forgot password view -->
+      <div id="forgotView">
+        <span class="back-link" onclick="showLogin()">← Back to login</span>
+        <div class="login-error"  id="forgotError"></div>
+        <div class="success-msg"  id="forgotSuccess"></div>
+        <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:14px;">
+          Enter your admin email and we'll send a reset link.
+        </p>
+        <input type="email" id="forgotEmail" class="login-input" placeholder="Admin email">
+        <button class="btn-primary btn-full" id="forgotBtn" onclick="sendForgot()">Send Reset Link</button>
+      </div>
+
+      <!-- Reset password view (activated by ?reset_token=) -->
+      <div id="resetView">
+        <div class="admin-login-title" style="margin-bottom:6px;">Set New Password</div>
+        <div class="admin-login-sub" style="margin-bottom:18px;">Choose a password (min 8 characters)</div>
+        <div class="login-error" id="resetError"></div>
+        <div class="success-msg" id="resetSuccess"></div>
+        <input type="password" id="newPassword"     class="login-input" placeholder="New password">
+        <input type="password" id="confirmPassword" class="login-input" placeholder="Confirm password">
+        <button class="btn-primary btn-full" id="resetBtn" onclick="doReset()">Update Password</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ADMIN PANEL — shown after successful login
+       ═══════════════════════════════════════════════════════ -->
+  <div id="adminPanel">
+
+    <!-- Top bar -->
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Admin Panel</h1>
-            <p class="page-sub">Routine management & system controls</p>
+      <div>
+        <h1 class="page-title">Admin Panel</h1>
+        <p class="page-sub">Routine management & system controls</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="admin-session-info">
+          <span class="admin-session-dot"></span>
+          <span id="sessionEmail">—</span>
         </div>
         <span class="admin-badge">ADMIN ONLY</span>
+        <button class="btn-sm btn-danger" onclick="adminLogout()">Sign Out</button>
+      </div>
     </div>
 
     <!-- Stats -->
     <div class="stats-grid" id="adminStats">
-        <div class="stat-card"><div class="stat-label">ROUTINE ENTRIES</div><div class="stat-value" id="aStatRoutines">—</div></div>
-        <div class="stat-card"><div class="stat-label">MAPPINGS</div><div class="stat-value" id="aStatMappings">—</div></div>
-        <div class="stat-card"><div class="stat-label">USERS</div><div class="stat-value" id="aStatUsers">—</div></div>
-        <div class="stat-card"><div class="stat-label">TASKS</div><div class="stat-value" id="aStatTasks">—</div></div>
+      <div class="stat-card"><div class="stat-label">ROUTINE ENTRIES</div><div class="stat-value" id="aStatRoutines">—</div></div>
+      <div class="stat-card"><div class="stat-label">MAPPINGS</div><div class="stat-value" id="aStatMappings">—</div></div>
+      <div class="stat-card"><div class="stat-label">USERS</div><div class="stat-value" id="aStatUsers">—</div></div>
+      <div class="stat-card"><div class="stat-label">TASKS</div><div class="stat-value" id="aStatTasks">—</div></div>
     </div>
 
     <!-- Seed DB -->
     <div class="admin-card">
-        <div class="admin-card-header">
-            <h3>🌱 Seed Database</h3>
-            <p>Load the class schedule from the routine image (Rabindra University, Session 2025-26) into the database. Run this once on first setup.</p>
-        </div>
-        <div id="seedResult" class="admin-result hidden"></div>
-        <button class="btn-primary" onclick="seedDatabase()">Seed Routine & Mappings</button>
+      <div class="admin-card-header">
+        <h3>🌱 Seed Database</h3>
+        <p>Load the class schedule from the routine image (Rabindra University, Session 2025-26). Run once on first setup.</p>
+      </div>
+      <div id="seedResult" class="admin-result hidden"></div>
+      <button class="btn-primary" onclick="seedDatabase()">Seed Routine & Mappings</button>
     </div>
 
     <!-- Upload Routine -->
     <div class="admin-card">
-        <div class="admin-card-header">
-            <h3>📤 Upload Routine Excel</h3>
-            <p>Upload a new .xlsx routine file to replace the current schedule. Format: Day | Room | 9:00-10:30 | 10:30-12:00 | 12:00-1:30 | (lunch) | 2:00-3:30 | 3:30-5:00</p>
-        </div>
-        <div class="upload-zone" id="uploadZone" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p>Drag & drop .xlsx here or <label for="excelFile" class="file-label">browse</label></p>
-            <input type="file" id="excelFile" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(this)">
-            <div id="uploadFileName" class="upload-filename hidden"></div>
-        </div>
-        <div id="uploadResult" class="admin-result hidden"></div>
-        <button class="btn-primary mt-16" onclick="uploadRoutine()" id="uploadBtn" disabled>Upload & Replace</button>
+      <div class="admin-card-header">
+        <h3>📤 Upload Routine Excel</h3>
+        <p>Upload a new .xlsx routine file to replace the current schedule.</p>
+      </div>
+      <div class="upload-zone" id="uploadZone" ondragover="event.preventDefault()" ondrop="handleDrop(event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>Drag & drop .xlsx here or <label for="excelFile" class="file-label">browse</label></p>
+        <input type="file" id="excelFile" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(this)">
+        <div id="uploadFileName" class="upload-filename hidden"></div>
+      </div>
+      <div id="uploadResult" class="admin-result hidden"></div>
+      <button class="btn-primary mt-16" onclick="uploadRoutine()" id="uploadBtn" disabled>Upload & Replace</button>
     </div>
 
-    <!-- UniCover Generator -->
-    <div class="admin-card">
-        <div class="admin-card-header">
-            <h3>📄 UniCover Page Generator</h3>
-            <p>Auto-generate a cover page for assignments. Your profile info is auto-filled.</p>
-        </div>
-        <form onsubmit="generateCover(event)" class="modal-form">
-            <div class="form-group">
-                <label>Course Code</label>
-                <input type="text" id="uc_course" placeholder="e.g., MGT-3103" required>
-            </div>
-            <div class="form-group">
-                <label>Assignment Title</label>
-                <input type="text" id="uc_title" placeholder="e.g., Market Entry Strategy Analysis">
-            </div>
-            <button type="submit" class="btn-primary">Generate Cover Page</button>
-        </form>
-        <div id="coverPreview" class="cover-preview hidden"></div>
-    </div>
-
+  </div><!-- /adminPanel -->
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// ── Session storage key ──────────────────────────────────────
+const ADMIN_TOKEN_KEY = 'unisync_admin_token';
+const ADMIN_EMAIL_KEY = 'unisync_admin_email';
+
 let selectedFile = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    UniSync.requireAuth();
-    loadAdminStats();
+// ── Boot ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check for reset_token in URL first
+    const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('reset_token');
+    if (resetToken) {
+        window._resetToken = resetToken;
+        showReset();
+        return;
+    }
+
+    // Try to restore session
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    if (token) {
+        const ok = await verifyToken(token);
+        if (ok) {
+            showPanel();
+            return;
+        } else {
+            sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+            sessionStorage.removeItem(ADMIN_EMAIL_KEY);
+        }
+    }
+    showLogin();
 });
 
+// ── Verify token with backend ─────────────────────────────────
+async function verifyToken(token) {
+    try {
+        const res = await fetch('/admin/api/verify', {
+            headers: { 'X-Admin-Token': token }
+        });
+        return res.ok;
+    } catch(e) { return false; }
+}
+
+// ── View helpers ──────────────────────────────────────────────
+function showLogin() {
+    document.getElementById('loginWall').style.display  = '';
+    document.getElementById('adminPanel').classList.remove('active');
+    document.getElementById('loginView').style.display  = '';
+    document.getElementById('forgotView').classList.remove('active');
+    document.getElementById('resetView').classList.remove('active');
+}
+function showForgot() {
+    document.getElementById('loginView').style.display  = 'none';
+    document.getElementById('forgotView').classList.add('active');
+    document.getElementById('resetView').classList.remove('active');
+    document.getElementById('forgotEmail').value = document.getElementById('adminEmail').value || '';
+}
+function showReset() {
+    document.getElementById('loginWall').style.display  = '';
+    document.getElementById('loginView').style.display  = 'none';
+    document.getElementById('forgotView').classList.remove('active');
+    document.getElementById('resetView').classList.add('active');
+}
+function showPanel() {
+    document.getElementById('loginWall').style.display  = 'none';
+    document.getElementById('adminPanel').classList.add('active');
+    const email = sessionStorage.getItem(ADMIN_EMAIL_KEY) || '';
+    document.getElementById('sessionEmail').textContent = email;
+    loadAdminStats();
+}
+
+// ── Login ─────────────────────────────────────────────────────
+async function adminLogin() {
+    const btn   = document.getElementById('loginBtn');
+    const errEl = document.getElementById('loginError');
+    const email = document.getElementById('adminEmail').value.trim();
+    const pass  = document.getElementById('adminPassword').value;
+    errEl.classList.remove('show');
+
+    if (!email || !pass) {
+        errEl.textContent = 'Please enter email and password.';
+        errEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+        const res  = await fetch('/admin/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pass })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+            sessionStorage.setItem(ADMIN_EMAIL_KEY, data.email);
+            showPanel();
+        } else {
+            errEl.textContent = data.error || 'Login failed.';
+            errEl.classList.add('show');
+        }
+    } catch(e) {
+        errEl.textContent = 'Connection error. Try again.';
+        errEl.classList.add('show');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+}
+
+// ── Logout ────────────────────────────────────────────────────
+async function adminLogout() {
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    if (token) {
+        fetch('/admin/api/logout', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': token }
+        }).catch(() => {});
+    }
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    sessionStorage.removeItem(ADMIN_EMAIL_KEY);
+    showLogin();
+    document.getElementById('adminPassword').value = '';
+}
+
+// ── Forgot password ───────────────────────────────────────────
+async function sendForgot() {
+    const btn     = document.getElementById('forgotBtn');
+    const errEl   = document.getElementById('forgotError');
+    const succEl  = document.getElementById('forgotSuccess');
+    const email   = document.getElementById('forgotEmail').value.trim();
+
+    errEl.classList.remove('show');
+    succEl.classList.remove('show');
+
+    if (!email) {
+        errEl.textContent = 'Please enter your email.';
+        errEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+        const res  = await fetch('/admin/api/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        succEl.textContent = data.message || 'Reset link sent — check your email.';
+        succEl.classList.add('show');
+    } catch(e) {
+        errEl.textContent = 'Connection error.';
+        errEl.classList.add('show');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+}
+
+// ── Reset password ────────────────────────────────────────────
+async function doReset() {
+    const btn     = document.getElementById('resetBtn');
+    const errEl   = document.getElementById('resetError');
+    const succEl  = document.getElementById('resetSuccess');
+    const pass1   = document.getElementById('newPassword').value;
+    const pass2   = document.getElementById('confirmPassword').value;
+
+    errEl.classList.remove('show');
+    succEl.classList.remove('show');
+
+    if (!pass1 || !pass2) {
+        errEl.textContent = 'Please fill in both fields.';
+        errEl.classList.add('show'); return;
+    }
+    if (pass1 !== pass2) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.add('show'); return;
+    }
+    if (pass1.length < 8) {
+        errEl.textContent = 'Password must be at least 8 characters.';
+        errEl.classList.add('show'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+
+    try {
+        const res  = await fetch('/admin/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reset_token: window._resetToken, new_password: pass1 })
+        });
+        const data = await res.json();
+        if (data.success) {
+            succEl.textContent = data.message || 'Password updated! Redirecting to login…';
+            succEl.classList.add('show');
+            setTimeout(() => {
+                window.history.replaceState({}, '', '/admin/');
+                window._resetToken = null;
+                showLogin();
+            }, 2200);
+        } else {
+            errEl.textContent = data.error || 'Reset failed.';
+            errEl.classList.add('show');
+        }
+    } catch(e) {
+        errEl.textContent = 'Connection error.';
+        errEl.classList.add('show');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+}
+
+// ── Auth header helper ────────────────────────────────────────
+function adminHeaders(extra = {}) {
+    return {
+        'X-Admin-Token': sessionStorage.getItem(ADMIN_TOKEN_KEY) || '',
+        ...extra
+    };
+}
+
+// ── Stats ─────────────────────────────────────────────────────
 async function loadAdminStats() {
     try {
-        const res = await fetch('/admin/api/stats');
+        const res  = await fetch('/admin/api/stats', { headers: adminHeaders() });
+        if (res.status === 401) { adminLogout(); return; }
         const data = await res.json();
         if (data.success) {
             document.getElementById('aStatRoutines').textContent = data.stats.routines;
@@ -91,25 +497,31 @@ async function loadAdminStats() {
     } catch(e) {}
 }
 
+// ── Seed database ─────────────────────────────────────────────
 async function seedDatabase() {
-    const btn = event.target;
-    btn.disabled = true; btn.textContent = 'Seeding...';
-    const res_div = document.getElementById('seedResult');
+    const btn    = event.target;
+    const resDiv = document.getElementById('seedResult');
+    btn.disabled = true; btn.textContent = 'Seeding…';
+
     try {
-        const res = await fetch('/admin/api/seed-database', {method:'POST'});
+        const res  = await fetch('/admin/api/seed-database', {
+            method: 'POST', headers: adminHeaders()
+        });
+        if (res.status === 401) { adminLogout(); return; }
         const data = await res.json();
-        res_div.textContent = data.success ? ('✅ ' + data.message) : ('❌ ' + data.error);
-        res_div.className = 'admin-result ' + (data.success ? 'success' : 'error');
-        res_div.classList.remove('hidden');
+        resDiv.textContent  = data.success ? ('✅ ' + data.message) : ('❌ ' + data.error);
+        resDiv.className    = 'admin-result ' + (data.success ? 'success' : 'error');
+        resDiv.classList.remove('hidden');
         if (data.success) loadAdminStats();
     } catch(e) {
-        res_div.textContent = '❌ Connection error';
-        res_div.className = 'admin-result error';
-        res_div.classList.remove('hidden');
+        resDiv.textContent = '❌ Connection error';
+        resDiv.className   = 'admin-result error';
+        resDiv.classList.remove('hidden');
     }
     btn.disabled = false; btn.textContent = 'Seed Routine & Mappings';
 }
 
+// ── File upload ───────────────────────────────────────────────
 function handleFileSelect(input) {
     selectedFile = input.files[0];
     if (selectedFile) {
@@ -132,63 +544,33 @@ function handleDrop(e) {
 
 async function uploadRoutine() {
     if (!selectedFile) return;
-    const btn = document.getElementById('uploadBtn');
-    btn.disabled = true; btn.textContent = 'Uploading...';
-    const res_div = document.getElementById('uploadResult');
+    const btn    = document.getElementById('uploadBtn');
+    const resDiv = document.getElementById('uploadResult');
+    btn.disabled = true; btn.textContent = 'Uploading…';
 
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     try {
-        const res = await fetch('/admin/api/upload-routine', {method:'POST', body: formData});
+        const res  = await fetch('/admin/api/upload-routine', {
+            method: 'POST',
+            headers: adminHeaders(),   // Note: no Content-Type — let browser set multipart boundary
+            body: formData
+        });
+        if (res.status === 401) { adminLogout(); return; }
         const data = await res.json();
-        res_div.textContent = data.success
+        resDiv.textContent = data.success
             ? `✅ Uploaded ${data.inserted} routine entries successfully.`
             : '❌ ' + (data.error || 'Upload failed');
-        res_div.className = 'admin-result ' + (data.success ? 'success' : 'error');
-        res_div.classList.remove('hidden');
+        resDiv.className = 'admin-result ' + (data.success ? 'success' : 'error');
+        resDiv.classList.remove('hidden');
         if (data.success) loadAdminStats();
     } catch(e) {
-        res_div.textContent = '❌ Upload failed. Check your connection.';
-        res_div.className = 'admin-result error';
-        res_div.classList.remove('hidden');
+        resDiv.textContent = '❌ Upload failed.';
+        resDiv.className   = 'admin-result error';
+        resDiv.classList.remove('hidden');
     }
     btn.disabled = false; btn.textContent = 'Upload & Replace';
-}
-
-async function generateCover(e) {
-    e.preventDefault();
-    const user = UniSync.getUser();
-    const courseCode = document.getElementById('uc_course').value;
-    const assignTitle = document.getElementById('uc_title').value;
-
-    try {
-        const res = await fetch('/productivity/api/unicover', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({user_id: user.id, course_code: courseCode})
-        });
-        const data = await res.json();
-        if (data.success) {
-            const d = data.cover_data;
-            const preview = document.getElementById('coverPreview');
-            preview.innerHTML = `
-            <div class="cover-page">
-                <div class="cover-univ">${d.university}</div>
-                <div class="cover-dept">${d.department}</div>
-                <div class="cover-divider"></div>
-                <div class="cover-label">ASSIGNMENT / REPORT</div>
-                <div class="cover-asgn-title">${assignTitle || 'Assignment Title'}</div>
-                <div class="cover-divider"></div>
-                <div class="cover-field"><span>Course:</span> ${d.course_code} — ${d.course_name}</div>
-                <div class="cover-field"><span>Submitted By:</span> ${d.student_name}</div>
-                <div class="cover-field"><span>Department:</span> ${d.dept}</div>
-                <div class="cover-field"><span>Batch:</span> ${d.batch || 'N/A'}</div>
-                <div class="cover-field"><span>Date:</span> ${new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})}</div>
-                <button class="btn-sm btn-success mt-16" onclick="window.print()">🖨 Print Cover</button>
-            </div>`;
-            preview.classList.remove('hidden');
-        }
-    } catch(e) { UniSync.toast('Error generating cover', 'error'); }
 }
 </script>
 {% endblock %}

@@ -132,8 +132,8 @@
   <div id="pwaInstallCard" class="pwa-install-card pwa-hidden">
     <div class="pwa-install-card__icon">📲</div>
     <div class="pwa-install-card__text">
-      <h4>Install UniSync App</h4>
-      <p>Works offline · Opens instantly · No app store needed</p>
+      <h4 id="pwaCardTitle">Install UniSync App</h4>
+      <p id="pwaCardDesc">Works offline · Opens instantly · No app store needed</p>
     </div>
     <button id="pwaInstallBtn" class="waiting" onclick="_pwaInstall()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
@@ -141,7 +141,7 @@
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      Install Now
+      <span id="pwaInstallBtnText">Install Now</span>
     </button>
   </div>
 
@@ -261,6 +261,26 @@ document.addEventListener('DOMContentLoaded', function () {
   UniSync.requireAuth();
   _user = UniSync.getUser();
   if (!_user) return;
+
+  // ── Profile incomplete → redirect to register ──────────────
+  var _role = _user.role || 'student';
+  var _profileComplete = _role === 'teacher'
+    ? !!_user.full_name
+    : !!(_user.full_name && _user.program && _user.year && _user.semester);
+
+  if (!_profileComplete) {
+    UniSync.toast('Please complete your profile first.', 'info', 2500);
+    setTimeout(function() {
+      window.location.href = _role === 'teacher' ? '/auth/register?role=teacher' : '/auth/register';
+    }, 1200);
+    return;
+  }
+
+  // ── Teacher → their own profile page ───────────────────────
+  if (_role === 'teacher') {
+    window.location.replace('/teachers/profile');
+    return;
+  }
 
   document.getElementById('statProgram').textContent = _user.program || 'BBA';
   document.getElementById('statYearSem').textContent =
@@ -419,28 +439,37 @@ async function _loadExamAlerts() {
    listener. Simple and reliable — same pattern as oclock.
    ═══════════════════════════════════════════════════════════════ */
 function _initInstallCard() {
-  var card = document.getElementById('pwaInstallCard');
-  var btn  = document.getElementById('pwaInstallBtn');
+  var card    = document.getElementById('pwaInstallCard');
+  var btn     = document.getElementById('pwaInstallBtn');
+  var titleEl = document.getElementById('pwaCardTitle');
+  var descEl  = document.getElementById('pwaCardDesc');
+  var btnText = document.getElementById('pwaInstallBtnText');
   if (!card || !btn) return;
 
-  // Already installed as standalone PWA → hide forever
   var isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
+
+  // সবসময় দেখাও — installed থাকলেও Reinstall option থাকবে
+  card.classList.remove('pwa-hidden');
+
   if (isStandalone) {
-    card.classList.add('pwa-hidden');
+    // App installed — Reinstall mode
+    if (titleEl) titleEl.textContent = 'UniSync Installed ✓';
+    if (descEl)  descEl.textContent  = 'Reinstall if removed · Works offline · No app store needed';
+    if (btnText) btnText.textContent = 'Reinstall';
+    if (window.__pwaPrompt) btn.classList.remove('waiting');
+    window.addEventListener('beforeinstallprompt', function () {
+      btn.classList.remove('waiting');
+    });
     return;
   }
 
-  // If prompt already captured by base.html before this ran
+  // Not installed — normal install flow
   if (window.__pwaPrompt) {
-    card.classList.remove('pwa-hidden');
     btn.classList.remove('waiting');
   }
 
-  // Also listen directly in case it fires after DOMContentLoaded
-  // (base.html already calls preventDefault & sets window.__pwaPrompt,
-  //  we just need to update the UI here)
   window.addEventListener('beforeinstallprompt', function () {
     card.classList.remove('pwa-hidden');
     btn.classList.remove('waiting');

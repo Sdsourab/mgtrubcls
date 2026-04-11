@@ -9,11 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="stylesheet" href="/static/css/modules/auth.css">
-  <link rel="stylesheet" href="/static/css/modules/scroll-animations.css">
 </head>
 <body class="auth-body">
 
-  <!-- Ambient warm background -->
   <div class="auth-bg">
     <div class="auth-orb orb-1"></div>
     <div class="auth-orb orb-2"></div>
@@ -27,127 +25,91 @@
       <!-- Logo -->
       <div class="auth-logo">
         <svg width="46" height="46" viewBox="0 0 40 40" fill="none">
-          <circle cx="20" cy="20" r="18.5" stroke="url(#rlg1)" stroke-width="1.6"/>
-          <path d="M11 27 L20 13 L29 27" stroke="url(#rlg2)" stroke-width="2.5"
+          <circle cx="20" cy="20" r="18.5" stroke="url(#rg1)" stroke-width="1.6"/>
+          <path d="M11 27 L20 13 L29 27" stroke="url(#rg2)" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="20" cy="25" r="2.8" fill="url(#rlg2)"/>
+          <circle cx="20" cy="25" r="2.8" fill="url(#rg2)"/>
           <defs>
-            <linearGradient id="rlg1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <linearGradient id="rg1" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
               <stop stop-color="#CDA96A"/><stop offset="1" stop-color="#BC6F37"/>
             </linearGradient>
-            <linearGradient id="rlg2" x1="11" y1="13" x2="29" y2="27" gradientUnits="userSpaceOnUse">
+            <linearGradient id="rg2" x1="11" y1="13" x2="29" y2="27" gradientUnits="userSpaceOnUse">
               <stop stop-color="#DFC087"/><stop offset="1" stop-color="#9A5A2C"/>
             </linearGradient>
           </defs>
         </svg>
-        <div>
-          <h1>UniSync</h1>
-          <p>Rabindra University, Bangladesh</p>
-        </div>
+        <div><h1>UniSync</h1><p>Rabindra University, Bangladesh</p></div>
       </div>
 
       <h2 class="auth-title">Create Account</h2>
-      <p class="auth-subtitle">Join your academic portal — takes 30 seconds</p>
 
-      <!-- Feedback -->
-      <div id="authError"   class="auth-error   hidden" role="alert"></div>
-      <div id="authSuccess" class="auth-success  hidden" role="status"></div>
+      <!-- Role Toggle -->
+      <div style="display:flex;gap:0;background:var(--bg-secondary);border-radius:var(--radius-md);padding:4px;margin-bottom:24px;border:1px solid var(--border);">
+        <button id="tabStudent" onclick="switchTab('student')"
+          style="flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#BC6F37,#CDA96A);color:#fff;transition:all .2s;">
+          🎓 Student
+        </button>
+        <button id="tabTeacher" onclick="switchTab('teacher')"
+          style="flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .2s;">
+          👨‍🏫 Teacher
+        </button>
+      </div>
 
-      <form class="auth-form" onsubmit="handleRegister(event)" novalidate>
+      <div id="authError"   class="auth-error  hidden"></div>
+      <div id="authSuccess" class="auth-success hidden"></div>
 
-        <!-- Full Name -->
+      <!-- ── STUDENT FORM ── -->
+      <form id="studentForm" onsubmit="handleRegister(event)" novalidate>
+
         <div class="input-group">
-          <label for="full_name">Full Name</label>
+          <label>Full Name</label>
           <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            <input type="text" id="full_name" placeholder="Your full name"
-                   required autocomplete="name">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="full_name" placeholder="Your full name" required autocomplete="name">
           </div>
         </div>
 
-        <!-- ── Student ID ─────────────────────────────────────────────
-             Plain integer. User picks their own number at registration.
-             This becomes their permanent identity number in the system.
-        ──────────────────────────────────────────────────────────── -->
         <div class="input-group">
-          <label for="student_id">
-            Student ID
-            <span style="color:var(--terra);font-weight:500;font-size:0.8rem;"> *</span>
-          </label>
+          <label>Student ID <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
           <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="2" y="7" width="20" height="14" rx="2"/>
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-            </svg>
-            <input
-              type="text"
-              id="student_id"
-              placeholder="e.g. 12345"
-              inputmode="numeric"
-              pattern="[0-9]+"
-              required
-              autocomplete="off"
-              oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-            >
-          </div>
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;padding-left:2px;line-height:1.5;">
-            তোমার স্থায়ী পরিচয় নম্বর — শুধু সংখ্যা, ভবিষ্যতে এটিই তোমার ID হিসেবে ব্যবহার হবে।
-            <strong style="color:var(--terra);">অবশ্যই unique হতে হবে।</strong>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <input type="text" id="student_id" placeholder="e.g. 2021-1-60-001">
           </div>
         </div>
 
-        <!-- Email -->
         <div class="input-group">
-          <label for="email">Email Address</label>
+          <label>Email Address</label>
           <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-            </svg>
-            <input type="email" id="email" placeholder="your@email.com"
-                   required autocomplete="email" inputmode="email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <input type="email" id="email" placeholder="your@email.com" required autocomplete="email" inputmode="email">
           </div>
         </div>
 
-        <!-- Department -->
-        <div class="input-group">
-          <label for="dept">Department</label>
-          <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-            <input type="text" id="dept" placeholder="Management"
-                   value="Management" autocomplete="organization">
-          </div>
-        </div>
-
-        <!-- Program + Year row -->
-        <div class="input-row">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="input-group">
-            <label for="program">Program</label>
+            <label>Program</label>
             <div class="input-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-              </svg>
-              <select id="program" onchange="updateYearOptions()" required>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <select id="program" required onchange="updateYearOptions()">
                 <option value="BBA">BBA</option>
                 <option value="MBA">MBA</option>
               </select>
             </div>
           </div>
-
           <div class="input-group">
-            <label for="year">Year</label>
+            <label>Department</label>
             <div class="input-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <input type="text" id="dept" value="Management">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="input-group">
+            <label>Year</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <select id="year" required>
                 <option value="1">Year 1</option>
                 <option value="2">Year 2</option>
@@ -156,208 +118,283 @@
               </select>
             </div>
           </div>
-        </div>
-
-        <!-- Semester -->
-        <div class="input-group">
-          <label for="semester">Semester</label>
-          <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <select id="semester" required>
-              <option value="1">Semester 1</option>
-              <option value="2">Semester 2</option>
-            </select>
+          <div class="input-group">
+            <label>Semester</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <select id="semester" required>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Password -->
         <div class="input-group">
-          <label for="password">Password</label>
+          <label>Password</label>
           <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="3" y="11" width="18" height="11" rx="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <input type="password" id="password"
-                   placeholder="Min. 6 characters"
-                   required minlength="6"
-                   autocomplete="new-password">
-            <button type="button" class="toggle-pass"
-                    onclick="togglePass('password','regEyeIcon')"
-                    aria-label="Toggle password visibility">
-              <svg id="regEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="password" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password">
+            <button type="button" class="toggle-pass" onclick="togglePass('password','eyeIcon')">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
             </button>
           </div>
         </div>
 
-        <!-- Info note -->
-        <div style="background:rgba(188,111,55,0.07);border:1px solid rgba(188,111,55,0.20);
-                    border-radius:var(--radius-sm);padding:10px 13px;font-size:0.78rem;
-                    color:var(--text-secondary);line-height:1.55;display:flex;gap:8px;align-items:flex-start;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--terra)" stroke-width="2"
-               width="15" height="15" style="flex-shrink:0;margin-top:1px;">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+        <div style="background:rgba(188,111,55,0.07);border:1px solid rgba(188,111,55,0.20);border-radius:var(--radius-sm);padding:10px 13px;font-size:0.78rem;color:var(--text-secondary);line-height:1.55;display:flex;gap:8px;align-items:flex-start;margin-bottom:16px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--terra)" stroke-width="2" width="15" height="15" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>তোমার Program, Year ও Semester স্বয়ংক্রিয়ভাবে প্রোফাইলে সেভ হবে। লগইনের পর সাথে সাথে তোমার সেমিস্টারের রুটিন দেখাবে।</span>
         </div>
 
-        <!-- Submit Button -->
         <div class="reg-btn-wrap">
           <div class="reg-btn-glow"></div>
-          <button type="submit" id="regBtn" aria-label="Create account">
-            <span id="regBtnText">Create Account</span>
-            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2.2" width="18" height="18">
-              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-            </svg>
+          <button type="submit" id="regBtn">
+            <span id="regBtnText">Create Student Account</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </button>
         </div>
-
       </form>
 
-      <p class="auth-switch">
-        Already have an account? <a href="/auth/login">Sign in</a>
-      </p>
+      <!-- ── TEACHER FORM ── -->
+      <form id="teacherForm" onsubmit="handleTeacherRegister(event)" novalidate style="display:none;">
+
+        <div class="input-group">
+          <label>Full Name *</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="t_name" placeholder="Dr. Md. Rakibul Karim" required autocomplete="name">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Email Address *</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <input type="email" id="t_email" placeholder="your@email.com" required autocomplete="email" inputmode="email">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="input-group">
+            <label>Degree</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              <input type="text" id="t_degree" placeholder="PhD in Management">
+            </div>
+          </div>
+          <div class="input-group">
+            <label>Designation</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <input type="text" id="t_designation" placeholder="Assistant Professor">
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Teacher Code <span style="color:var(--text-muted);font-weight:400;">(must match routine)</span></label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <input type="text" id="t_code" placeholder="e.g. MRK" style="text-transform:uppercase" maxlength="10">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Password *</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="t_password" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password">
+            <button type="button" class="toggle-pass" onclick="togglePass('t_password','tEyeIcon')">
+              <svg id="tEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div style="background:rgba(56,161,105,.07);border:1px solid rgba(56,161,105,.22);border-radius:var(--radius-sm);padding:10px 13px;font-size:0.78rem;color:var(--text-secondary);line-height:1.55;margin-bottom:16px;">
+          ℹ️ Teacher accounts are reviewed. Your Teacher Code must match the code used in the class routine. Classes from the routine will automatically appear in your profile.
+        </div>
+
+        <div class="reg-btn-wrap">
+          <div class="reg-btn-glow"></div>
+          <button type="submit" id="tRegBtn">
+            <span id="tRegBtnText">Create Teacher Account</span>
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </form>
+
+      <p class="auth-switch">Already have an account? <a href="/auth/login">Sign in</a></p>
 
     </div>
   </div>
 
-  <script>
-  async function handleRegister(e) {
+<script>
+// ── Tab switch ────────────────────────────────────────────────
+function switchTab(role) {
+    const isStudent = role === 'student';
+    document.getElementById('studentForm').style.display  = isStudent ? '' : 'none';
+    document.getElementById('teacherForm').style.display  = isStudent ? 'none' : '';
+    document.getElementById('tabStudent').style.cssText   = isStudent
+        ? 'flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#BC6F37,#CDA96A);color:#fff;transition:all .2s;'
+        : 'flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .2s;';
+    document.getElementById('tabTeacher').style.cssText   = !isStudent
+        ? 'flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#276749,#38A169);color:#fff;transition:all .2s;'
+        : 'flex:1;padding:9px;border:none;border-radius:calc(var(--radius-md) - 2px);font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .2s;';
+    document.getElementById('authError').classList.add('hidden');
+    document.getElementById('authSuccess').classList.add('hidden');
+}
+
+// ── Check URL param: if ?role=teacher auto-switch ─────────────
+(function() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('role') === 'teacher') switchTab('teacher');
+})();
+
+// ── Student register ──────────────────────────────────────────
+async function handleRegister(e) {
     e.preventDefault();
+    const btn    = document.getElementById('regBtn');
+    const errDiv = document.getElementById('authError');
+    const sucDiv = document.getElementById('authSuccess');
+    const wrap   = btn.closest('.reg-btn-wrap');
 
-    const btn     = document.getElementById('regBtn');
-    const wrap    = btn.closest('.reg-btn-wrap');
-    const errDiv  = document.getElementById('authError');
-    const sucDiv  = document.getElementById('authSuccess');
-
-    // ── Client-side validation ───────────────────────────────────
-    const studentIdRaw = document.getElementById('student_id').value.trim();
-    if (!studentIdRaw) {
-      errDiv.textContent = 'Student ID is required.';
-      errDiv.classList.remove('hidden');
-      return;
-    }
-    if (!/^\d+$/.test(studentIdRaw)) {
-      errDiv.textContent = 'Student ID must be numbers only (e.g. 12345).';
-      errDiv.classList.remove('hidden');
-      return;
-    }
-
-    btn.disabled = true;
+    btn.disabled  = true;
     btn.innerHTML = `<div class="btn-spinner"></div><span>Creating account…</span>`;
     errDiv.classList.add('hidden');
     sucDiv.classList.add('hidden');
 
     const payload = {
-      full_name:  document.getElementById('full_name').value.trim(),
-      student_id: parseInt(studentIdRaw, 10),   // ← plain integer
-      email:      document.getElementById('email').value.trim(),
-      password:   document.getElementById('password').value,
-      dept:       document.getElementById('dept').value.trim() || 'Management',
-      program:    document.getElementById('program').value,
-      year:       parseInt(document.getElementById('year').value),
-      semester:   parseInt(document.getElementById('semester').value),
+        full_name:  document.getElementById('full_name').value.trim(),
+        student_id: document.getElementById('student_id').value.trim() || null,
+        email:      document.getElementById('email').value.trim(),
+        password:   document.getElementById('password').value,
+        dept:       document.getElementById('dept').value.trim() || 'Management',
+        program:    document.getElementById('program').value,
+        year:       parseInt(document.getElementById('year').value),
+        semester:   parseInt(document.getElementById('semester').value),
     };
 
     try {
-      const res  = await fetch('/auth/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+        const res  = await fetch('/auth/api/register', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
 
-      if (data.success) {
-        btn.classList.add('btn-success');
-        if (wrap) wrap.classList.add('success');
-        btn.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          <span>Account Created!</span>`;
-
-        sucDiv.textContent = data.message || 'Registration successful! Please check your email to verify.';
-        sucDiv.classList.remove('hidden');
-
-        setTimeout(() => { window.location.href = '/auth/login'; }, 2800);
-      } else {
-        errDiv.textContent = data.error || 'Registration failed. Please try again.';
+        if (data.success) {
+            btn.classList.add('btn-success');
+            if (wrap) wrap.classList.add('success');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg><span>Account Created!</span>`;
+            sucDiv.textContent = data.message || 'Registration successful!';
+            sucDiv.classList.remove('hidden');
+            setTimeout(() => window.location.href = '/auth/login', 2800);
+        } else {
+            errDiv.textContent = data.error || 'Registration failed.';
+            errDiv.classList.remove('hidden');
+            resetStudentBtn();
+        }
+    } catch(err) {
+        errDiv.textContent = 'Connection error. Please try again.';
         errDiv.classList.remove('hidden');
-        resetBtn();
-      }
-    } catch (err) {
-      errDiv.textContent = 'Connection error. Please try again.';
-      errDiv.classList.remove('hidden');
-      resetBtn();
+        resetStudentBtn();
     }
-  }
+}
 
-  function resetBtn() {
+function resetStudentBtn() {
     const btn = document.getElementById('regBtn');
     btn.disabled = false;
     btn.classList.remove('btn-success');
     const wrap = btn.closest('.reg-btn-wrap');
     if (wrap) wrap.classList.remove('success');
-    btn.innerHTML = `
-      <span id="regBtnText">Create Account</span>
-      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2.2" width="18" height="18">
-        <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-      </svg>`;
-  }
+    btn.innerHTML = `<span id="regBtnText">Create Student Account</span><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
+}
 
-  function togglePass(inputId, iconId) {
+// ── Teacher register ──────────────────────────────────────────
+async function handleTeacherRegister(e) {
+    e.preventDefault();
+    const btn    = document.getElementById('tRegBtn');
+    const errDiv = document.getElementById('authError');
+    const sucDiv = document.getElementById('authSuccess');
+
+    btn.disabled  = true;
+    btn.innerHTML = `<div class="btn-spinner"></div><span>Creating account…</span>`;
+    errDiv.classList.add('hidden');
+    sucDiv.classList.add('hidden');
+
+    const payload = {
+        full_name:    document.getElementById('t_name').value.trim(),
+        email:        document.getElementById('t_email').value.trim(),
+        password:     document.getElementById('t_password').value,
+        degree:       document.getElementById('t_degree').value.trim(),
+        designation:  document.getElementById('t_designation').value.trim(),
+        teacher_code: document.getElementById('t_code').value.trim().toUpperCase(),
+    };
+
+    try {
+        const res  = await fetch('/auth/api/register-teacher', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg><span>Account Created!</span>`;
+            sucDiv.textContent = data.message || 'Teacher account created!';
+            sucDiv.classList.remove('hidden');
+            setTimeout(() => window.location.href = '/auth/login', 2800);
+        } else {
+            errDiv.textContent = data.error || 'Registration failed.';
+            errDiv.classList.remove('hidden');
+            btn.disabled  = false;
+            btn.innerHTML = `<span id="tRegBtnText">Create Teacher Account</span><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
+        }
+    } catch(err) {
+        errDiv.textContent = 'Connection error. Please try again.';
+        errDiv.classList.remove('hidden');
+        btn.disabled  = false;
+        btn.innerHTML = `<span>Create Teacher Account</span>`;
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function togglePass(inputId, iconId) {
     const input = document.getElementById(inputId);
     const icon  = document.getElementById(iconId);
     if (input.type === 'password') {
-      input.type = 'text';
-      icon.innerHTML = `
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-        <line x1="1" y1="1" x2="23" y2="23"/>`;
+        input.type = 'text';
+        icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
     } else {
-      input.type = 'password';
-      icon.innerHTML = `
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-        <circle cx="12" cy="12" r="3"/>`;
+        input.type = 'password';
+        icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
     }
-  }
+}
 
-  function updateYearOptions() {
+function updateYearOptions() {
     const program = document.getElementById('program').value;
     const yearSel = document.getElementById('year');
     const maxYear = program === 'BBA' ? 4 : 2;
     const current = parseInt(yearSel.value) || 1;
     yearSel.innerHTML = '';
     for (let i = 1; i <= maxYear; i++) {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `Year ${i}`;
-      if (i === Math.min(current, maxYear)) opt.selected = true;
-      yearSel.appendChild(opt);
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = `Year ${i}`;
+        if (i === Math.min(current, maxYear)) opt.selected = true;
+        yearSel.appendChild(opt);
     }
-  }
-  </script>
+}
+</script>
 
-  <style>
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .btn-spinner {
-    width: 17px; height: 17px;
-    border: 2px solid rgba(255,255,255,0.40);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  </style>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-spinner {
+    width:17px;height:17px;border:2px solid rgba(255,255,255,0.40);
+    border-top-color:#fff;border-radius:50%;
+    animation:spin 0.7s linear infinite;flex-shrink:0;
+}
+</style>
 </body>
 </html>

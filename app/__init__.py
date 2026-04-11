@@ -34,6 +34,7 @@ def create_app(config_name: str = None):
     from app.notices.routes          import notices_bp
     from app.classmanagement.routes  import classmanagement_bp
     from app.exams.routes            import exams_bp
+    from app.teachers.routes         import teachers_bp
 
     app.register_blueprint(auth_bp,             url_prefix='/auth')
     app.register_blueprint(academic_bp,         url_prefix='/academic')
@@ -45,6 +46,7 @@ def create_app(config_name: str = None):
     app.register_blueprint(notices_bp,          url_prefix='/notices')
     app.register_blueprint(classmanagement_bp,  url_prefix='/classmanagement')
     app.register_blueprint(exams_bp,            url_prefix='/exams')
+    app.register_blueprint(teachers_bp,         url_prefix='/teachers')
 
     @app.route('/')
     def index():
@@ -54,8 +56,6 @@ def create_app(config_name: str = None):
     def dashboard():
         return render_template('dashboard.html')
 
-    # ── CRITICAL FIX: /offline was after return app before — dead code!
-    # Now correctly placed BEFORE return app so it actually registers.
     @app.route('/offline')
     def offline_page():
         return render_template('errors/offline.html'), 200
@@ -132,9 +132,6 @@ def create_app(config_name: str = None):
                 classes = []
                 if not is_hol:
                     try:
-                        # FIX: Removed .eq('course_year') and .eq('course_semester')
-                        # — those columns don't exist in routines table and caused
-                        # empty results (showing "No classes" for everyone).
                         rows = sb.table('routines').select('*') \
                             .eq('day', day_name) \
                             .eq('program', user.get('program', 'BBA')) \
@@ -144,13 +141,11 @@ def create_app(config_name: str = None):
                         app.logger.error(f'[Cron] routines query error: {e}')
                         classes = []
                     for cls in classes:
-                        # Course full name
                         try:
                             c = sb.table('mappings').select('full_name').eq('code', cls.get('course_code', '')).execute()
                             cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
                         except Exception:
                             cls['course_name'] = cls.get('course_code', '')
-                        # Teacher full name
                         try:
                             t = sb.table('mappings').select('full_name').eq('code', cls.get('teacher_code', '')).execute()
                             cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')

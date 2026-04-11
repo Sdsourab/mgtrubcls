@@ -7,6 +7,10 @@ Advanced ML-powered suggestion engine using:
   • Consecutive-class fatigue modelling
   • Priority recommendation with confidence score
   • Contextual tips per scenario
+
+UPDATED:
+  • get_routine()        — ছুটির দিনে [] return করে, is_holiday flag সহ
+  • dashboard_schedule() — is_holiday সঠিকভাবে return করে
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -48,26 +52,15 @@ def _time_to_mins(t: str) -> int:
 
 
 def _urgency_score(late_mins: int, remain_mins: int, total_duration: int) -> float:
-    """
-    Composite urgency score 0.0 → 1.0.
-    Factors:
-      - How late the student is (relative to class duration)
-      - How much time remains (diminishing return to attend if < 10 min left)
-      - Missed-content ratio (late / total)
-    """
     if remain_mins <= 0:
-        return 0.0  # class is over
-
+        return 0.0
     missed_ratio = min(1.0, late_mins / max(total_duration, 1))
     remain_ratio = remain_mins / max(total_duration, 1)
-
-    # Gaussian decay: urgency peaks when late 0–10 min, drops as missed_ratio rises
     urgency = math.exp(-2.5 * missed_ratio) * remain_ratio
     return round(min(1.0, max(0.0, urgency)), 3)
 
 
 def _classify_session(h: int) -> str:
-    """Classify time-of-day into academic session categories."""
     if 8 <= h < 10:
         return 'morning_peak'
     elif 10 <= h < 13:
@@ -80,10 +73,6 @@ def _classify_session(h: int) -> str:
 
 
 def _fatigue_penalty(class_index: int, total_classes: int) -> float:
-    """
-    Fatigue model: students are 15% less alert per consecutive class after the 2nd.
-    Returns a penalty multiplier (1.0 = no penalty, 0.7 = high fatigue).
-    """
     if class_index <= 1:
         return 1.0
     penalty = max(0.7, 1.0 - (class_index - 1) * 0.15)
@@ -91,7 +80,6 @@ def _fatigue_penalty(class_index: int, total_classes: int) -> float:
 
 
 def _contextual_tip(session_type: str, urgency: float, fatigue: float, remain_mins: int) -> str:
-    """Generate a context-aware study tip based on ML signals."""
     if session_type == 'post_lunch_dip' and fatigue < 0.85:
         return "বিকেলের ক্লাসে মনোযোগ কম থাকে — সামনের সারিতে বসো এবং নোট নাও।"
     if urgency > 0.7:
@@ -116,27 +104,13 @@ def _priority_label(urgency: float) -> str:
 
 
 def _ml_hint(time_str: str, classes: list) -> dict:
-    """
-    Advanced ML-powered Smart Suggestion Engine.
-
-    Pipeline:
-      1. Parse current time → query_mins
-      2. For each class: compute late_mins, remain_mins, duration
-      3. Score urgency using composite formula (missed-ratio + remain-ratio)
-      4. Apply time-of-day session classifier
-      5. Apply consecutive-class fatigue model
-      6. Generate contextual tip
-      7. Sort by urgency score (highest first)
-      8. Return structured suggestions with confidence scores
-    """
     if not time_str or not classes:
         return {}
 
     q = _time_to_mins(time_str)
     h = q // 60
     session_type = _classify_session(h)
-
-    suggestions = []
+    suggestions  = []
 
     for idx, cls in enumerate(classes):
         start = _time_to_mins(cls.get('time_start') or '00:00')
@@ -145,19 +119,18 @@ def _ml_hint(time_str: str, classes: list) -> dict:
         if end <= 0:
             continue
 
-        duration = max(end - start, 1)
-        late_mins   = q - start          # positive = already started
-        remain_mins = end - q             # positive = still running
+        duration    = max(end - start, 1)
+        late_mins   = q - start
+        remain_mins = end - q
 
         course  = cls.get('course_name') or cls.get('course_code', 'Class')
         room    = cls.get('room_no', '?')
         teacher = cls.get('teacher_name') or cls.get('teacher_code', '')
 
-        urgency = _urgency_score(max(0, late_mins), remain_mins, duration)
-        fatigue = _fatigue_penalty(idx, len(classes))
+        urgency           = _urgency_score(max(0, late_mins), remain_mins, duration)
+        fatigue           = _fatigue_penalty(idx, len(classes))
         effective_urgency = round(urgency * fatigue, 3)
 
-        # ── Generate human-readable suggestion ─────────────────────────────
         if late_mins <= 0:
             mins_until = abs(late_mins)
             if mins_until <= 5:
@@ -177,37 +150,33 @@ def _ml_hint(time_str: str, classes: list) -> dict:
         else:
             tip = f"🔔 '{course}' শেষ হবে মাত্র {remain_mins} মিনিটে। পরবর্তী ক্লাসের জন্য তৈরি হও।"
 
-        # ── Context-aware add-on tip ────────────────────────────────────────
         context_tip = _contextual_tip(session_type, effective_urgency, fatigue, remain_mins)
 
         suggestions.append({
-            'course':            course,
-            'room':              room,
-            'teacher':           teacher,
-            'late_mins':         max(0, late_mins),
-            'remaining':         remain_mins,
-            'duration':          duration,
-            'urgency_score':     effective_urgency,
-            'priority':          _priority_label(effective_urgency),
-            'session_type':      session_type,
-            'fatigue_factor':    fatigue,
-            'suggestion':        tip,
-            'context_tip':       context_tip,
+            'course':         course,
+            'room':           room,
+            'teacher':        teacher,
+            'late_mins':      max(0, late_mins),
+            'remaining':      remain_mins,
+            'duration':       duration,
+            'urgency_score':  effective_urgency,
+            'priority':       _priority_label(effective_urgency),
+            'session_type':   session_type,
+            'fatigue_factor': fatigue,
+            'suggestion':     tip,
+            'context_tip':    context_tip,
         })
 
-    # Sort by urgency score descending — highest priority first
     suggestions.sort(key=lambda x: x['urgency_score'], reverse=True)
-
-    # Add rank
     for i, s in enumerate(suggestions):
         s['rank'] = i + 1
 
     return {
-        'suggestions':    suggestions,
-        'session_type':   session_type,
-        'query_time':     time_str,
-        'total_classes':  len(classes),
-        'ml_version':     '2.0-advanced',
+        'suggestions':   suggestions,
+        'session_type':  session_type,
+        'query_time':    time_str,
+        'total_classes': len(classes),
+        'ml_version':    '2.0-advanced',
     }
 
 
@@ -231,6 +200,21 @@ def get_routine():
     year     = request.args.get('year', '')
     semester = request.args.get('semester', '')
 
+    # ── Holiday guard: ছুটির দিনে কোনো class দেখাবে না ─────────
+    check_date_str = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    try:
+        check_date = datetime.strptime(check_date_str, '%Y-%m-%d').date()
+    except Exception:
+        check_date = date.today()
+    is_hol, hol_name = is_holiday(check_date)
+    if is_hol:
+        return jsonify({
+            'success':      True,
+            'data':         [],
+            'is_holiday':   True,
+            'holiday_name': hol_name,
+        })
+
     sb = get_supabase_admin()
     try:
         q = sb.table('routines').select('*')
@@ -247,11 +231,11 @@ def get_routine():
                 .order('time_start').execute()
 
             rows = _enrich(resp_prog.data or [], sb)
-            return jsonify({'success': True, 'data': rows})
+            return jsonify({'success': True, 'data': rows, 'is_holiday': False})
         else:
             resp = q.order('time_start').execute()
             rows = _enrich(resp.data or [], sb)
-            return jsonify({'success': True, 'data': rows})
+            return jsonify({'success': True, 'data': rows, 'is_holiday': False})
 
     except Exception as e:
         try:
@@ -379,62 +363,33 @@ def get_mappings():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+# ── API: Dashboard Schedule ───────────────────────────────────
+
 @academic_bp.route('/api/dashboard-schedule', methods=['GET'])
 def dashboard_schedule():
     """
     Dashboard Schedule Widget Endpoint.
- 
+
     BST Time Logic:
       07:00 – 18:59 → return today's classes
       19:00 – 06:59 → return tomorrow's classes
- 
-    Query params (all optional — falls back to unfiltered routine if omitted):
+
+    Query params (all optional):
       program  : e.g. 'BBA'
       year     : e.g. '1'
       semester : e.g. '1'
- 
-    Response shape:
-      {
-        "success": true,
-        "mode":    "today" | "tomorrow",
-        "day":     "Monday",
-        "label":   "Today's Classes — Monday",
-        "bst_time": "14:35",
-        "is_holiday": false,
-        "holiday_name": null,
-        "classes": [
-          {
-            "course_code":   "MGT-101",
-            "course_name":   "Principles of Management",
-            "teacher_code":  "MRK",
-            "teacher_name":  "Dr. Md. Rakibul Karim",
-            "time_start":    "09:00",
-            "time_end":      "10:30",
-            "time_start_12h":"9:00 AM",
-            "time_end_12h":  "10:30 AM",
-            "room_no":       "301",
-            "duration_mins": 90,
-            "status":        "live" | "upcoming" | "done",
-            "progress":      45,
-            "mins_until":    null,
-            "mins_left":     42
-          },
-          ...
-        ]
-      }
     """
-    # ── Import schedule utilities ──────────────────────────────────────────────
     from core.schedule_utils import get_schedule_target, fmt12h, classify_class_status
-    from core.holidays import is_holiday
- 
-    # ── 1. Determine target day via BST time window ────────────────────────────
+
+    # ── 1. Determine target day ────────────────────────────────
     target   = get_schedule_target()
-    day_name = target['day_name']     # e.g. 'Monday'
-    mode     = target['mode']         # 'today' | 'tomorrow'
-    bst_time = target['bst_time']     # 'HH:MM'
+    day_name = target['day_name']
+    mode     = target['mode']
+    bst_time = target['bst_time']
     label    = target['display_label']
- 
-    # ── 2. Holiday check (only relevant for today) ─────────────────────────────
+
+    # ── 2. Holiday check ──────────────────────────────────────
     is_hol, hol_name = is_holiday(target['date'])
     if is_hol:
         return jsonify({
@@ -447,69 +402,63 @@ def dashboard_schedule():
             'holiday_name': hol_name,
             'classes':      [],
         })
- 
-    # ── 3. Get user profile params from query string ──────────────────────────
+
+    # ── 3. User profile params ─────────────────────────────────
     program  = request.args.get('program',  '').strip()
     year     = request.args.get('year',     '').strip()
     semester = request.args.get('semester', '').strip()
- 
-    # ── 4. Query Supabase `routines` table ────────────────────────────────────
+
+    # ── 4. Query routines ──────────────────────────────────────
     sb = get_supabase_admin()
     try:
         q = sb.table('routines').select('*').eq('day', day_name)
- 
-        # Apply user-specific filter only when all three params are present
+
         if program and year and semester:
             try:
                 q = q.eq('program', program) \
                      .eq('course_year', int(year)) \
                      .eq('course_semester', int(semester))
             except (ValueError, TypeError):
-                pass  # Ignore bad params, fall back to day-only filter
- 
+                pass
+
         resp = q.order('time_start').execute()
         rows = resp.data or []
- 
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
- 
-    # ── 5. Enrich: resolve course_code + teacher_code → full names ─────────────
-    # Re-using the existing _enrich() from this file — no duplication needed.
+
+    # ── 5. Enrich ──────────────────────────────────────────────
     rows = _enrich(rows, sb)
- 
-    # ── 6. Annotate each class with time formatting + live status ──────────────
+
+    # ── 6. Annotate with time + status ─────────────────────────
     enriched = []
     for cls in rows:
-        ts  = cls.get('time_start', '') or ''
-        te  = cls.get('time_end',   '') or ''
- 
-        # Time formatting
+        ts = cls.get('time_start', '') or ''
+        te = cls.get('time_end',   '') or ''
+
         cls['time_start_12h'] = fmt12h(ts)
         cls['time_end_12h']   = fmt12h(te)
- 
-        # Duration in minutes
+
         try:
             sh, sm = map(int, ts.split(':'))
             eh, em = map(int, te.split(':'))
             cls['duration_mins'] = (eh * 60 + em) - (sh * 60 + sm)
         except Exception:
             cls['duration_mins'] = 0
- 
-        # Class status (live / upcoming / done) — only meaningful for today
+
         status_info = classify_class_status(ts, te, bst_time, mode)
-        cls.update(status_info)   # merges: status, progress, mins_until, mins_left
- 
+        cls.update(status_info)
+
         enriched.append(cls)
- 
-    # ── 7. Return ──────────────────────────────────────────────────────────────
+
+    # ── 7. Return ──────────────────────────────────────────────
     return jsonify({
         'success':      True,
         'mode':         mode,
         'day':          day_name,
         'label':        label,
         'bst_time':     bst_time,
-        'is_holiday':   False,
-        'holiday_name': None,
+        'is_holiday':   is_hol,
+        'holiday_name': hol_name if is_hol else None,
         'classes':      enriched,
     })
- 

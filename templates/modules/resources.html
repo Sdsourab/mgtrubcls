@@ -65,7 +65,7 @@ async function loadResources() {
     grid.innerHTML = '<div class="resource-skeleton"></div><div class="resource-skeleton"></div>';
 
     try {
-        const res = await fetch(`/campus/api/resources?${params}`);
+        const res  = await fetch(`/campus/api/resources?${params}`);
         const data = await res.json();
 
         if (!data.success || !data.data.length) {
@@ -81,17 +81,23 @@ async function loadResources() {
         }
 
         const currentUser = UniSync.getUser();
+        const currentUid  = currentUser?.id || '';
         const currentName = currentUser?.full_name || '';
 
         grid.innerHTML = data.data.map(r => {
-            const isOwner = currentName && r.uploaded_by === currentName;
+            // Owner check: prefer user_id match; fall back to name match for older entries
+            const isOwner = (currentUid && r.uploader_user_id && r.uploader_user_id === currentUid)
+                         || (!r.uploader_user_id && currentName && r.uploaded_by === currentName);
+
             return `
             <div class="resource-card" id="rc-${r.id}">
                 <div class="resource-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
                     </svg>
                 </div>
                 <div class="resource-info">
@@ -113,11 +119,12 @@ async function loadResources() {
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                     ${r.file_url ? `<a href="${r.file_url}" target="_blank" class="btn-sm resource-download">Open →</a>` : ''}
                     ${isOwner ? `
-                    <button class="btn-sm btn-danger" onclick="deleteResource('${r.id}')"
+                    <button class="btn-sm btn-danger" onclick="deleteResource(${r.id}, '${currentUid}')"
                         title="Delete this resource"
                         style="display:flex;align-items:center;gap:4px;">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                       </svg>
                       Delete
                     </button>` : ''}
@@ -130,14 +137,14 @@ async function loadResources() {
     }
 }
 
-async function deleteResource(id) {
+async function deleteResource(id, userId) {
     if (!confirm('Delete this resource? This cannot be undone.')) return;
 
     const card = document.getElementById(`rc-${id}`);
     if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
 
     try {
-        const res  = await fetch(`/campus/api/resources/${id}`, { method: 'DELETE' });
+        const res  = await fetch(`/campus/api/resources/${id}?user_id=${userId}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
             UniSync.toast('Resource deleted.', 'success');
@@ -156,15 +163,16 @@ async function submitResource(e) {
     e.preventDefault();
     const user = UniSync.getUser();
     const payload = {
-        title: document.getElementById('r_title').value,
-        subject: document.getElementById('r_subject').value,
-        file_url: document.getElementById('r_url').value,
-        dept: 'Management',
-        uploaded_by: user?.full_name || 'Anonymous',
+        title:            document.getElementById('r_title').value,
+        subject:          document.getElementById('r_subject').value,
+        file_url:         document.getElementById('r_url').value,
+        dept:             'Management',
+        uploaded_by:      user?.full_name || 'Anonymous',
+        uploader_user_id: user?.id || '',
     };
     try {
-        const res = await fetch('/campus/api/resources', {
-            method:'POST', headers:{'Content-Type':'application/json'},
+        const res  = await fetch('/campus/api/resources', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify(payload)
         });
         const data = await res.json();
