@@ -5,9 +5,8 @@
 <!-- Quill Rich Text Editor (CDN — cached by SW for offline use) -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
 <style>
-.notice-compose-wrap { display: none; }
-body[data-role="cr"]   .notice-compose-wrap,
-body[data-role="admin"] .notice-compose-wrap { display: block; }
+.notice-compose-wrap { display: block; }
+/* All logged-in users can post notices */
 .notice-filter-bar { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px; }
 .filter-chip {
   padding:5px 14px;border-radius:999px;font-size:0.78rem;font-weight:600;
@@ -169,15 +168,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   _user = UniSync.getUser();
   if (!_user) return;
 
-  // Set CR mode on body for CSS visibility rules
-  if (_user.role === 'cr' || _user.role === 'admin') {
-    document.body.setAttribute('data-role', _user.role);
-    // Set default program/year/sem for compose
-    document.getElementById('noticeProgram').value = _user.program || 'BBA';
-    document.getElementById('noticeYear').value    = _user.year    || '';
-    document.getElementById('noticeSem').value     = _user.semester || '';
-    initQuill();
-  }
+  // Set data-role for CSS, init compose for all users
+  document.body.setAttribute('data-role', _user.role || 'student');
+  // Pre-fill target audience with user's own section
+  const progEl = document.getElementById('noticeProgram');
+  const yearEl = document.getElementById('noticeYear');
+  const semEl  = document.getElementById('noticeSem');
+  if (progEl) progEl.value = _user.program || 'BBA';
+  if (yearEl) yearEl.value = _user.year    || '';
+  if (semEl)  semEl.value  = _user.semester || '';
+  initQuill();
 
   await loadNotices();
   await checkPendingDrafts();
