@@ -35,6 +35,7 @@ def create_app(config_name: str = None):
     from app.classmanagement.routes  import classmanagement_bp
     from app.exams.routes            import exams_bp
     from app.teachers.routes         import teachers_bp
+    from app.cr.routes               import cr_bp
 
     app.register_blueprint(auth_bp,             url_prefix='/auth')
     app.register_blueprint(academic_bp,         url_prefix='/academic')
@@ -47,6 +48,7 @@ def create_app(config_name: str = None):
     app.register_blueprint(classmanagement_bp,  url_prefix='/classmanagement')
     app.register_blueprint(exams_bp,            url_prefix='/exams')
     app.register_blueprint(teachers_bp,         url_prefix='/teachers')
+    app.register_blueprint(cr_bp,               url_prefix='/cr')
 
     @app.route('/')
     def index():

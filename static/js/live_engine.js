@@ -1,8 +1,13 @@
 /**
- * UniSync — Live Class Engine  v4
+ * UniSync — Live Class Engine  v5
  * ─────────────────────────────────────────────────────────────
  * Hero card: "HAPPENING NOW" — currently running class
  * Schedule section: Today (08:00–18:00) or Tomorrow (after 18:00)
+ * + Upcoming Classes section (next 7 days)
+ *
+ * CR Integration:
+ *  - Extra classes (change_type='extra') shown as green "Extra Class" card
+ *  - Cancelled classes (change_type='cancel') shown with red strikethrough
  *
  * Offline-first: every successful API call is cached in localStorage.
  * Falls back to cache automatically when offline.
@@ -42,6 +47,11 @@ const LiveEngine = (() => {
     };
   }
 
+  function _dateStr(d) {
+    // Returns YYYY-MM-DD for a Date object
+    return d.toISOString().split('T')[0];
+  }
+
   /**
    * Time logic:
    *  00:00–17:59  →  show TODAY
@@ -52,9 +62,9 @@ const LiveEngine = (() => {
     if (h >= 18) {
       const tom = new Date(date);
       tom.setDate(date.getDate() + 1);
-      return { day: DAYS[tom.getDay()], label: "Tomorrow's Classes", isTomorrow: true };
+      return { day: DAYS[tom.getDay()], label: "Tomorrow's Classes", isTomorrow: true, dateObj: tom };
     }
-    return { day, label: "Today's Classes", isTomorrow: false };
+    return { day, label: "Today's Classes", isTomorrow: false, dateObj: date };
   }
 
   // ── Progress ring SVG ─────────────────────────────────────────
@@ -86,7 +96,6 @@ const LiveEngine = (() => {
   // ── Fetch with localStorage cache ─────────────────────────────
 
   async function _fetchSchedule(day, program, year, semester) {
-    // Guard: if any param is missing/undefined, use defaults
     const p = program  || 'BBA';
     const y = year     || 1;
     const s = semester || 1;
@@ -107,6 +116,61 @@ const LiveEngine = (() => {
     }
 
     // Offline fallback
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || 'null');
+      if (cached?.data) return cached.data;
+    } catch {}
+    return [];
+  }
+
+  // ── Fetch class changes (cancel/extra) for a date ─────────────
+
+  async function _fetchClassChanges(dateStr, program) {
+    const p = program || 'BBA';
+    const key = `class_changes_${dateStr}_${p}`;
+
+    if (navigator.onLine) {
+      try {
+        const params = new URLSearchParams({ from: dateStr, to: dateStr, program: p });
+        const res = await fetch(`/cr/api/class-changes?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.data)) {
+            localStorage.setItem(key, JSON.stringify({ data: data.data, ts: Date.now() }));
+            return data.data;
+          }
+        }
+      } catch {}
+    }
+
+    // Offline fallback
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || 'null');
+      if (cached?.data) return cached.data;
+    } catch {}
+    return [];
+  }
+
+  // ── Fetch class changes for a range (upcoming) ────────────────
+
+  async function _fetchClassChangesRange(fromDate, toDate, program) {
+    const p = program || 'BBA';
+    const key = `class_changes_range_${fromDate}_${toDate}_${p}`;
+
+    if (navigator.onLine) {
+      try {
+        const params = new URLSearchParams({ from: fromDate, to: toDate, program: p });
+        const res = await fetch(`/cr/api/class-changes?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.data)) {
+            localStorage.setItem(key, JSON.stringify({ data: data.data, ts: Date.now() }));
+            return data.data;
+          }
+        }
+      } catch {}
+    }
+
     try {
       const cached = JSON.parse(localStorage.getItem(key) || 'null');
       if (cached?.data) return cached.data;
@@ -158,7 +222,6 @@ const LiveEngine = (() => {
       }
 
       if (data.is_holiday) {
-        // Also show the holiday banner
         const banner = document.getElementById('holidayBanner');
         const name   = document.getElementById('holidayBannerName');
         if (banner) banner.classList.remove('hidden');
@@ -171,7 +234,6 @@ const LiveEngine = (() => {
       }
 
       if (!data.live?.length) {
-        // No class running — find next class
         const all     = await _fetchSchedule(day, user?.program, user?.year, user?.semester);
         const nowMins = _toMins(time);
         const next    = all.find(c => _toMins(c.time_start) > nowMins);
@@ -230,6 +292,65 @@ const LiveEngine = (() => {
     }
   }
 
+  // ── Build a single schedule card HTML ─────────────────────────
+
+  function _buildSchedItem(cls, nowMins, isTomorrow, isExtra, isCancelled) {
+    const s = _toMins(cls.time_start);
+    const e = _toMins(cls.time_end);
+
+    let st = '', badge = '';
+
+    if (isCancelled) {
+      // Cancelled class — red strikethrough
+      st = 'cancelled';
+      badge = `<span class="sched-badge cancelled">✕ Cancelled</span>`;
+    } else if (isExtra) {
+      // Extra class — green badge
+      badge = `<span class="sched-badge extra">＋ Extra Class</span>`;
+    } else if (!isTomorrow) {
+      if (nowMins >= s && nowMins < e) {
+        st    = 'running';
+        badge = `<span class="sched-badge running">🔴 NOW · ${e - nowMins}m left</span>`;
+      } else if (nowMins >= e) {
+        st    = 'done';
+        badge = `<span class="sched-badge done">✓ Done</span>`;
+      } else if (s - nowMins > 0 && s - nowMins <= 30) {
+        badge = `<span class="sched-badge soon">⏰ In ${s - nowMins}m</span>`;
+      }
+    }
+
+    const courseDisplay = isCancelled
+      ? `<span class="sched-course-cancelled">${cls.course_name || cls.course_code}</span>`
+      : (cls.course_name || cls.course_code);
+
+    const reasonHtml = (isCancelled && cls.reason)
+      ? `<div class="sched-cancel-reason">Reason: ${cls.reason}</div>`
+      : '';
+
+    return `
+    <div class="sched-item ${st}${isExtra ? ' extra-class' : ''}">
+      <div class="sched-time">
+        <div class="sched-t-start">${_t12h(cls.time_start)}</div>
+        <div class="sched-t-end">${_t12h(cls.time_end)}</div>
+      </div>
+      <div class="sched-divider">
+        <div class="sched-dot ${st}${isExtra ? ' extra' : ''}${isCancelled ? ' cancelled' : ''}"></div>
+        <div class="sched-line"></div>
+      </div>
+      <div class="sched-body">
+        <div class="sched-course">
+          ${courseDisplay}
+          ${badge}
+        </div>
+        <div class="sched-meta">
+          🏛 Room ${cls.room_no || '—'}
+          ${cls.teacher_name ? `· 👤 ${cls.teacher_name}` : (cls.teacher_code ? `· 👤 ${cls.teacher_code}` : '')}
+        </div>
+        ${reasonHtml}
+      </div>
+    </div>`;
+  }
+
   // ── Schedule list: Today / Tomorrow ───────────────────────────
 
   async function renderDaySchedule(user) {
@@ -251,17 +372,41 @@ const LiveEngine = (() => {
       return;
     }
 
-    const classes = await _fetchSchedule(
-      t.day,
-      user?.program  || 'BBA',
-      user?.year     || 1,
-      user?.semester || 1
-    );
+    const [classes, changes] = await Promise.all([
+      _fetchSchedule(t.day, user?.program, user?.year, user?.semester),
+      _fetchClassChanges(_dateStr(t.dateObj), user?.program),
+    ]);
 
+    // Build a map of cancelled classes by course_code + time_start
+    const cancelMap = {};
+    const extraList = [];
+    for (const ch of changes) {
+      if (ch.change_type === 'cancel') {
+        // Key: course_code (time_start optional match)
+        const k = ch.course_code + (ch.time_start ? '_' + ch.time_start : '');
+        cancelMap[k] = ch;
+        // Also store by code only as fallback
+        cancelMap[ch.course_code] = ch;
+      } else if (ch.change_type === 'extra') {
+        extraList.push(ch);
+      }
+    }
+
+    // Merge: mark regular classes as cancelled if matched
+    const mergedClasses = classes.map(cls => {
+      const k1 = cls.course_code + '_' + cls.time_start;
+      const k2 = cls.course_code;
+      if (cancelMap[k1]) return { ...cls, _cancelled: true, _cancelData: cancelMap[k1] };
+      if (cancelMap[k2]) return { ...cls, _cancelled: true, _cancelData: cancelMap[k2] };
+      return cls;
+    });
+
+    // Count non-cancelled + extra
+    const visibleCount = mergedClasses.length + extraList.length;
     const countEl = document.getElementById('statTodayClasses');
-    if (countEl) countEl.textContent = classes.length;
+    if (countEl) countEl.textContent = visibleCount;
 
-    if (!classes.length) {
+    if (!mergedClasses.length && !extraList.length) {
       wrap.innerHTML = `
       <div class="section-header scroll-reveal" style="margin-top:20px;">
         <h2>${t.label}</h2>
@@ -275,74 +420,137 @@ const LiveEngine = (() => {
       return;
     }
 
-    const { time }   = _nowInfo();
-    const nowMins    = _toMins(time);
+    const { time } = _nowInfo();
+    const nowMins  = _toMins(time);
+
+    // Combine regular (with cancel flag) + extra, then sort by time_start
+    const allItems = [
+      ...mergedClasses.map(cls => ({ ...cls, _isExtra: false })),
+      ...extraList.map(cls => ({ ...cls, _isExtra: true, _cancelled: false })),
+    ].sort((a, b) => _toMins(a.time_start) - _toMins(b.time_start));
 
     wrap.innerHTML = `
     <div class="section-header scroll-reveal" style="margin-top:20px;">
       <h2>${t.label}</h2>
-      <span class="section-sub">${t.day} · ${classes.length} class${classes.length !== 1 ? 'es' : ''}</span>
+      <span class="section-sub">${t.day} · ${visibleCount} class${visibleCount !== 1 ? 'es' : ''}</span>
     </div>
     <div class="schedule-list">
-      ${classes.map(cls => {
-        const s = _toMins(cls.time_start);
-        const e = _toMins(cls.time_end);
+      ${allItems.map(cls =>
+        _buildSchedItem(cls, nowMins, t.isTomorrow, cls._isExtra, cls._cancelled)
+      ).join('')}
+    </div>`;
+  }
 
-        let st = '', badge = '';
-        if (!t.isTomorrow) {
-          if (nowMins >= s && nowMins < e) {
-            st    = 'running';
-            badge = `<span class="sched-badge running">🔴 NOW · ${e - nowMins}m left</span>`;
-          } else if (nowMins >= e) {
-            st    = 'done';
-            badge = `<span class="sched-badge done">✓ Done</span>`;
-          } else if (s - nowMins > 0 && s - nowMins <= 30) {
-            badge = `<span class="sched-badge soon">⏰ In ${s - nowMins}m</span>`;
-          }
-        }
+  // ── Upcoming Classes (next 7 days) ────────────────────────────
 
-        return `
-        <div class="sched-item ${st}">
-          <div class="sched-time">
-            <div class="sched-t-start">${_t12h(cls.time_start)}</div>
-            <div class="sched-t-end">${_t12h(cls.time_end)}</div>
-          </div>
-          <div class="sched-divider">
-            <div class="sched-dot ${st}"></div>
-            <div class="sched-line"></div>
-          </div>
-          <div class="sched-body">
-            <div class="sched-course">
-              ${cls.course_name || cls.course_code}
-              ${badge}
+  async function renderUpcomingClasses(user) {
+    const wrap = document.getElementById('upcomingClassesSection');
+    if (!wrap) return;
+
+    const today = new Date();
+    // Start from tomorrow (or day after tomorrow if already showing tomorrow)
+    const startOffset = today.getHours() >= 18 ? 2 : 1;
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() + startOffset);
+
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + 7);
+
+    const fromStr = _dateStr(startDate);
+    const toStr   = _dateStr(endDate);
+
+    // Fetch class changes for the next 7 days
+    const changes = await _fetchClassChangesRange(fromStr, toStr, user?.program);
+
+    if (!changes.length) {
+      wrap.style.display = 'none';
+      return;
+    }
+
+    // Group changes by date
+    const byDate = {};
+    for (const ch of changes) {
+      if (!byDate[ch.date]) byDate[ch.date] = [];
+      byDate[ch.date].push(ch);
+    }
+
+    const sortedDates = Object.keys(byDate).sort();
+    if (!sortedDates.length) {
+      wrap.style.display = 'none';
+      return;
+    }
+
+    wrap.style.display = '';
+
+    const itemsHtml = sortedDates.map(dateStr => {
+      const d = new Date(dateStr + 'T00:00:00');
+      const dayName = DAYS[d.getDay()];
+      const dateLabel = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+      const dayItems = byDate[dateStr].sort((a, b) => _toMins(a.time_start) - _toMins(b.time_start));
+
+      return `
+      <div class="upcoming-date-group">
+        <div class="upcoming-date-header">
+          <span class="upcoming-day-name">${dayName}</span>
+          <span class="upcoming-date-label">${dateLabel}</span>
+        </div>
+        ${dayItems.map(ch => {
+          const isCancel = ch.change_type === 'cancel';
+          const isExtra  = ch.change_type === 'extra';
+          return `
+          <div class="upcoming-item ${isCancel ? 'cancelled' : ''} ${isExtra ? 'extra-class' : ''}">
+            <div class="upcoming-item-left">
+              <div class="upcoming-time">${_t12h(ch.time_start)}</div>
+              <div class="upcoming-time-end">${_t12h(ch.time_end)}</div>
             </div>
-            <div class="sched-meta">
-              🏛 Room ${cls.room_no || '—'}
-              ${cls.teacher_name ? `· 👤 ${cls.teacher_name}` : ''}
+            <div class="upcoming-item-dot ${isCancel ? 'cancelled' : isExtra ? 'extra' : ''}"></div>
+            <div class="upcoming-item-body">
+              <div class="upcoming-course ${isCancel ? 'text-cancelled' : ''}">
+                ${isCancel ? `<span class="upcoming-course-strike">${ch.course_name || ch.course_code}</span>` : (ch.course_name || ch.course_code)}
+                <span class="upcoming-badge ${isCancel ? 'cancelled' : 'extra'}">
+                  ${isCancel ? '✕ Cancelled' : '＋ Extra Class'}
+                </span>
+              </div>
+              <div class="upcoming-meta">
+                ${ch.room_no ? `🏛 Room ${ch.room_no}` : ''}
+                ${ch.teacher_name ? ` · 👤 ${ch.teacher_name}` : (ch.teacher_code ? ` · 👤 ${ch.teacher_code}` : '')}
+              </div>
+              ${isCancel && ch.reason ? `<div class="upcoming-reason">Reason: ${ch.reason}</div>` : ''}
             </div>
-          </div>
-        </div>`;
-      }).join('')}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+
+    wrap.innerHTML = `
+    <div class="section-header scroll-reveal" style="margin-top:20px;">
+      <h2>📅 Upcoming Class Changes</h2>
+      <span class="section-sub">Next 7 days</span>
+    </div>
+    <div class="upcoming-list schedule-card">
+      ${itemsHtml}
     </div>`;
   }
 
   // ── Init ──────────────────────────────────────────────────────
 
   function init() {
-    // Wait for UniSync to be available (it's loaded before this file)
     const user = (typeof UniSync !== 'undefined') ? UniSync.getUser() : null;
 
     _renderLive(user);
     renderDaySchedule(user);
+    renderUpcomingClasses(user);
 
     // Live card: refresh every 60s
     setInterval(() => _renderLive(user), 60 * 1000);
     // Schedule list: refresh every 5 min to update running/done badges
     setInterval(() => renderDaySchedule(user), 5 * 60 * 1000);
+    // Upcoming: refresh every 10 min
+    setInterval(() => renderUpcomingClasses(user), 10 * 60 * 1000);
   }
 
   document.addEventListener('DOMContentLoaded', init);
 
-  // Expose for dashboard to call if needed
-  return { init, renderDaySchedule };
+  return { init, renderDaySchedule, renderUpcomingClasses };
 })();

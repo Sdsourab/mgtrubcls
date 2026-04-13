@@ -15,17 +15,26 @@
 .sched-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--border); border:2px solid var(--bg-card); z-index:1; }
 .sched-dot.running { background:#E53E3E; box-shadow:0 0 0 3px rgba(229,62,62,.2); }
 .sched-dot.done    { background:#68D391; }
+.sched-dot.cancelled { background:#E53E3E; border-color:rgba(229,62,62,.3); }
+.sched-dot.extra   { background:#38A169; border-color:rgba(56,161,105,.3); }
 .sched-line { width:2px; flex:1; background:var(--border); margin-top:4px; min-height:24px; }
 .sched-item:last-child .sched-line { display:none; }
 .sched-body { flex:1; padding:10px 0 10px 10px; }
 .sched-course { font-size:.88rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
 .sched-meta { font-size:.74rem; color:var(--text-muted); }
 .sched-badge { font-size:.65rem; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em; }
-.sched-badge.running { background:rgba(229,62,62,.12); color:#C53030; }
-.sched-badge.done    { background:rgba(56,161,105,.12); color:#276749; }
-.sched-badge.soon    { background:rgba(237,137,54,.12); color:#C05621; }
+.sched-badge.running   { background:rgba(229,62,62,.12); color:#C53030; }
+.sched-badge.done      { background:rgba(56,161,105,.12); color:#276749; }
+.sched-badge.soon      { background:rgba(237,137,54,.12); color:#C05621; }
+.sched-badge.cancelled { background:rgba(229,62,62,.12); color:#C53030; }
+.sched-badge.extra     { background:rgba(56,161,105,.12); color:#276749; font-weight:700; }
 .sched-item.running .sched-body { background:rgba(229,62,62,.03); border-radius:var(--radius-sm); }
 .sched-item.done { opacity:.55; }
+.sched-item.cancelled { opacity:.8; }
+.sched-item.extra-class { border-left:3px solid #38A169; padding-left:0; margin-left:0; }
+.sched-item.extra-class .sched-body { background:rgba(56,161,105,.03); border-radius:var(--radius-sm); }
+.sched-course-cancelled { text-decoration:line-through; color:var(--text-muted); }
+.sched-cancel-reason { font-size:.70rem; color:#C53030; margin-top:3px; font-style:italic; }
 .schedule-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px; margin-bottom:0; }
 
 /* ── Exam alert cards ──────────────────────────────────────── */
@@ -38,6 +47,35 @@
 .exam-name { font-size:.9rem; font-weight:700; margin-bottom:4px; }
 .exam-meta { font-size:.75rem; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
 .exam-type-chip { font-size:.65rem; font-weight:700; letter-spacing:.06em; background:rgba(229,62,62,.1); color:#C53030; padding:2px 8px; border-radius:999px; text-transform:uppercase; }
+
+/* ── Upcoming Class Changes Section ───────────────────────── */
+.upcoming-list { padding:4px 0; }
+.upcoming-date-group { margin-bottom:16px; }
+.upcoming-date-group:last-child { margin-bottom:0; }
+.upcoming-date-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.upcoming-day-name  { font-size:.75rem; font-weight:700; color:var(--text-primary); text-transform:uppercase; letter-spacing:.06em; }
+.upcoming-date-label { font-size:.73rem; color:var(--text-muted); }
+.upcoming-item { display:flex; align-items:flex-start; gap:0; min-height:52px; }
+.upcoming-item-time { flex-shrink:0; width:68px; padding:10px 0; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.upcoming-time     { font-size:.74rem; font-weight:700; color:var(--text-primary); }
+.upcoming-time-end { font-size:.66rem; color:var(--text-muted); }
+.upcoming-item-divider { flex-shrink:0; width:28px; display:flex; flex-direction:column; align-items:center; padding:12px 0 0; }
+.upcoming-item-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--border); border:2px solid var(--bg-card); z-index:1; }
+.upcoming-item-dot.cancelled { background:#E53E3E; box-shadow:0 0 0 3px rgba(229,62,62,.15); }
+.upcoming-item-dot.extra     { background:#38A169; box-shadow:0 0 0 3px rgba(56,161,105,.15); }
+.upcoming-item-vline { width:2px; flex:1; background:var(--border); margin-top:4px; min-height:20px; }
+.upcoming-item:last-child .upcoming-item-vline { display:none; }
+.upcoming-item-body { flex:1; padding:8px 0 8px 10px; }
+.upcoming-course { font-size:.86rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:3px; }
+.upcoming-course-strike { text-decoration:line-through; color:var(--text-muted); }
+.upcoming-badge { font-size:.62rem; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em; }
+.upcoming-badge.cancelled { background:rgba(229,62,62,.10); color:#C53030; }
+.upcoming-badge.extra     { background:rgba(56,161,105,.10); color:#276749; }
+.upcoming-meta  { font-size:.72rem; color:var(--text-muted); }
+.upcoming-reason { font-size:.69rem; color:#C53030; font-style:italic; margin-top:2px; }
+.upcoming-item.cancelled .upcoming-item-body { background:rgba(229,62,62,.02); border-radius:var(--radius-sm); }
+.upcoming-item.extra-class { border-left:3px solid #38A169; }
+.upcoming-item.extra-class .upcoming-item-body { background:rgba(56,161,105,.02); border-radius:var(--radius-sm); }
 
 /* ═══════════════════════════════════════════════════════════════
    PWA INSTALL CARD
@@ -67,15 +105,9 @@
   transition: border-color .2s;
 }
 .notice-card-dash:hover { border-color: rgba(188,111,55,.35); }
-.notice-card-dash.type-class_cancel {
-  border-left: 3px solid #E53E3E;
-}
-.notice-card-dash.type-extra_class {
-  border-left: 3px solid #38A169;
-}
-.notice-card-dash.type-exam {
-  border-left: 3px solid #D69E2E;
-}
+.notice-card-dash.type-class_cancel { border-left: 3px solid #E53E3E; }
+.notice-card-dash.type-extra_class  { border-left: 3px solid #38A169; }
+.notice-card-dash.type-exam         { border-left: 3px solid #D69E2E; }
 .notice-card-dash.type-urgent {
   border-left: 3px solid #E53E3E;
   background: rgba(229,62,62,.03);
@@ -92,14 +124,13 @@
   font-size: .62rem; font-weight: 700; padding: 2px 7px;
   border-radius: 8px; text-transform: uppercase; letter-spacing: .05em;
 }
-.notice-dash-badge.general    { background: rgba(99,102,241,.10); color: #4338CA; }
-.notice-dash-badge.class_cancel { background: rgba(229,62,62,.10); color: #C53030; }
+.notice-dash-badge.general      { background: rgba(99,102,241,.10); color: #4338CA; }
+.notice-dash-badge.class_cancel { background: rgba(229,62,62,.10);  color: #C53030; }
 .notice-dash-badge.extra_class  { background: rgba(56,161,105,.10); color: #276749; }
 .notice-dash-badge.exam         { background: rgba(214,158,46,.10); color: #B7791F; }
-.notice-dash-badge.urgent       { background: rgba(229,62,62,.15); color: #C53030; }
+.notice-dash-badge.urgent       { background: rgba(229,62,62,.15);  color: #C53030; }
 
 .pwa-install-card__icon { font-size: 2rem; flex-shrink: 0; line-height: 1; }
-
 .pwa-install-card__text { flex: 1; min-width: 0; }
 .pwa-install-card__text h4 { font-size: .92rem; font-weight: 700; color: var(--text-primary); margin: 0 0 3px; }
 .pwa-install-card__text p  { font-size: .74rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
@@ -125,8 +156,6 @@
 #pwaInstallBtn:hover  { opacity: .9; transform: translateY(-1px); }
 #pwaInstallBtn:active { transform: translateY(0); }
 #pwaInstallBtn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-
-/* greyed state while waiting for prompt */
 #pwaInstallBtn.waiting {
   background: rgba(188,111,55,0.15);
   color: var(--text-muted);
@@ -166,9 +195,6 @@
 
   <!-- ═══════════════════════════════════════════════════════════
        PWA INSTALL CARD
-       Starts hidden. base.html's beforeinstallprompt listener
-       removes 'pwa-hidden' when the browser fires the event.
-       If already installed (standalone), JS hides it immediately.
        ═══════════════════════════════════════════════════════════ -->
   <div id="pwaInstallCard" class="pwa-install-card pwa-hidden">
     <div class="pwa-install-card__icon">📲</div>
@@ -230,6 +256,9 @@
 
   <!-- TODAY / TOMORROW SCHEDULE -->
   <div id="dayScheduleSection" class="schedule-card scroll-reveal"></div>
+
+  <!-- UPCOMING CLASS CHANGES (CR extra/cancel — next 7 days) -->
+  <div id="upcomingClassesSection" style="display:none;"></div>
 
   <!-- UPCOMING TASKS -->
   <section class="tasks-section scroll-reveal" style="margin-top:20px;">
@@ -510,7 +539,6 @@ async function _loadDashNotices() {
     var data = await res.json();
 
     if (data.success) {
-      // Sort by created_at desc (newest first)
       var notices = (data.data || []).sort(function(a, b) {
         return new Date(b.created_at) - new Date(a.created_at);
       }).slice(0, 3);
@@ -533,7 +561,7 @@ function _renderDashNotices(notices) {
     return;
   }
 
-  var TYPE_ICONS = { general:'📢', class_cancel:'❌', extra_class:'📅', exam:'📝', urgent:'🚨' };
+  var TYPE_ICONS  = { general:'📢', class_cancel:'❌', extra_class:'📅', exam:'📝', urgent:'🚨' };
   var TYPE_LABELS = { general:'General', class_cancel:'Cancelled', extra_class:'Extra Class', exam:'Exam', urgent:'Urgent' };
 
   list.innerHTML = notices.map(function(n) {
@@ -563,8 +591,6 @@ function _escHtml(str) {
 
 /* ═══════════════════════════════════════════════════════════════
    PWA Install Card
-   Uses window.__pwaPrompt set by base.html's beforeinstallprompt
-   listener. Simple and reliable — same pattern as oclock.
    ═══════════════════════════════════════════════════════════════ */
 function _initInstallCard() {
   var card    = document.getElementById('pwaInstallCard');
@@ -578,11 +604,9 @@ function _initInstallCard() {
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
-  // সবসময় দেখাও — installed থাকলেও Reinstall option থাকবে
   card.classList.remove('pwa-hidden');
 
   if (isStandalone) {
-    // App installed — Reinstall mode
     if (titleEl) titleEl.textContent = 'UniSync Installed ✓';
     if (descEl)  descEl.textContent  = 'Reinstall if removed · Works offline · No app store needed';
     if (btnText) btnText.textContent = 'Reinstall';
@@ -593,7 +617,6 @@ function _initInstallCard() {
     return;
   }
 
-  // Not installed — normal install flow
   if (window.__pwaPrompt) {
     btn.classList.remove('waiting');
   }
@@ -624,7 +647,6 @@ async function _pwaInstall() {
       card.classList.add('pwa-hidden');
       UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
     } else {
-      // User dismissed → re-enable so they can try again
       btn.disabled = false;
     }
   } catch(e) {
