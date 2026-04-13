@@ -1,81 +1,148 @@
 {% extends "base.html" %}
 {% block title %}Class Management{% endblock %}
 {% block nav_classmanage %}active{% endblock %}
+
 {% block extra_css %}
 <style>
-.cm-tabs { display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0; }
+/* ── Tabs ─────────────────────────────────────────────────── */
+.cm-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px; padding-bottom: 0;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
 .cm-tab {
-  padding:10px 20px;border:none;background:none;font-weight:600;font-size:0.88rem;
-  color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;
-  transition:all 0.2s;margin-bottom:-1px;
+  padding: 10px 18px; border: none; background: none;
+  font-weight: 600; font-size: 0.85rem; white-space: nowrap;
+  color: var(--text-muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s; margin-bottom: -1px; flex-shrink: 0;
 }
-.cm-tab.active  { color:var(--terra);border-bottom-color:var(--terra); }
-.cm-panel { display:none; }
-.cm-panel.active { display:block; }
+.cm-tab.active { color: var(--terra); border-bottom-color: var(--terra); }
+.cm-panel { display: none; }
+.cm-panel.active { display: block; }
+
+/* ── Change rows ──────────────────────────────────────────── */
 .change-row {
-  display:flex;align-items:center;gap:12px;padding:13px 16px;
-  background:var(--bg-card);border:1px solid var(--border);
-  border-radius:var(--radius-md);margin-bottom:8px;flex-wrap:wrap;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-md); margin-bottom: 8px;
+  flex-wrap: wrap; transition: border-color .2s;
 }
-.change-row:hover { background:rgba(188,111,55,0.04); }
-.change-row .change-info { flex:1;min-width:200px; }
-.change-row .change-title { font-weight:700;font-size:0.9rem;margin-bottom:3px; }
-.change-row .change-meta { font-size:0.76rem;color:var(--text-muted); }
+.change-row:hover { border-color: rgba(188,111,55,.3); }
+.change-row .change-info { flex: 1; min-width: 200px; }
+.change-row .change-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 3px; }
+.change-row .change-meta  { font-size: 0.76rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ── Access denied ────────────────────────────────────────── */
 .no-access-msg {
-  text-align:center;padding:60px 24px;
-  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  text-align: center; padding: 60px 24px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
+
+/* ── Role badge ───────────────────────────────────────────── */
+.role-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em;
+  padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+}
+.role-badge.cr      { background: rgba(188,111,55,.12); color: var(--terra); border: 1px solid rgba(188,111,55,.25); }
+.role-badge.teacher { background: rgba(56,161,105,.10); color: #276749; border: 1px solid rgba(56,161,105,.25); }
+.role-badge.admin   { background: rgba(99,102,241,.10); color: #4338CA; border: 1px solid rgba(99,102,241,.25); }
+
+/* ── Slot update list ─────────────────────────────────────── */
+.slot-row {
+  display: grid; grid-template-columns: 80px 1fr auto auto auto;
+  align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-md); margin-bottom: 6px; font-size: .84rem;
+}
+.slot-row-day  { font-size: .7rem; font-weight: 700; color: var(--terra); text-transform: uppercase; }
+.slot-row-name { font-weight: 700; }
+.slot-row-meta { font-size: .72rem; color: var(--text-muted); }
+.slot-edit-btn {
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg-secondary); color: var(--text-secondary);
+  font-size: .72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all .2s;
+}
+.slot-edit-btn:hover { border-color: var(--terra); color: var(--terra); }
+
+/* ── Edit modal ───────────────────────────────────────────── */
+.slot-modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.slot-modal-overlay.hidden { display: none; }
+.slot-modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; width: 100%; max-width: 400px;
+  animation: slotFadeIn .2s ease;
+}
+@keyframes slotFadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.slot-modal-box h3 { margin: 0 0 16px; font-size: 1rem; }
+.slot-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.slot-input {
+  width: 100%; box-sizing: border-box; padding: 9px 12px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-size: .88rem; font-family: inherit; transition: border-color .2s;
+}
+.slot-input:focus { outline: none; border-color: var(--terra); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
 
+  <!-- Header -->
   <div class="page-header scroll-reveal">
     <div>
       <h1 class="page-title">Class Management</h1>
-      <p class="page-sub" id="cmSubTitle">Manage class cancellations and extra classes</p>
+      <p class="page-sub" id="cmSubTitle">Loading…</p>
     </div>
-    <span class="cr-badge" id="cmCrBadge" style="display:none;">CR</span>
+    <span class="role-badge" id="cmRoleBadge" style="display:none;"></span>
   </div>
 
-  <!-- Non-CR access message -->
+  <!-- Non-CR/Teacher message -->
   <div id="noAccessMsg" class="no-access-msg hidden">
     <div style="font-size:3rem;margin-bottom:12px;">🔒</div>
-    <h3 style="font-weight:700;margin-bottom:8px;">CR Access Required</h3>
-    <p style="color:var(--text-muted);font-size:0.88rem;max-width:300px;margin:0 auto 16px;">
-      Only Class Representatives (CR) can manage class changes.
-      You can switch your role in Profile settings.
+    <h3 style="font-weight:700;margin-bottom:8px;">CR / Teacher Access Required</h3>
+    <p style="color:var(--text-muted);font-size:0.88rem;max-width:340px;margin:0 auto 16px;">
+      Only Class Representatives (CR) and Teachers can manage class changes.
+      Students can <a href="/auth/become-cr" style="color:var(--terra)">register as CR</a> for their batch.
     </p>
-    <a href="/auth/profile" class="btn-primary" style="display:inline-flex;text-decoration:none;">
-      Go to Profile
+    <a href="/auth/become-cr" class="btn-primary" style="display:inline-flex;text-decoration:none;">
+      Become a CR →
     </a>
   </div>
 
-  <!-- CR-only management panel -->
+  <!-- Management Panel -->
   <div id="crPanel" class="hidden">
 
-    <!-- Tabs -->
-    <div class="cm-tabs">
+    <!-- Tabs: teacher gets extra "Update Slot" tab -->
+    <div class="cm-tabs" id="cmTabs">
       <button class="cm-tab active" onclick="switchTab('cancel', this)">❌ Cancel Class</button>
-      <button class="cm-tab" onclick="switchTab('extra', this)">📅 Add Extra Class</button>
-      <button class="cm-tab" onclick="switchTab('history', this)">📋 Change History</button>
+      <button class="cm-tab" onclick="switchTab('extra', this)">📅 Extra Class</button>
+      <button class="cm-tab teacher-tab hidden" onclick="switchTab('update', this)">🔄 Update Slot</button>
+      <button class="cm-tab" onclick="switchTab('history', this)">📋 History</button>
     </div>
 
-    <!-- ── TAB: CANCEL CLASS ──────────────────────────────────── -->
+    <!-- ── TAB: CANCEL CLASS ──────────────────────────────── -->
     <div id="panel-cancel" class="cm-panel active">
       <div class="cr-compose-panel">
         <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">❌ Cancel a Class</h3>
-
         <div id="cancelMsg" class="hidden"
              style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
             <label>Course *</label>
-            <select id="cancelCourse">
-              <option value="">Loading courses…</option>
-            </select>
+            <select id="cancelCourse"><option value="">Loading…</option></select>
           </div>
           <div class="form-group">
             <label>Date *</label>
@@ -84,25 +151,21 @@
         </div>
 
         <div class="form-group" style="margin-bottom:14px;">
-          <label>Reason (optional)</label>
-          <input type="text" id="cancelReason" placeholder="e.g. Teacher on leave, department event…">
+          <label>Reason <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+          <input type="text" id="cancelReason" placeholder="e.g. Teacher on leave, official duty…">
         </div>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn-primary" onclick="submitCancel()">
-            ❌ Cancel This Class
-          </button>
-          <button class="btn-offline-draft" onclick="queueCancelOffline()">
-            💾 Save for Later (Offline)
-          </button>
+          <button class="btn-primary" onclick="submitCancel()">❌ Cancel This Class</button>
+          <button class="btn-offline-draft" onclick="queueCancelOffline()">💾 Save Offline</button>
         </div>
       </div>
 
-      <!-- Preview of upcoming cancellations -->
       <div style="margin-top:20px;">
         <div class="section-header">
-          <h3 style="font-size:0.95rem;font-weight:700;">Recent Cancellations</h3>
-          <a href="#" onclick="loadHistory();switchTab('history');return false;" class="view-all-link">View All →</a>
+          <h3 style="font-size:0.95rem;font-weight:700;">Upcoming Cancellations</h3>
+          <a href="#" onclick="switchTab('history', document.querySelector('.cm-tab:last-child'));return false;"
+             class="view-all-link">View All →</a>
         </div>
         <div id="recentCancels">
           <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem;">Loading…</div>
@@ -110,20 +173,17 @@
       </div>
     </div>
 
-    <!-- ── TAB: EXTRA CLASS ───────────────────────────────────── -->
+    <!-- ── TAB: EXTRA CLASS ───────────────────────────────── -->
     <div id="panel-extra" class="cm-panel">
       <div class="cr-compose-panel">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">📅 Add Extra Class</h3>
-
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">📅 Schedule Extra Class</h3>
         <div id="extraMsg" class="hidden"
              style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
             <label>Course *</label>
-            <select id="extraCourse">
-              <option value="">Loading courses…</option>
-            </select>
+            <select id="extraCourse"><option value="">Loading…</option></select>
           </div>
           <div class="form-group">
             <label>Date *</label>
@@ -141,146 +201,362 @@
             <input type="time" id="extraEnd">
           </div>
           <div class="form-group">
-            <label>Room No.</label>
+            <label>Room</label>
             <input type="text" id="extraRoom" placeholder="e.g. 302">
           </div>
         </div>
 
+        <!-- Conflict check result -->
+        <div id="conflictResult" class="hidden"
+             style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;
+                    background:rgba(214,158,46,.08);border:1px solid rgba(214,158,46,.25);color:#B7791F;">
+        </div>
+
         <div class="form-group" style="margin-bottom:14px;">
-          <label>Note (optional)</label>
+          <label>Note <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
           <input type="text" id="extraNote" placeholder="e.g. Make-up class for last week">
         </div>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn-primary" onclick="submitExtra()">
-            📅 Schedule Extra Class
-          </button>
-          <button class="btn-offline-draft" onclick="queueExtraOffline()">
-            💾 Save for Later (Offline)
-          </button>
+          <button class="btn-sm" style="padding:9px 14px;border:1px solid var(--border);"
+                  onclick="checkConflicts()">🔍 Check Conflicts</button>
+          <button class="btn-primary" onclick="submitExtra()">📅 Schedule Extra Class</button>
+          <button class="btn-offline-draft" onclick="queueExtraOffline()">💾 Save Offline</button>
         </div>
       </div>
     </div>
 
-    <!-- ── TAB: HISTORY ───────────────────────────────────────── -->
+    <!-- ── TAB: UPDATE SLOT (Teacher / Admin only) ─────────── -->
+    <div id="panel-update" class="cm-panel">
+      <div class="cr-compose-panel" style="margin-bottom:20px;">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">🔄 Update Room / Time</h3>
+        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:0;">
+          Select a class slot from your schedule below and update room number or time.
+          The batch will be notified automatically.
+        </p>
+      </div>
+
+      <div id="updateMsg" class="hidden"
+           style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
+
+      <div id="slotsList">
+        <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.85rem;">
+          Loading your class slots…
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: HISTORY ──────────────────────────────────────── -->
     <div id="panel-history" class="cm-panel">
       <div id="historyList">
         <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem;">
-          Click "Change History" tab to load
+          Switch to this tab to load full history.
         </div>
       </div>
     </div>
 
   </div><!-- /#crPanel -->
+</div>
 
+<!-- Slot Edit Modal -->
+<div class="slot-modal-overlay hidden" id="slotEditModal">
+  <div class="slot-modal-box">
+    <h3>✏️ Update Class Slot</h3>
+    <p id="slotEditDesc" style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;"></p>
+    <input type="hidden" id="slotEditId">
+    <input type="hidden" id="slotEditProgram">
+    <input type="hidden" id="slotEditYear">
+    <input type="hidden" id="slotEditSemester">
+    <div class="slot-form-grid" style="margin-bottom:14px;">
+      <div class="form-group">
+        <label style="font-size:.76rem;">New Room No.</label>
+        <input type="text" id="slotEditRoom" class="slot-input" placeholder="e.g. 302">
+      </div>
+      <div class="form-group">
+        <label style="font-size:.76rem;">Reason</label>
+        <input type="text" id="slotEditReason" class="slot-input" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label style="font-size:.76rem;">New Start Time</label>
+        <input type="time" id="slotEditStart" class="slot-input">
+      </div>
+      <div class="form-group">
+        <label style="font-size:.76rem;">New End Time</label>
+        <input type="time" id="slotEditEnd" class="slot-input">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" onclick="submitSlotUpdate()">Save & Notify Batch</button>
+      <button class="btn-sm" style="padding:9px 18px;" onclick="closeSlotModal()">Cancel</button>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let _user    = null;
-let _courses = [];
+var _user    = null;
+var _courses = [];
+var _slots   = [];
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async function() {
   UniSync.requireAuth();
   _user = UniSync.getUser();
   if (!_user) return;
 
-  if (_user.role === 'cr' || _user.role === 'admin') {
+  var role = _user.role || 'student';
+
+  if (role === 'cr' || role === 'admin' || role === 'teacher') {
     document.getElementById('noAccessMsg').classList.add('hidden');
     document.getElementById('crPanel').classList.remove('hidden');
-    document.getElementById('cmCrBadge').style.display = 'inline-flex';
+
+    // Badge
+    var badge = document.getElementById('cmRoleBadge');
+    badge.style.display = 'inline-flex';
+    badge.className = 'role-badge ' + (role === 'teacher' ? 'teacher' : role === 'admin' ? 'admin' : 'cr');
+    badge.textContent = role === 'teacher' ? '👨‍🏫 TEACHER' : role === 'admin' ? '⚡ ADMIN' : '🏅 CR';
+
+    // Subtitle
     document.getElementById('cmSubTitle').textContent =
-      `Managing classes for ${_user.program} Year ${_user.year} Sem ${_user.semester}`;
+      (role === 'teacher' ? 'Managing your classes' : 'Managing classes') +
+      ' for ' + (_user.program||'BBA') + ' Year ' + (_user.year||1) + ' Sem ' + (_user.semester||1);
+
+    // Show Update Slot tab for teachers and admins
+    if (role === 'teacher' || role === 'admin') {
+      document.querySelectorAll('.teacher-tab').forEach(function(el) {
+        el.classList.remove('hidden');
+      });
+    }
+
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('cancelDate').value = today;
+    document.getElementById('extraDate').value  = today;
 
     await loadCourses();
     await loadRecentCancels();
-
-    // Set default date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('cancelDate').value = today;
-    document.getElementById('extraDate').value  = today;
   } else {
     document.getElementById('noAccessMsg').classList.remove('hidden');
     document.getElementById('crPanel').classList.add('hidden');
   }
 });
 
-// ── Load courses for dropdowns ────────────────────────────────
+// ── Load courses ─────────────────────────────────────────────
 async function loadCourses() {
   try {
-    const params = new URLSearchParams({
-      day: 'Sunday', // Any day — just need course list
-      program: _user.program || 'BBA', year: _user.year || 1, semester: _user.semester || 1,
-    });
-    // Get all routines for this semester to extract unique courses
-    const res  = await fetch(`/academic/api/routine?program=${_user.program}&year=${_user.year}&semester=${_user.semester}`);
-    const data = await res.json();
+    var res  = await fetch('/academic/api/routine?program=' + (_user.program||'BBA') +
+                           '&year=' + (_user.year||1) + '&semester=' + (_user.semester||1));
+    var data = await res.json();
 
     if (data.success) {
-      // De-duplicate by course_code
-      const seen = new Set();
-      _courses = data.data.filter(r => {
+      var seen = new Set();
+      _courses = (data.data || []).filter(function(r) {
         if (seen.has(r.course_code)) return false;
         seen.add(r.course_code);
         return true;
       });
+      _slots = data.data || [];
 
-      const opts = _courses.map(c =>
-        `<option value="${c.course_code}" data-teacher="${c.teacher_code || ''}">`+
-        `${c.course_code} — ${c.course_name || c.course_code}</option>`
-      ).join('');
+      // For teachers — only show their own courses
+      var role = _user.role || 'student';
+      if (role === 'teacher') {
+        // Filter by teacher_code if we know it (from profile)
+        // We'll show all and let backend validate
+      }
 
-      document.getElementById('cancelCourse').innerHTML = `<option value="">Select course…</option>${opts}`;
-      document.getElementById('extraCourse').innerHTML  = `<option value="">Select course…</option>${opts}`;
+      var opts = _courses.map(function(c) {
+        return '<option value="' + c.course_code + '" data-teacher="' + (c.teacher_code||'') + '">'
+             + c.course_code + ' — ' + (c.course_name || c.course_code) + '</option>';
+      }).join('');
+      var blank = '<option value="">Select course…</option>';
+
+      document.getElementById('cancelCourse').innerHTML = blank + opts;
+      document.getElementById('extraCourse').innerHTML  = blank + opts;
     }
-  } catch {
-    document.getElementById('cancelCourse').innerHTML = `<option value="">Could not load courses</option>`;
-    document.getElementById('extraCourse').innerHTML  = `<option value="">Could not load courses</option>`;
+  } catch(e) {
+    document.getElementById('cancelCourse').innerHTML = '<option value="">Could not load courses</option>';
+    document.getElementById('extraCourse').innerHTML  = '<option value="">Could not load courses</option>';
   }
 }
 
-// ── Submit cancellation ───────────────────────────────────────
+// ── Load slots for teacher update tab ─────────────────────────
+async function loadSlots() {
+  var list = document.getElementById('slotsList');
+  if (!list || !_slots.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.85rem;">No class slots found for your batch.</div>';
+    return;
+  }
+
+  var DAY_ORDER = {Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4};
+  var sorted = _slots.slice().sort(function(a,b) {
+    var dA = DAY_ORDER[a.day]||0, dB = DAY_ORDER[b.day]||0;
+    if (dA !== dB) return dA - dB;
+    return (a.time_start||'').localeCompare(b.time_start||'');
+  });
+
+  list.innerHTML = sorted.map(function(s) {
+    var ts  = s.time_start_12h || s.time_start || '';
+    var te  = s.time_end_12h   || s.time_end   || '';
+    return '<div class="slot-row">'
+      + '<div class="slot-row-day">' + s.day + '</div>'
+      + '<div>'
+        + '<div class="slot-row-name">' + (s.course_name || s.course_code) + '</div>'
+        + '<div class="slot-row-meta">' + s.course_code + ' &nbsp;·&nbsp; Room ' + (s.room_no||'—') + '</div>'
+      + '</div>'
+      + '<div style="font-size:.78rem;color:var(--text-secondary);">' + ts + ' – ' + te + '</div>'
+      + '<div style="font-size:.7rem;color:var(--text-muted);">' + (s.teacher_name||s.teacher_code||'') + '</div>'
+      + '<button class="slot-edit-btn" onclick="openSlotModal(\'' + s.id + '\', \'' +
+          (s.course_name||s.course_code) + '\', \'' + s.day + '\', \'' + s.room_no + '\', \'' +
+          s.time_start + '\', \'' + s.time_end + '\', \'' +
+          (s.program||_user.program||'BBA') + '\', ' + (s.course_year||_user.year||1) + ', ' +
+          (s.course_semester||_user.semester||1) + ')">'
+        + '✏️ Edit'
+      + '</button>'
+    + '</div>';
+  }).join('');
+}
+
+// ── Slot modal ────────────────────────────────────────────────
+function openSlotModal(id, name, day, room, tStart, tEnd, prog, year, sem) {
+  document.getElementById('slotEditId').value       = id;
+  document.getElementById('slotEditProgram').value  = prog;
+  document.getElementById('slotEditYear').value     = year;
+  document.getElementById('slotEditSemester').value = sem;
+  document.getElementById('slotEditDesc').textContent =
+    name + ' — ' + day + ' ' + tStart + '–' + tEnd + ' (Room ' + room + ')';
+  document.getElementById('slotEditRoom').value  = room || '';
+  document.getElementById('slotEditStart').value = tStart || '';
+  document.getElementById('slotEditEnd').value   = tEnd || '';
+  document.getElementById('slotEditReason').value = '';
+  document.getElementById('slotEditModal').classList.remove('hidden');
+}
+
+function closeSlotModal() {
+  document.getElementById('slotEditModal').classList.add('hidden');
+}
+
+async function submitSlotUpdate() {
+  var id      = document.getElementById('slotEditId').value;
+  var room    = document.getElementById('slotEditRoom').value.trim();
+  var tStart  = document.getElementById('slotEditStart').value;
+  var tEnd    = document.getElementById('slotEditEnd').value;
+  var reason  = document.getElementById('slotEditReason').value.trim();
+  var prog    = document.getElementById('slotEditProgram').value;
+  var year    = parseInt(document.getElementById('slotEditYear').value);
+  var sem     = parseInt(document.getElementById('slotEditSemester').value);
+  var msgEl   = document.getElementById('updateMsg');
+
+  if (!room && !tStart && !tEnd) {
+    _msg(msgEl, 'Please enter at least one field to update.', 'error');
+    return;
+  }
+
+  var payload = {
+    user_id:    _user.id,
+    routine_id: id,
+    program:    prog,
+    year:       year,
+    semester:   sem,
+    reason:     reason,
+  };
+  if (room)   payload.room_no    = room;
+  if (tStart) payload.time_start = tStart;
+  if (tEnd)   payload.time_end   = tEnd;
+
+  try {
+    var res  = await fetch('/classmanagement/api/update-slot', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      UniSync.toast('✅ Slot updated — batch notified!', 'success', 4000);
+      closeSlotModal();
+      await loadCourses();  // Refresh slot data
+      if (_slots.length) loadSlots();
+    } else {
+      _msg(msgEl, data.error || 'Update failed', 'error');
+      document.getElementById('updateMsg').classList.remove('hidden');
+    }
+  } catch(e) {
+    _msg(msgEl, 'Connection error. Please try again.', 'error');
+    document.getElementById('updateMsg').classList.remove('hidden');
+  }
+}
+
+// ── Conflict check ────────────────────────────────────────────
+async function checkConflicts() {
+  var date  = document.getElementById('extraDate').value;
+  var start = document.getElementById('extraStart').value;
+  var end   = document.getElementById('extraEnd').value;
+  var res_el = document.getElementById('conflictResult');
+
+  if (!date || !start || !end) {
+    res_el.textContent = '⚠️ Please fill date, start and end time first.';
+    res_el.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    var day   = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+    var params = new URLSearchParams({
+      from: start, to: end, day: day,
+      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
+    });
+    var res  = await fetch('/academic/api/duration-search?' + params);
+    var data = await res.json();
+
+    if (data.success && data.data && data.data.length) {
+      res_el.style.background = 'rgba(229,62,62,.08)';
+      res_el.style.borderColor = 'rgba(229,62,62,.25)';
+      res_el.style.color = '#C53030';
+      res_el.textContent = '⚠️ Conflict! ' + data.data.length + ' existing class(es) at this time: ' +
+        data.data.map(function(c) { return c.course_name || c.course_code; }).join(', ');
+    } else {
+      res_el.style.background = 'rgba(56,161,105,.08)';
+      res_el.style.borderColor = 'rgba(56,161,105,.25)';
+      res_el.style.color = '#276749';
+      res_el.textContent = '✅ No conflicts — this time slot is free!';
+    }
+    res_el.classList.remove('hidden');
+  } catch(e) {
+    res_el.textContent = '⚠️ Could not check conflicts — offline?';
+    res_el.classList.remove('hidden');
+  }
+}
+
+// ── Submit cancel ─────────────────────────────────────────────
 async function submitCancel() {
-  const course = document.getElementById('cancelCourse').value;
-  const date   = document.getElementById('cancelDate').value;
-  const reason = document.getElementById('cancelReason').value.trim();
-  const msgEl  = document.getElementById('cancelMsg');
+  var course = document.getElementById('cancelCourse').value;
+  var date   = document.getElementById('cancelDate').value;
+  var reason = document.getElementById('cancelReason').value.trim();
+  var msgEl  = document.getElementById('cancelMsg');
+  var sel    = document.getElementById('cancelCourse');
+  var teacher= sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.teacher : '';
 
   if (!course || !date) { _msg(msgEl, 'Course and date are required', 'error'); return; }
 
-  // Get teacher code from selected option
-  const sel     = document.getElementById('cancelCourse');
-  const teacher = sel.options[sel.selectedIndex]?.dataset?.teacher || '';
-
-  const payload = {
-    user_id:      _user.id,
-    course_code:  course,
-    teacher_code: teacher,
-    change_date:  date,
-    reason,
-    program:      _user.program  || 'BBA',
-    year:         _user.year     || 1,
-    semester:     _user.semester || 1,
+  var payload = {
+    user_id: _user.id, course_code: course, teacher_code: teacher,
+    change_date: date, reason: reason,
+    program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
   };
 
   try {
     if (!navigator.onLine) throw new Error('offline');
-
-    const res  = await fetch('/classmanagement/api/class-changes/cancel', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var res  = await fetch('/classmanagement/api/class-changes/cancel', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-
+    var data = await res.json();
     if (data.success) {
-      _msg(msgEl, `✅ Class cancelled. A notice has been auto-published to students.`, 'success');
+      _msg(msgEl, '✅ Class cancelled — notice auto-published + batch notified!', 'success');
       document.getElementById('cancelReason').value = '';
       await loadRecentCancels();
     } else {
-      _msg(msgEl, data.error || 'Failed to cancel class', 'error');
+      _msg(msgEl, data.error || 'Failed', 'error');
     }
-  } catch (err) {
+  } catch(err) {
     if (!navigator.onLine || err.message === 'offline') {
       await queueCancelOffline(payload);
     } else {
@@ -290,67 +566,61 @@ async function submitCancel() {
 }
 
 async function queueCancelOffline(payloadOverride) {
-  const msgEl = document.getElementById('cancelMsg');
-  const course = payloadOverride?.course_code || document.getElementById('cancelCourse').value;
-  const date   = payloadOverride?.change_date  || document.getElementById('cancelDate').value;
+  var msgEl  = document.getElementById('cancelMsg');
+  var course = (payloadOverride && payloadOverride.course_code) || document.getElementById('cancelCourse').value;
+  var date   = (payloadOverride && payloadOverride.change_date)  || document.getElementById('cancelDate').value;
   if (!course || !date) { _msg(msgEl, 'Course and date required', 'error'); return; }
-
   await OfflineSync.queue('cancel_class', {
-    course_code: course,
-    change_date: date,
-    reason:      payloadOverride?.reason || document.getElementById('cancelReason').value.trim(),
-    type:        'cancel',
-    program:     _user.program, year: _user.year, semester: _user.semester,
+    course_code: course, change_date: date,
+    reason: (payloadOverride&&payloadOverride.reason) || document.getElementById('cancelReason').value.trim(),
+    type: 'cancel', program: _user.program, year: _user.year, semester: _user.semester,
   });
   _msg(msgEl, '💾 Saved offline — will sync when connected.', 'success');
 }
 
-// ── Submit extra class ────────────────────────────────────────
+// ── Submit extra ──────────────────────────────────────────────
 async function submitExtra() {
-  const course = document.getElementById('extraCourse').value;
-  const date   = document.getElementById('extraDate').value;
-  const start  = document.getElementById('extraStart').value;
-  const end    = document.getElementById('extraEnd').value;
-  const room   = document.getElementById('extraRoom').value.trim();
-  const note   = document.getElementById('extraNote').value.trim();
-  const msgEl  = document.getElementById('extraMsg');
+  var course = document.getElementById('extraCourse').value;
+  var date   = document.getElementById('extraDate').value;
+  var start  = document.getElementById('extraStart').value;
+  var end    = document.getElementById('extraEnd').value;
+  var room   = document.getElementById('extraRoom').value.trim();
+  var note   = document.getElementById('extraNote').value.trim();
+  var msgEl  = document.getElementById('extraMsg');
+  var sel    = document.getElementById('extraCourse');
+  var teacher= sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.teacher : '';
 
   if (!course || !date || !start || !end) {
-    _msg(msgEl, 'Course, date, start time, and end time are required', 'error');
-    return;
+    _msg(msgEl, 'Course, date, start and end time are required', 'error'); return;
   }
   if (start >= end) { _msg(msgEl, 'Start time must be before end time', 'error'); return; }
 
-  const sel     = document.getElementById('extraCourse');
-  const teacher = sel.options[sel.selectedIndex]?.dataset?.teacher || '';
-
-  const payload = {
+  var payload = {
     user_id: _user.id, course_code: course, teacher_code: teacher,
     change_date: date, time_start: start, time_end: end,
     room_no: room || 'TBD', reason: note,
-    program: _user.program, year: _user.year, semester: _user.semester,
+    program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
   };
 
   try {
     if (!navigator.onLine) throw new Error('offline');
-
-    const res  = await fetch('/classmanagement/api/class-changes/extra', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var res  = await fetch('/classmanagement/api/class-changes/extra', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
-
+    var data = await res.json();
     if (data.success) {
-      _msg(msgEl, `✅ Extra class scheduled! A notice has been auto-published.`, 'success');
+      _msg(msgEl, '✅ Extra class scheduled — notice auto-published + batch notified!', 'success');
       document.getElementById('extraStart').value = '';
       document.getElementById('extraEnd').value   = '';
       document.getElementById('extraNote').value  = '';
+      document.getElementById('conflictResult').classList.add('hidden');
     } else {
-      _msg(msgEl, data.error || 'Failed to add extra class', 'error');
+      _msg(msgEl, data.error || 'Failed', 'error');
     }
-  } catch (err) {
+  } catch(err) {
     if (!navigator.onLine || err.message === 'offline') {
-      await OfflineSync.queue('extra_class', { ...payload, type: 'extra' });
+      await OfflineSync.queue('extra_class', Object.assign({}, payload, {type:'extra'}));
       _msg(msgEl, '💾 Saved offline — will sync when connected.', 'success');
     } else {
       _msg(msgEl, 'Server error.', 'error');
@@ -358,80 +628,73 @@ async function submitExtra() {
   }
 }
 
-async function queueExtraOffline() {
-  return submitExtra(); // Will auto-queue if offline
-}
+async function queueExtraOffline() { submitExtra(); }
 
-// ── Load recent cancels ───────────────────────────────────────
+// ── Recent cancels ────────────────────────────────────────────
 async function loadRecentCancels() {
-  const el    = document.getElementById('recentCancels');
-  const today = new Date().toISOString().split('T')[0];
-  const in7d  = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
+  var el    = document.getElementById('recentCancels');
+  var today = new Date().toISOString().split('T')[0];
+  var in7d  = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
   try {
-    const params = new URLSearchParams({
-      program: _user.program, year: _user.year, semester: _user.semester,
+    var params = new URLSearchParams({
+      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
       from: today, to: in7d,
     });
-    const res  = await fetch(`/classmanagement/api/class-changes?${params}`);
-    const data = await res.json();
-
-    if (data.success && data.data.length) {
-      el.innerHTML = data.data.map(c => `
-      <div class="change-row">
-        <span class="class-change-chip ${c.type}">${c.type === 'cancel' ? '❌ CANCELLED' : '📅 EXTRA'}</span>
-        <div class="change-info">
-          <div class="change-title">${c.course_name || c.course_code}</div>
-          <div class="change-meta">
-            ${c.change_date}
-            ${c.time_start ? `· ${c.time_start}–${c.time_end}` : ''}
-            ${c.reason ? `· ${c.reason}` : ''}
-          </div>
-        </div>
-        <button onclick="deleteChange('${c.id}', this)"
-          style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid rgba(229,62,62,0.3);
-                 background:transparent;color:#C53030;font-size:0.72rem;cursor:pointer;">
-          Remove
-        </button>
-      </div>`).join('');
+    var res  = await fetch('/classmanagement/api/class-changes?' + params);
+    var data = await res.json();
+    if (data.success && data.data && data.data.length) {
+      el.innerHTML = data.data.map(function(c) {
+        return '<div class="change-row">'
+          + '<span class="class-change-chip ' + c.type + '">' + (c.type==='cancel'?'❌ CANCELLED':'📅 EXTRA') + '</span>'
+          + '<div class="change-info">'
+            + '<div class="change-title">' + (c.course_name||c.course_code) + '</div>'
+            + '<div class="change-meta">' + c.change_date
+              + (c.time_start ? ' · ' + c.time_start + '–' + c.time_end : '')
+              + (c.reason ? ' · ' + c.reason : '')
+            + '</div>'
+          + '</div>'
+          + '<button onclick="deleteChange(\'' + c.id + '\', this)" '
+            + 'style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid rgba(229,62,62,0.3);'
+            + 'background:transparent;color:#C53030;font-size:0.72rem;cursor:pointer;">Remove</button>'
+        + '</div>';
+      }).join('');
     } else {
       el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.83rem;">No upcoming changes in the next 7 days.</div>';
     }
-  } catch {
-    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Could not load recent changes.</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Could not load changes.</div>';
   }
 }
 
+// ── History ───────────────────────────────────────────────────
 async function loadHistory() {
-  const el    = document.getElementById('historyList');
-  el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Loading history…</div>';
-
+  var el = document.getElementById('historyList');
+  el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Loading…</div>';
   try {
-    const params = new URLSearchParams({
-      program: _user.program, year: _user.year, semester: _user.semester,
+    var params = new URLSearchParams({
+      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
     });
-    const res  = await fetch(`/classmanagement/api/class-changes?${params}`);
-    const data = await res.json();
-
-    if (data.success && data.data.length) {
-      el.innerHTML = data.data.map(c => `
-      <div class="change-row">
-        <span class="class-change-chip ${c.type}">${c.type === 'cancel' ? '❌' : '📅'} ${c.type.toUpperCase()}</span>
-        <div class="change-info">
-          <div class="change-title">${c.course_name || c.course_code}</div>
-          <div class="change-meta">
-            📅 ${c.change_date}
-            ${c.time_start ? `· ⏰ ${c.time_start}–${c.time_end}` : ''}
-            ${c.room_no && c.type === 'extra' ? `· Room ${c.room_no}` : ''}
-            ${c.reason ? `<br>💬 ${c.reason}` : ''}
-            <br>— ${c.created_by_name || 'CR'}
-          </div>
-        </div>
-      </div>`).join('');
+    var res  = await fetch('/classmanagement/api/class-changes?' + params);
+    var data = await res.json();
+    if (data.success && data.data && data.data.length) {
+      el.innerHTML = data.data.map(function(c) {
+        return '<div class="change-row">'
+          + '<span class="class-change-chip ' + c.type + '">' + (c.type==='cancel'?'❌':'📅') + ' ' + c.type.toUpperCase() + '</span>'
+          + '<div class="change-info">'
+            + '<div class="change-title">' + (c.course_name||c.course_code) + '</div>'
+            + '<div class="change-meta">📅 ' + c.change_date
+              + (c.time_start ? ' · ⏰ ' + c.time_start + '–' + c.time_end : '')
+              + (c.room_no && c.type==='extra' ? ' · Room ' + c.room_no : '')
+              + (c.reason ? '<br>💬 ' + c.reason : '')
+              + '<br>— ' + (c.created_by_name||'CR')
+            + '</div>'
+          + '</div>'
+        + '</div>';
+      }).join('');
     } else {
       el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">No class changes recorded yet.</div>';
     }
-  } catch {
+  } catch(e) {
     el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Could not load history.</div>';
   }
 }
@@ -439,28 +702,34 @@ async function loadHistory() {
 async function deleteChange(id, btn) {
   if (!confirm('Remove this class change?')) return;
   try {
-    await fetch(`/classmanagement/api/class-changes/${id}?user_id=${_user.id}`, { method: 'DELETE' });
+    await fetch('/classmanagement/api/class-changes/' + id + '?user_id=' + _user.id, { method: 'DELETE' });
     btn.closest('.change-row').remove();
     UniSync.toast('Change removed', 'success');
-  } catch { UniSync.toast('Error', 'error'); }
+  } catch(e) { UniSync.toast('Error', 'error'); }
 }
 
 // ── Tab switching ─────────────────────────────────────────────
 function switchTab(tab, btn) {
-  document.querySelectorAll('.cm-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.cm-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.cm-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.cm-panel').forEach(function(p) { p.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  const panel = document.getElementById(`panel-${tab}`);
+  var panel = document.getElementById('panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'history') loadHistory();
+  if (tab === 'update')  loadSlots();
 }
 
 function _msg(el, msg, type) {
-  el.textContent = msg;
-  el.style.background = type === 'success' ? 'var(--success-bg)' : 'var(--danger-bg)';
-  el.style.color      = type === 'success' ? 'var(--success)'    : 'var(--danger)';
+  if (!el) return;
+  el.textContent   = msg;
+  el.style.background = type === 'success' ? 'rgba(56,161,105,.1)'  : 'rgba(229,62,62,.1)';
+  el.style.color      = type === 'success' ? '#276749' : '#C53030';
+  el.style.border     = type === 'success' ? '1px solid rgba(56,161,105,.25)' : '1px solid rgba(229,62,62,.25)';
+  el.style.padding    = '9px 13px';
+  el.style.borderRadius = 'var(--radius-sm)';
+  el.style.fontSize   = '0.83rem';
   el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 6000);
+  setTimeout(function() { el.classList.add('hidden'); }, 7000);
 }
 </script>
 {% endblock %}

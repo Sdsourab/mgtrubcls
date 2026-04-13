@@ -6,30 +6,24 @@
   <title>{% block title %}UniSync{% endblock %} — Rabindra University</title>
   <meta name="description" content="UniSync Academic Portal — Rabindra University, Bangladesh, Dept. of Management">
 
-  <!-- PWA — Manifest & Theme -->
+  <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#3C2A21">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="UniSync">
-
-  <!-- iOS / Safari PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="UniSync">
   <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-192x192.png">
   <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-192x192.png">
   <link rel="apple-touch-icon" sizes="120x120" href="/static/icons/icon-128x128.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-48x48.png">
   <link rel="shortcut icon" href="/static/icons/icon-48x48.png">
-
-  <!-- Windows Tile -->
   <meta name="msapplication-TileColor" content="#3C2A21">
   <meta name="msapplication-TileImage" content="/static/icons/icon-192x192.png">
   <meta name="msapplication-config" content="none">
 
-  <!-- OG / Social -->
+  <!-- OG -->
   <meta property="og:title" content="UniSync — Rabindra University">
   <meta property="og:description" content="Academic management portal for Rabindra University Bangladesh.">
   <meta property="og:image" content="/static/icons/icon-512x512.png">
@@ -41,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Core Stylesheets -->
+  <!-- Core CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/scroll-animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/modules/pwa.css') }}">
@@ -51,12 +45,12 @@
 
 <body>
 
-<!-- VAPID public key for Web Push -->
+<!-- VAPID key for Web Push -->
 <script>
   window.__VAPID_PUBLIC_KEY = '{{ config.VAPID_PUBLIC_KEY | default("") }}';
 </script>
 
-<!-- ANIMATED BACKGROUND -->
+<!-- BACKGROUND -->
 <div id="bgLayer" aria-hidden="true">
   <canvas id="bgCanvas"></canvas>
   <div id="bgBlobs"></div>
@@ -71,21 +65,17 @@
       <div class="logo-mark">
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="20" cy="20" r="18.5" stroke="url(#sLgRing)" stroke-width="1.6"/>
-          <path d="M11 27 L20 13 L29 27"
-                stroke="url(#sLgAccent)" stroke-width="2.5"
+          <path d="M11 27 L20 13 L29 27" stroke="url(#sLgAccent)" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="20" cy="25" r="2.8" fill="url(#sLgAccent)"/>
-          <line x1="11" y1="29" x2="29" y2="29"
-                stroke="url(#sLgAccent)" stroke-width="1.6"
+          <line x1="11" y1="29" x2="29" y2="29" stroke="url(#sLgAccent)" stroke-width="1.6"
                 stroke-linecap="round" opacity="0.45"/>
           <defs>
             <linearGradient id="sLgRing" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#BC6F37"/>
-              <stop offset="1" stop-color="#CDA96A"/>
+              <stop stop-color="#BC6F37"/><stop offset="1" stop-color="#CDA96A"/>
             </linearGradient>
             <linearGradient id="sLgAccent" x1="11" y1="13" x2="29" y2="29" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#DFC084"/>
-              <stop offset="0.55" stop-color="#CDA96A"/>
+              <stop stop-color="#DFC084"/><stop offset="0.55" stop-color="#CDA96A"/>
               <stop offset="1" stop-color="#BC6F37"/>
             </linearGradient>
           </defs>
@@ -161,6 +151,7 @@
         <span id="examNavBadge" class="nav-badge nav-badge--urgent hidden">!</span>
       </a>
 
+      <!-- CLASS MANAGEMENT: CR + Admin + Teacher -->
       <a href="{{ url_for('classmanagement.management_page') }}"
          class="nav-item cr-only hidden {% block nav_classmanage %}{% endblock %}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -211,6 +202,29 @@
         <span>My Profile</span>
       </a>
 
+      <!-- BECOME CR: only shown for students (not cr/admin/teacher) -->
+      <a href="/auth/become-cr" class="nav-item student-only {% block nav_become_cr %}{% endblock %}"
+         id="navBecomeCR"
+         style="display:none;"
+         title="Register as Class Representative">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <line x1="19" y1="8" x2="19" y2="14"/>
+          <line x1="22" y1="11" x2="16" y2="11"/>
+        </svg>
+        <span>Become CR</span>
+      </a>
+
+      <!-- TEACHER PROFILE: only for teachers -->
+      <a href="/teachers/profile" class="nav-item teacher-only hidden {% block nav_teacher %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+        <span>My Classes</span>
+      </a>
+
       <a href="/guest/" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -235,21 +249,16 @@
 
     <!-- User footer -->
     <div class="sidebar-footer">
-      <div class="user-card"
-           id="sidebarUserCard"
+      <div class="user-card" id="sidebarUserCard"
            onclick="window.location.href='/auth/profile'"
-           role="button" tabindex="0"
-           aria-label="View your profile">
+           role="button" tabindex="0" aria-label="View your profile">
         <div class="user-avatar" id="sidebarAvatar" aria-hidden="true">?</div>
         <div class="user-info">
           <div class="user-name" id="sidebarUserName">Loading…</div>
           <div class="user-role" id="sidebarUserRole">student</div>
         </div>
       </div>
-      <button class="logout-btn"
-              onclick="UniSync.logout()"
-              title="Sign out"
-              aria-label="Sign out">
+      <button class="logout-btn" onclick="UniSync.logout()" title="Sign out" aria-label="Sign out">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
           <polyline points="16 17 21 12 16 7"/>
@@ -262,9 +271,7 @@
 
   <!-- MOBILE HEADER -->
   <header class="mobile-header" role="banner">
-    <button class="mobile-menu-btn"
-            onclick="UniSync.toggleSidebar()"
-            aria-label="Open menu">
+    <button class="mobile-menu-btn" onclick="UniSync.toggleSidebar()" aria-label="Open menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
         <line x1="3" y1="6"  x2="21" y2="6"/>
         <line x1="3" y1="12" x2="21" y2="12"/>
@@ -272,26 +279,21 @@
       </svg>
     </button>
     <div class="mobile-logo" aria-label="UniSync">UniSync</div>
-    <div class="mobile-user-avatar"
-         id="mobileAvatar"
+    <div class="mobile-user-avatar" id="mobileAvatar"
          onclick="window.location.href='/auth/profile'"
-         role="button" tabindex="0"
-         aria-label="Profile">?</div>
+         role="button" tabindex="0" aria-label="Profile">?</div>
   </header>
 
   <!-- Mobile overlay -->
-  <div class="sidebar-overlay"
-       id="sidebarOverlay"
-       onclick="UniSync.toggleSidebar()"
-       aria-hidden="true"
-       role="presentation"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"
+       onclick="UniSync.toggleSidebar()" aria-hidden="true" role="presentation"></div>
 
   <!-- MAIN CONTENT -->
   <main class="main-content" id="mainContent">
 
     {% block content %}{% endblock %}
 
-    <!-- Developer credit footer -->
+    <!-- Footer -->
     <footer style="
       text-align:center; padding:28px 20px 18px;
       border-top:1px solid var(--border); color:var(--text-muted);
@@ -320,7 +322,7 @@
         <span style="color:var(--border-mid);">|</span>
         <span>Developer: <span style="color:var(--terra); font-weight:700;">Sourav</span></span>
         <span style="color:var(--border-mid);">|</span>
-        <span style="color:var(--text-muted);">v 7.9 2026</span>
+        <span style="color:var(--text-muted);">v 8.0 2026</span>
       </div>
     </footer>
 
@@ -367,11 +369,11 @@
 
 </div>
 
-<!-- TOAST NOTIFICATIONS -->
+<!-- TOAST -->
 <div class="toast-container" id="toastContainer"
      role="region" aria-label="Notifications" aria-live="polite"></div>
 
-<!-- OFFLINE STATUS BAR -->
+<!-- OFFLINE BAR -->
 <div id="offlineBar" class="offline-bar" role="status" aria-live="polite">
   <span class="offline-bar-icon">📡</span>
   <span class="offline-bar-label" id="offlineBarLabel">Offline Mode</span>
@@ -401,91 +403,109 @@
 })();
 </script>
 
-<!-- CR / ADMIN NAV VISIBILITY -->
+<!-- ═══════════════════════════════════════════════════════
+     ROLE-BASED NAV VISIBILITY
+     CR + Teacher → Class Management visible
+     Teacher only → My Classes visible
+     Student only → Become CR visible
+     Admin only   → Admin Panel visible
+     ═══════════════════════════════════════════════════════ -->
 <script>
 (function () {
   try {
-    const u = JSON.parse(localStorage.getItem('us_user') || 'null');
-    if (u?.role === 'cr' || u?.role === 'admin') {
-      document.querySelectorAll('.cr-only').forEach(el => el.classList.remove('hidden'));
+    var u = JSON.parse(localStorage.getItem('us_user') || 'null');
+    if (!u) return;
+
+    var role = u.role || 'student';
+
+    // CR + Admin + Teacher → show Class Management
+    if (role === 'cr' || role === 'admin' || role === 'teacher') {
+      document.querySelectorAll('.cr-only').forEach(function(el) {
+        el.classList.remove('hidden');
+      });
     }
-    if (u?.role === 'admin') {
-      document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+
+    // Admin → Admin Panel
+    if (role === 'admin') {
+      document.querySelectorAll('.admin-only').forEach(function(el) {
+        el.classList.remove('hidden');
+      });
     }
+
+    // Teacher → My Classes
+    if (role === 'teacher') {
+      document.querySelectorAll('.teacher-only').forEach(function(el) {
+        el.classList.remove('hidden');
+      });
+    }
+
+    // Student only → Become CR (hide for cr/admin/teacher)
+    var becomeCrNav = document.getElementById('navBecomeCR');
+    if (becomeCrNav) {
+      if (role === 'student') {
+        becomeCrNav.style.display = '';  // show
+      } else {
+        becomeCrNav.style.display = 'none';  // hide
+      }
+    }
+
+    // Set data-role on body for CSS targeting
+    document.body.setAttribute('data-role', role);
+
   } catch (e) {}
 })();
 </script>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     PWA — Service Worker Registration
-     Mechanism from Sdsourab/oclock:
-       · new URL('sw.js', document.baseURI).href  → absolute URL resolve
-         so SW registration works from ANY page path on Vercel
-       · window 'load' event — browser fully loaded before registering
-       · No scope option — browser infers '/' from /sw.js file location
-         (vercel.json routes /sw.js with Service-Worker-Allowed: / header)
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════
+     PWA — Service Worker + Install Prompt
+     ═══════════════════════════════════════════════════════ -->
 <script>
 (function () {
   if (!('serviceWorker' in navigator)) return;
 
-  // ── 1. Register Service Worker (oclock mechanism) ─────────────
+  // 1. Register SW
   window.addEventListener('load', function () {
     try {
-      // '/sw.js' — leading slash = absolute from origin.
-      // new URL('/sw.js', baseURI) always gives https://yoursite.vercel.app/sw.js
-      // regardless of current page path (/dashboard, /planner/, /auth/login etc.)
-      // oclock works with relative 'sw.js' because it's a single-page root app.
-      // UniSync has nested routes → MUST use absolute '/sw.js'.
       var swUrl = new URL('/sw.js', document.baseURI).href;
-
       navigator.serviceWorker.register(swUrl)
         .then(function (reg) {
           console.log('[UniSync SW] Registered. Scope:', reg.scope);
           window.__swReg = reg;
 
-          // Auto-update: check every 60 minutes
           setInterval(function () { reg.update(); }, 60 * 60 * 1000);
 
-          // New SW waiting → show update toast
           reg.addEventListener('updatefound', function () {
-            var newWorker = reg.installing;
-            if (!newWorker) return;
-            newWorker.addEventListener('statechange', function () {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                _showUpdateToast(newWorker);
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                _showUpdateToast(nw);
               }
             });
           });
 
-          // Already waiting on load
           if (reg.waiting && navigator.serviceWorker.controller) {
             _showUpdateToast(reg.waiting);
           }
+
+          // ── Auto-subscribe to Push Notifications ──────────────
+          // Only if VAPID key available and user is logged in
+          setTimeout(function() { _tryPushSubscribe(reg); }, 3000);
         })
-        .catch(function (err) {
-          console.error('[UniSync SW] Registration failed:', err);
-        });
+        .catch(function (err) { console.error('[UniSync SW]', err); });
 
-    } catch (e) {
-      console.error('[UniSync SW] Setup error:', e);
-    }
+    } catch (e) { console.error('[UniSync SW] Setup error:', e); }
 
-    // Page reload after SW takes control
     var _refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', function () {
       if (!_refreshing) { _refreshing = true; window.location.reload(); }
     });
   });
 
-  // ── 2. Install Prompt (beforeinstallprompt) ────────────────────
-  // Captured globally — dashboard.html's install button reads window.__pwaPrompt
+  // 2. Install Prompt
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     window.__pwaPrompt = e;
-    console.log('[UniSync PWA] Install prompt ready.');
-
-    // Show install card if it exists on this page
     var card = document.getElementById('pwaInstallCard');
     if (card) {
       card.classList.remove('pwa-hidden');
@@ -495,53 +515,104 @@
   });
 
   window.addEventListener('appinstalled', function () {
-    console.log('[UniSync PWA] App installed.');
     window.__pwaPrompt = null;
     var card = document.getElementById('pwaInstallCard');
     if (card) card.classList.add('pwa-hidden');
-    if (window.UniSync && typeof UniSync.toast === 'function') {
+    if (window.UniSync && UniSync.toast) {
       UniSync.toast('✅ UniSync installed! Open from home screen.', 'success', 5000);
     }
   });
 
-  // ── 3. Offline / Online banner ─────────────────────────────────
+  // 3. Online/Offline
   function _updateOnlineStatus() {
-    if (navigator.onLine) {
-      document.body.classList.remove('is-offline');
-    } else {
-      document.body.classList.add('is-offline');
-    }
+    document.body.classList.toggle('is-offline', !navigator.onLine);
   }
   window.addEventListener('online',  _updateOnlineStatus);
   window.addEventListener('offline', _updateOnlineStatus);
   _updateOnlineStatus();
 
-  // ── 4. SW update toast ─────────────────────────────────────────
+  // 4. Update toast
   function _showUpdateToast(newWorker) {
-    if (window.UniSync && typeof UniSync.toast === 'function') {
+    if (window.UniSync && UniSync.toast) {
       UniSync.toast('🔄 Update available — tap to refresh', 'info', 10000, function () {
         newWorker.postMessage({ type: 'SKIP_WAITING' });
       });
       return;
     }
-    // Fallback minimal toast
     var t = document.createElement('div');
-    t.style.cssText = [
-      'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%)',
-      'background:#3C2A21;color:#FCF5E8;padding:.875rem 1.5rem',
-      'border-radius:12px;font-family:Outfit,sans-serif;font-size:.9rem',
-      'box-shadow:0 8px 32px rgba(60,42,33,.35);z-index:99999',
-      'display:flex;align-items:center;gap:.75rem;cursor:pointer'
-    ].join(';');
-    t.innerHTML = '<span>🔄 Update available</span>'
-      + '<button style="background:#FCF5E8;color:#3C2A21;border:none;border-radius:6px;'
-      + 'padding:.35rem .85rem;cursor:pointer;font-weight:600">Refresh</button>';
+    t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
+      'background:#3C2A21;color:#FCF5E8;padding:.875rem 1.5rem;border-radius:12px;' +
+      'font-family:Outfit,sans-serif;font-size:.9rem;box-shadow:0 8px 32px rgba(60,42,33,.35);' +
+      'z-index:99999;display:flex;align-items:center;gap:.75rem;cursor:pointer';
+    t.innerHTML = '<span>🔄 Update available</span>' +
+      '<button style="background:#FCF5E8;color:#3C2A21;border:none;border-radius:6px;' +
+      'padding:.35rem .85rem;cursor:pointer;font-weight:600">Refresh</button>';
     t.querySelector('button').addEventListener('click', function () {
-      newWorker.postMessage({ type: 'SKIP_WAITING' });
-      t.remove();
+      newWorker.postMessage({ type: 'SKIP_WAITING' }); t.remove();
     });
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 12000);
+  }
+
+  // 5. Push Notification subscription
+  function _tryPushSubscribe(reg) {
+    try {
+      var vapidKey = window.__VAPID_PUBLIC_KEY;
+      if (!vapidKey) return;
+
+      var userRaw = localStorage.getItem('us_user');
+      if (!userRaw) return;
+      var user = JSON.parse(userRaw);
+      if (!user || !user.id) return;
+
+      if (!('PushManager' in window)) return;
+
+      Notification.requestPermission().then(function(perm) {
+        if (perm !== 'granted') return;
+
+        reg.pushManager.getSubscription().then(function(existing) {
+          if (existing) {
+            // Already subscribed — sync with server
+            _savePushSub(existing, user.id);
+            return;
+          }
+          // Subscribe
+          var appServerKey = _urlBase64ToUint8Array(vapidKey);
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: appServerKey
+          }).then(function(sub) {
+            _savePushSub(sub, user.id);
+          }).catch(function(e) {
+            console.warn('[Push] Subscribe failed:', e);
+          });
+        });
+      });
+    } catch(e) {
+      console.warn('[Push] setup error:', e);
+    }
+  }
+
+  function _savePushSub(sub, userId) {
+    fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        subscription: sub.toJSON()
+      })
+    }).catch(function() {});
+  }
+
+  function _urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    var rawData = window.atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
 
 })();

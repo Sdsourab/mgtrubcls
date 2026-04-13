@@ -2,189 +2,324 @@
 {% block title %}Resources{% endblock %}
 {% block nav_resources %}active{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── Semester tabs ────────────────────────────────────────── */
+.sem-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.sem-chip {
+  padding: 5px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+  border: 1px solid var(--border); background: var(--bg-card); cursor: pointer;
+  transition: all .18s; color: var(--text-secondary);
+}
+.sem-chip:hover, .sem-chip.active {
+  background: var(--terra); color: #fff; border-color: transparent;
+}
+
+/* ── Resource card enhancements ─────────────────────────── */
+.resource-sem-badge {
+  display: inline-block; font-size: .6rem; font-weight: 700;
+  padding: 1px 6px; border-radius: 8px; margin-top: 3px;
+  background: rgba(188,111,55,.10); color: var(--terra);
+  border: 1px solid rgba(188,111,55,.20); letter-spacing: .04em;
+}
+.resource-teacher-badge {
+  display: inline-block; font-size: .6rem; font-weight: 700;
+  padding: 1px 6px; border-radius: 8px; margin-left: 4px;
+  background: rgba(56,161,105,.10); color: #276749;
+  border: 1px solid rgba(56,161,105,.20);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-wrapper">
-    <div class="page-header scroll-reveal">
-        <div>
-            <h1 class="page-title">Study Resources</h1>
-            <p class="page-sub">Notes, files and study materials</p>
-        </div>
-        <button class="btn-primary" onclick="openAddResource()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Upload
-        </button>
+  <div class="page-header scroll-reveal">
+    <div>
+      <h1 class="page-title">Study Resources</h1>
+      <p class="page-sub">Notes, files and study materials — filtered by your semester</p>
     </div>
+    <button class="btn-primary" onclick="openAddResource()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Upload
+    </button>
+  </div>
 
-    <div class="filter-bar">
-        <input type="text" id="resourceSearch" placeholder="Search by subject..." class="filter-search" oninput="loadResources()">
-    </div>
+  <!-- Filter bar -->
+  <div class="filter-bar" style="margin-bottom:10px;">
+    <input type="text" id="resourceSearch" placeholder="Search by subject or title…"
+           class="filter-search" oninput="loadResources()">
+  </div>
 
-    <div class="resources-grid scroll-stagger" id="resourcesGrid">
-        <div class="resource-skeleton"></div>
-        <div class="resource-skeleton"></div>
-    </div>
+  <!-- Semester filter chips -->
+  <div class="sem-tabs" id="semTabs">
+    <button class="sem-chip active" data-sem="" onclick="setSemFilter('', this)">All Semesters</button>
+    <button class="sem-chip" data-sem="my" onclick="setSemFilter('my', this)">My Semester</button>
+    <button class="sem-chip" data-sem="1" onclick="setSemFilter('1', this)">Year 1</button>
+    <button class="sem-chip" data-sem="2" onclick="setSemFilter('2', this)">Year 2</button>
+    <button class="sem-chip" data-sem="3" onclick="setSemFilter('3', this)">Year 3</button>
+    <button class="sem-chip" data-sem="4" onclick="setSemFilter('4', this)">Year 4</button>
+  </div>
+
+  <div class="resources-grid scroll-stagger" id="resourcesGrid">
+    <div class="resource-skeleton"></div>
+    <div class="resource-skeleton"></div>
+  </div>
 </div>
 
-<!-- Add Resource Modal -->
+<!-- Upload Modal -->
 <div class="modal-overlay hidden" id="addResourceModal">
-    <div class="modal-box">
-        <button class="modal-close" onclick="document.getElementById('addResourceModal').classList.add('hidden')">✕</button>
-        <h3>Share a Resource</h3>
-        <form onsubmit="submitResource(event)" class="modal-form">
-            <div class="form-group">
-                <label>Title *</label>
-                <input type="text" id="r_title" placeholder="e.g., MGT-3103 Chapter 5 Notes" required>
-            </div>
-            <div class="form-group">
-                <label>Subject / Course</label>
-                <input type="text" id="r_subject" placeholder="e.g., Insurance and Risk Management">
-            </div>
-            <div class="form-group">
-                <label>File URL (Google Drive, etc.)</label>
-                <input type="url" id="r_url" placeholder="https://drive.google.com/...">
-            </div>
-            <button type="submit" class="btn-primary btn-full">Share Resource</button>
-        </form>
-    </div>
+  <div class="modal-box">
+    <button class="modal-close"
+            onclick="document.getElementById('addResourceModal').classList.add('hidden')">✕</button>
+    <h3>Share a Resource</h3>
+    <form onsubmit="submitResource(event)" class="modal-form">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="r_title" placeholder="e.g., MGT-3103 Chapter 5 Notes" required>
+      </div>
+      <div class="form-group">
+        <label>Subject / Course</label>
+        <input type="text" id="r_subject" placeholder="e.g., Insurance and Risk Management">
+      </div>
+      <div class="form-group">
+        <label>File URL (Google Drive, etc.)</label>
+        <input type="url" id="r_url" placeholder="https://drive.google.com/…">
+      </div>
+
+      <!-- Semester targeting — teachers can specify -->
+      <div id="targetingSection" style="display:none;">
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px;">
+          🎯 Target audience (optional — leave blank for all semesters)
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="form-group">
+            <label>For Year</label>
+            <select id="r_year">
+              <option value="">All Years</option>
+              <option value="1">Year 1</option>
+              <option value="2">Year 2</option>
+              <option value="3">Year 3</option>
+              <option value="4">Year 4</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>For Semester</label>
+            <select id="r_semester">
+              <option value="">All Semesters</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary btn-full">Share Resource</button>
+    </form>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    UniSync.requireAuth();
-    loadResources();
+var _currentUser   = null;
+var _semFilter     = '';   // '' = all, 'my' = user's semester, '1'-'4' = year
+
+document.addEventListener('DOMContentLoaded', function() {
+  UniSync.requireAuth();
+  _currentUser = UniSync.getUser();
+
+  // Show targeting section for teachers and CR
+  var role = (_currentUser && _currentUser.role) || 'student';
+  if (role === 'teacher' || role === 'admin') {
+    var ts = document.getElementById('targetingSection');
+    if (ts) ts.style.display = 'block';
+  }
+
+  loadResources();
 });
 
+function setSemFilter(val, btn) {
+  _semFilter = val;
+  document.querySelectorAll('.sem-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  loadResources();
+}
+
 async function loadResources() {
-    const search = document.getElementById('resourceSearch').value;
-    const params = new URLSearchParams({dept:'Management'});
-    if (search) params.append('subject', search);
+  var search = document.getElementById('resourceSearch').value.trim();
+  var grid   = document.getElementById('resourcesGrid');
+  grid.innerHTML = '<div class="resource-skeleton"></div><div class="resource-skeleton"></div>';
 
-    const grid = document.getElementById('resourcesGrid');
-    grid.innerHTML = '<div class="resource-skeleton"></div><div class="resource-skeleton"></div>';
+  var params = new URLSearchParams({ dept: 'Management' });
+  if (search) params.append('subject', search);
 
-    try {
-        const res  = await fetch(`/campus/api/resources?${params}`);
-        const data = await res.json();
+  // Semester filter
+  if (_semFilter === 'my' && _currentUser) {
+    if (_currentUser.year)     params.append('year',     _currentUser.year);
+    if (_currentUser.semester) params.append('semester', _currentUser.semester);
+    if (_currentUser.program)  params.append('program',  _currentUser.program);
+  } else if (_semFilter && _semFilter !== '') {
+    params.append('year', _semFilter);
+  }
 
-        if (!data.success || !data.data.length) {
-            grid.innerHTML = `<div class="empty-state-full">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <h3>No resources yet</h3>
-                <p>Be the first to share study materials!</p>
-            </div>`;
-            return;
-        }
+  try {
+    var res  = await fetch('/campus/api/resources?' + params);
+    var data = await res.json();
 
-        const currentUser = UniSync.getUser();
-        const currentUid  = currentUser?.id || '';
-        const currentName = currentUser?.full_name || '';
-
-        grid.innerHTML = data.data.map(r => {
-            // Owner check: prefer user_id match; fall back to name match for older entries
-            const isOwner = (currentUid && r.uploader_user_id && r.uploader_user_id === currentUid)
-                         || (!r.uploader_user_id && currentName && r.uploaded_by === currentName);
-
-            return `
-            <div class="resource-card" id="rc-${r.id}">
-                <div class="resource-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                </div>
-                <div class="resource-info">
-                    <div class="resource-title">${r.title || 'Untitled'}</div>
-                    <div class="resource-subject">${r.subject || r.dept}</div>
-                    ${r.created_at ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">${new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
-                    <div class="resource-uploader" style="display:flex;align-items:center;gap:5px;margin-top:4px;">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11" style="color:var(--terra);flex-shrink:0;">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                      </svg>
-                      <span style="font-size:0.70rem;color:var(--text-muted);">
-                        ${r.uploaded_by && r.uploaded_by !== 'Anonymous'
-                          ? `<strong style="color:var(--text-secondary);font-weight:600;">${r.uploaded_by}</strong>`
-                          : 'Anonymous'}
-                      </span>
-                      ${isOwner ? '<span style="font-size:0.58rem;background:rgba(188,111,55,0.10);color:var(--terra);border:1px solid rgba(188,111,55,0.22);border-radius:10px;padding:1px 6px;font-weight:700;letter-spacing:0.05em;">You</span>' : ''}
-                    </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                    ${r.file_url ? `<a href="${r.file_url}" target="_blank" class="btn-sm resource-download">Open →</a>` : ''}
-                    ${isOwner ? `
-                    <button class="btn-sm btn-danger" onclick="deleteResource(${r.id}, '${currentUid}')"
-                        title="Delete this resource"
-                        style="display:flex;align-items:center;gap:4px;">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
-                      Delete
-                    </button>` : ''}
-                </div>
-            </div>`;
-        }).join('');
-    } catch(e) {
-        console.error(e);
-        grid.innerHTML = '<div class="empty-state"><p>Failed to load resources. Check connection.</p></div>';
+    if (!data.success || !data.data || !data.data.length) {
+      grid.innerHTML = '<div class="empty-state-full">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56">'
+        + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
+        + '<polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+        + '<h3>No resources yet</h3>'
+        + '<p>Be the first to share study materials!</p>'
+        + '</div>';
+      return;
     }
+
+    var uid  = (_currentUser && _currentUser.id)        || '';
+    var name = (_currentUser && _currentUser.full_name)  || '';
+
+    grid.innerHTML = data.data.map(function(r) {
+      var isOwner = (uid && r.uploader_user_id && r.uploader_user_id === uid)
+                 || (!r.uploader_user_id && name && r.uploaded_by === name);
+
+      var semBadge = '';
+      if (r.target_year || r.target_semester) {
+        semBadge = '<span class="resource-sem-badge">'
+          + (r.target_year ? 'Y' + r.target_year : '')
+          + (r.target_semester ? ' S' + r.target_semester : '')
+          + '</span>';
+      }
+
+      var teacherBadge = r.uploaded_by_role === 'teacher'
+        ? '<span class="resource-teacher-badge">Teacher</span>' : '';
+
+      var dateStr = r.created_at
+        ? new Date(r.created_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})
+        : '';
+
+      return '<div class="resource-card" id="rc-' + r.id + '">'
+        + '<div class="resource-icon">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28">'
+          + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+          + '<polyline points="14 2 14 8 20 8"/>'
+          + '<line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'
+          + '<polyline points="10 9 9 9 8 9"/></svg>'
+        + '</div>'
+        + '<div class="resource-info">'
+          + '<div class="resource-title">' + _esc(r.title || 'Untitled') + '</div>'
+          + '<div class="resource-subject">' + _esc(r.subject || r.dept || '') + '</div>'
+          + (dateStr ? '<div style="font-size:.65rem;color:var(--text-muted);margin-top:2px;">' + dateStr + '</div>' : '')
+          + '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">'
+            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11" style="color:var(--terra);flex-shrink:0;">'
+            + '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+            + '<span style="font-size:.70rem;color:var(--text-muted);">'
+              + '<strong style="color:var(--text-secondary);font-weight:600;">' + _esc(r.uploaded_by || 'Anonymous') + '</strong>'
+            + '</span>'
+            + teacherBadge
+            + (isOwner ? '<span style="font-size:.58rem;background:rgba(188,111,55,.10);color:var(--terra);border:1px solid rgba(188,111,55,.22);border-radius:10px;padding:1px 6px;font-weight:700;">You</span>' : '')
+          + '</div>'
+          + semBadge
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+          + (r.file_url ? '<a href="' + _esc(r.file_url) + '" target="_blank" rel="noopener" class="btn-sm resource-download">Open →</a>' : '')
+          + (isOwner
+              ? '<button class="btn-sm btn-danger" onclick="deleteResource(' + r.id + ', \'' + uid + '\')" '
+                + 'title="Delete" style="display:flex;align-items:center;gap:4px;">'
+                + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">'
+                + '<polyline points="3 6 5 6 21 6"/>'
+                + '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'
+                + '</svg> Delete</button>'
+              : '')
+        + '</div>'
+      + '</div>';
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    grid.innerHTML = '<div class="empty-state"><p>Failed to load resources. Check connection.</p></div>';
+  }
 }
 
 async function deleteResource(id, userId) {
-    if (!confirm('Delete this resource? This cannot be undone.')) return;
-
-    const card = document.getElementById(`rc-${id}`);
-    if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
-
-    try {
-        const res  = await fetch(`/campus/api/resources/${id}?user_id=${userId}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-            UniSync.toast('Resource deleted.', 'success');
-            if (card) card.remove();
-        } else {
-            UniSync.toast(data.error || 'Delete failed', 'error');
-            if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
-        }
-    } catch(e) {
-        UniSync.toast('Connection error', 'error');
-        if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
+  if (!confirm('Delete this resource? This cannot be undone.')) return;
+  var card = document.getElementById('rc-' + id);
+  if (card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
+  try {
+    var res  = await fetch('/campus/api/resources/' + id + '?user_id=' + userId, { method: 'DELETE' });
+    var data = await res.json();
+    if (data.success) {
+      UniSync.toast('Resource deleted.', 'success');
+      if (card) card.remove();
+    } else {
+      UniSync.toast(data.error || 'Delete failed', 'error');
+      if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
     }
+  } catch(e) {
+    UniSync.toast('Connection error', 'error');
+    if (card) { card.style.opacity = '1'; card.style.pointerEvents = ''; }
+  }
 }
 
 async function submitResource(e) {
-    e.preventDefault();
-    const user = UniSync.getUser();
-    const payload = {
-        title:            document.getElementById('r_title').value,
-        subject:          document.getElementById('r_subject').value,
-        file_url:         document.getElementById('r_url').value,
-        dept:             'Management',
-        uploaded_by:      user?.full_name || 'Anonymous',
-        uploader_user_id: user?.id || '',
-    };
-    try {
-        const res  = await fetch('/campus/api/resources', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-            UniSync.toast('Resource shared!', 'success');
-            document.getElementById('addResourceModal').classList.add('hidden');
-            e.target.reset();
-            loadResources();
-        }
-    } catch(e) { UniSync.toast('Error', 'error'); }
+  e.preventDefault();
+  var user = UniSync.getUser();
+  var role = (user && user.role) || 'student';
+
+  var year_val = document.getElementById('r_year')     ? document.getElementById('r_year').value     : '';
+  var sem_val  = document.getElementById('r_semester') ? document.getElementById('r_semester').value  : '';
+
+  // For students — default to their own year/semester
+  if (role === 'student' || role === 'cr') {
+    year_val = year_val || (user && user.year)     || '';
+    sem_val  = sem_val  || (user && user.semester) || '';
+  }
+
+  var payload = {
+    title:            document.getElementById('r_title').value.trim(),
+    subject:          document.getElementById('r_subject').value.trim(),
+    file_url:         document.getElementById('r_url').value.trim(),
+    dept:             'Management',
+    uploaded_by:      (user && user.full_name) || 'Anonymous',
+    uploader_user_id: (user && user.id)        || '',
+    program:          (user && user.program)   || 'BBA',
+    target_year:      year_val ? parseInt(year_val) : null,
+    target_semester:  sem_val  ? parseInt(sem_val)  : null,
+  };
+
+  if (!payload.title) { UniSync.toast('Title is required', 'error'); return; }
+
+  try {
+    var res  = await fetch('/campus/api/resources', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    var data = await res.json();
+    if (data.success) {
+      UniSync.toast('Resource shared!', 'success');
+      document.getElementById('addResourceModal').classList.add('hidden');
+      e.target.reset();
+      loadResources();
+    } else {
+      UniSync.toast(data.error || 'Upload failed', 'error');
+    }
+  } catch(err) {
+    UniSync.toast('Connection error', 'error');
+  }
 }
 
-function openAddResource() { document.getElementById('addResourceModal').classList.remove('hidden'); }
+function openAddResource() {
+  document.getElementById('addResourceModal').classList.remove('hidden');
+}
+
+function _esc(str) {
+  var d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
 </script>
 {% endblock %}

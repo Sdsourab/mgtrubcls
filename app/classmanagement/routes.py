@@ -1,9 +1,14 @@
 """
 app/classmanagement/routes.py
 ──────────────────────────────
-CR-only: Cancel existing classes, add extra classes.
-Changes broadcast to all students in the same cohort via auto-notice.
-Offline sync endpoint handles both 'cancel' and 'extra' action types.
+Class management — CR AND Teacher can:
+  • Cancel a class on a specific date
+  • Add an extra class
+  • Update room number / time for a class slot
+  • Broadcast notice to affected batch
+  • Push notification to all subscribed users in the batch
+
+Route order: static sub-paths BEFORE /<change_id>
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -13,21 +18,30 @@ from datetime import date as _date
 classmanagement_bp = Blueprint('classmanagement', __name__)
 
 
-def _require_cr(user_id: str):
-    """Return profile dict if CR/admin, else None."""
+# ─────────────────────────────────────────────────────────────
+# Auth helper — CR, Admin, OR Teacher
+# ─────────────────────────────────────────────────────────────
+
+def _require_cr_or_teacher(user_id: str):
+    """Return profile dict if CR, admin, or teacher. Else None."""
     if not user_id:
         return None
     try:
         sb = get_supabase_admin()
         p  = sb.table('profiles').select('*').eq('id', user_id).single().execute()
         profile = p.data or {}
-        return profile if profile.get('role') in ('cr', 'admin') else None
+        if profile.get('role') in ('cr', 'admin', 'teacher'):
+            return profile
+        return None
     except Exception:
         return None
 
 
+# ─────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────
+
 def _resolve_course_name(sb, course_code: str) -> str:
-    """Lookup full course name from mappings table."""
     try:
         m = sb.table('mappings').select('full_name').eq('code', course_code).execute()
         return m.data[0]['full_name'] if m.data else course_code
@@ -35,14 +49,19 @@ def _resolve_course_name(sb, course_code: str) -> str:
         return course_code
 
 
-def _publish_notice(sb, user_id: str, profile: dict, title: str, content: str,
-                    content_text: str, notice_type: str, program: str,
-                    year: int, semester: int):
-    """Create an auto-notice for a class change. Non-fatal on failure."""
+def _publish_notice(sb, user_id: str, profile: dict, title: str,
+                    content: str, content_text: str, notice_type: str,
+                    program: str, year: int, semester: int):
+    """Auto-create a notice for the batch. Non-fatal."""
     try:
+        author_name = profile.get('full_name', 'CR')
+        role        = profile.get('role', 'cr')
+        if role == 'teacher':
+            author_name += ' (Teacher)'
+
         sb.table('notices').insert({
             'author_id':    user_id,
-            'author_name':  profile.get('full_name', 'CR'),
+            'author_name':  author_name,
             'title':        title,
             'content':      content,
             'content_text': content_text,
@@ -57,18 +76,68 @@ def _publish_notice(sb, user_id: str, profile: dict, title: str, content: str,
         pass
 
 
-# ── Page ──────────────────────────────────────────────────────
+def _push_notify_batch(sb, program: str, year: int, semester: int,
+                       title: str, body: str):
+    """
+    Send Web Push to all subscribed users in this batch.
+    Non-fatal — push failure never breaks the main operation.
+    """
+    try:
+        import json, pywebpush
+        # Get subscriptions for users in this batch
+        profiles = sb.table('profiles') \
+                     .select('id') \
+                     .eq('program', program) \
+                     .eq('year', year) \
+                     .eq('semester', semester) \
+                     .execute().data or []
+
+        user_ids = [p['id'] for p in profiles]
+        if not user_ids:
+            return
+
+        # Batch fetch subscriptions
+        subs = sb.table('push_subscriptions') \
+                 .select('subscription_json') \
+                 .in_('user_id', user_ids) \
+                 .execute().data or []
+
+        import os
+        vapid_private = os.environ.get('VAPID_PRIVATE_KEY', '')
+        vapid_claims  = {'sub': 'mailto:' + os.environ.get('MAIL_FROM_EMAIL', 'admin@unisync.bd')}
+
+        payload = json.dumps({'title': title, 'body': body, 'icon': '/static/icons/icon-192x192.png'})
+
+        for row in subs:
+            try:
+                sub_info = json.loads(row['subscription_json'])
+                pywebpush.webpush(
+                    subscription_info    = sub_info,
+                    data                 = payload,
+                    vapid_private_key    = vapid_private,
+                    vapid_claims         = vapid_claims,
+                )
+            except Exception:
+                pass  # Individual push failure is non-fatal
+    except Exception:
+        pass  # Push module unavailable — skip silently
+
+
+# ─────────────────────────────────────────────────────────────
+# Page
+# ─────────────────────────────────────────────────────────────
 
 @classmanagement_bp.route('/')
 def management_page():
     return render_template('modules/class_management.html')
 
 
-# ── GET: fetch class changes ───────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# GET: class changes for a batch
+# ─────────────────────────────────────────────────────────────
 
 @classmanagement_bp.route('/api/class-changes', methods=['GET'])
 def get_class_changes():
-    """Fetch changes (cancels + extras) for a cohort in a date range."""
     program = request.args.get('program', 'BBA')
     year    = request.args.get('year')
     sem     = request.args.get('semester')
@@ -90,7 +159,7 @@ def get_class_changes():
 
         rows = q.execute().data or []
 
-        # Enrich with full course/teacher names
+        # Enrich names
         try:
             mapping = {r['code']: r['full_name']
                        for r in (sb.table('mappings').select('code,full_name').execute().data or [])}
@@ -101,22 +170,22 @@ def get_class_changes():
             pass
 
         return jsonify({'success': True, 'data': rows})
-
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ── IMPORTANT: static sub-paths BEFORE /<change_id> ──────────
+# ─────────────────────────────────────────────────────────────
+# POST: Cancel class
+# ─────────────────────────────────────────────────────────────
 
 @classmanagement_bp.route('/api/class-changes/cancel', methods=['POST'])
 def cancel_class():
-    """CR cancels a class on a specific date. Auto-publishes a notice."""
     data    = request.get_json() or {}
     user_id = data.get('user_id', '').strip()
 
-    profile = _require_cr(user_id)
+    profile = _require_cr_or_teacher(user_id)
     if not profile:
-        return jsonify({'error': 'Only CR or Admin can cancel classes'}), 403
+        return jsonify({'error': 'Only CR, Teacher, or Admin can cancel classes'}), 403
 
     course_code = data.get('course_code', '').strip()
     change_date = data.get('change_date', '').strip()
@@ -129,6 +198,7 @@ def cancel_class():
     year        = int(data.get('year', profile.get('cr_for_year') or profile.get('year', 1)))
     semester    = int(data.get('semester', profile.get('cr_for_semester') or profile.get('semester', 1)))
     reason      = data.get('reason', '')
+    author      = profile.get('full_name', 'CR/Teacher')
 
     try:
         payload = {
@@ -141,37 +211,46 @@ def cancel_class():
             'change_date':     change_date,
             'reason':          reason,
             'created_by':      user_id,
-            'created_by_name': profile.get('full_name', 'CR'),
+            'created_by_name': author,
         }
         resp = sb.table('class_changes').insert(payload).execute()
 
-        reason_html = f'<p>Reason: {reason}</p>' if reason else ''
-        _publish_notice(
-            sb, user_id, profile,
-            title        = f'Class Cancelled: {course_name} — {change_date}',
-            content      = (f'<p><strong>{course_name}</strong> class on <strong>{change_date}</strong> '
-                            f'has been <strong style="color:#e53e3e">cancelled</strong>.</p>'
-                            f'{reason_html}'
-                            f'<p><em>— {profile.get("full_name", "CR")}</em></p>'),
-            content_text = f'{course_name} class cancelled on {change_date}. {reason}',
-            notice_type  = 'class_cancel',
-            program      = program, year=year, semester=semester,
+        reason_html = f'<p><em>Reason: {reason}</em></p>' if reason else ''
+        notice_title = f'❌ Class Cancelled: {course_name} — {change_date}'
+        notice_content = (
+            f'<p><strong>{course_name}</strong> class on <strong>{change_date}</strong> '
+            f'has been <strong style="color:#e53e3e">cancelled</strong>.</p>'
+            f'{reason_html}'
+            f'<p style="color:#718096;font-size:.85em;">— {author}</p>'
         )
-        return jsonify({'success': True, 'data': resp.data}), 201
+        _publish_notice(sb, user_id, profile,
+                        title=notice_title,
+                        content=notice_content,
+                        content_text=f'{course_name} class cancelled on {change_date}. {reason}',
+                        notice_type='class_cancel',
+                        program=program, year=year, semester=semester)
 
+        _push_notify_batch(sb, program, year, semester,
+                           title=notice_title,
+                           body=f'{course_name} — {change_date} class cancelled. {reason}')
+
+        return jsonify({'success': True, 'data': resp.data}), 201
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ─────────────────────────────────────────────────────────────
+# POST: Extra class
+# ─────────────────────────────────────────────────────────────
+
 @classmanagement_bp.route('/api/class-changes/extra', methods=['POST'])
 def add_extra_class():
-    """CR schedules an extra class. Auto-publishes a notice."""
     data    = request.get_json() or {}
     user_id = data.get('user_id', '').strip()
 
-    profile = _require_cr(user_id)
+    profile = _require_cr_or_teacher(user_id)
     if not profile:
-        return jsonify({'error': 'Only CR or Admin can add extra classes'}), 403
+        return jsonify({'error': 'Only CR, Teacher, or Admin can add extra classes'}), 403
 
     missing = [f for f in ('course_code', 'change_date', 'time_start', 'time_end') if not data.get(f)]
     if missing:
@@ -184,6 +263,7 @@ def add_extra_class():
     year        = int(data.get('year', profile.get('cr_for_year') or profile.get('year', 1)))
     semester    = int(data.get('semester', profile.get('cr_for_semester') or profile.get('semester', 1)))
     reason      = data.get('reason', '')
+    author      = profile.get('full_name', 'CR/Teacher')
 
     try:
         payload = {
@@ -199,42 +279,136 @@ def add_extra_class():
             'room_no':         data.get('room_no', 'TBD'),
             'reason':          reason,
             'created_by':      user_id,
-            'created_by_name': profile.get('full_name', 'CR'),
+            'created_by_name': author,
         }
         resp = sb.table('class_changes').insert(payload).execute()
 
-        note_html = f'<p>Note: {reason}</p>' if reason else ''
-        _publish_notice(
-            sb, user_id, profile,
-            title        = f'Extra Class: {course_name} — {data["change_date"]}',
-            content      = (f'<p>An <strong style="color:#38a169">extra class</strong> for '
-                            f'<strong>{course_name}</strong> has been scheduled.</p>'
-                            f'<p>📅 <strong>Date:</strong> {data["change_date"]}<br>'
-                            f'⏰ <strong>Time:</strong> {data["time_start"]} – {data["time_end"]}<br>'
-                            f'🏛️ <strong>Room:</strong> {data.get("room_no", "TBD")}</p>'
-                            f'{note_html}'),
-            content_text = (f'Extra class {course_name} on {data["change_date"]} '
-                            f'{data["time_start"]}–{data["time_end"]}'),
-            notice_type  = 'extra_class',
-            program      = program, year=year, semester=semester,
+        note_html = f'<p><em>Note: {reason}</em></p>' if reason else ''
+        room      = data.get('room_no', 'TBD')
+        notice_title = f'📅 Extra Class: {course_name} — {data["change_date"]}'
+        notice_content = (
+            f'<p>An <strong style="color:#38a169">extra class</strong> for '
+            f'<strong>{course_name}</strong> has been scheduled.</p>'
+            f'<p>📅 <strong>Date:</strong> {data["change_date"]}<br>'
+            f'⏰ <strong>Time:</strong> {data["time_start"]} – {data["time_end"]}<br>'
+            f'🏛 <strong>Room:</strong> {room}</p>'
+            f'{note_html}'
+            f'<p style="color:#718096;font-size:.85em;">— {author}</p>'
         )
-        return jsonify({'success': True, 'data': resp.data}), 201
+        _publish_notice(sb, user_id, profile,
+                        title=notice_title,
+                        content=notice_content,
+                        content_text=f'Extra class {course_name} on {data["change_date"]} {data["time_start"]}–{data["time_end"]}',
+                        notice_type='extra_class',
+                        program=program, year=year, semester=semester)
 
+        _push_notify_batch(sb, program, year, semester,
+                           title=notice_title,
+                           body=f'{course_name} extra class on {data["change_date"]} at {data["time_start"]}, Room {room}')
+
+        return jsonify({'success': True, 'data': resp.data}), 201
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ─────────────────────────────────────────────────────────────
+# POST: Update room / time for an existing routine slot
+# ─────────────────────────────────────────────────────────────
+
+@classmanagement_bp.route('/api/update-slot', methods=['POST'])
+def update_slot():
+    """
+    Teacher or CR updates room number or time for a routine slot.
+    Publishes a notice to the affected batch.
+    """
+    data       = request.get_json() or {}
+    user_id    = data.get('user_id', '').strip()
+    routine_id = data.get('routine_id', '').strip()
+
+    profile = _require_cr_or_teacher(user_id)
+    if not profile:
+        return jsonify({'error': 'Only CR, Teacher, or Admin can update slots'}), 403
+
+    if not routine_id:
+        return jsonify({'error': 'routine_id required'}), 400
+
+    sb = get_supabase_admin()
+
+    # Fetch existing slot
+    try:
+        existing_row = sb.table('routines').select('*').eq('id', routine_id).single().execute()
+        existing = existing_row.data or {}
+    except Exception:
+        return jsonify({'error': 'Routine slot not found'}), 404
+
+    if not existing:
+        return jsonify({'error': 'Routine slot not found'}), 404
+
+    # Build update payload — only update provided fields
+    update_fields = {}
+    if data.get('room_no'):
+        update_fields['room_no'] = data['room_no'].strip()
+    if data.get('time_start'):
+        update_fields['time_start'] = data['time_start'].strip()
+    if data.get('time_end'):
+        update_fields['time_end'] = data['time_end'].strip()
+
+    if not update_fields:
+        return jsonify({'error': 'Nothing to update (room_no, time_start, time_end)'}), 400
+
+    try:
+        sb.table('routines').update(update_fields).eq('id', routine_id).execute()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    # Notify batch
+    course_code = existing.get('course_code', '')
+    course_name = _resolve_course_name(sb, course_code)
+    program     = data.get('program', existing.get('program', 'BBA'))
+    year        = int(data.get('year', existing.get('course_year', 1)))
+    semester    = int(data.get('semester', existing.get('course_semester', 1)))
+    author      = profile.get('full_name', 'Teacher')
+    day         = existing.get('day', '')
+
+    changes_desc = []
+    if 'room_no' in update_fields:
+        changes_desc.append(f'Room: {existing.get("room_no","?")} → {update_fields["room_no"]}')
+    if 'time_start' in update_fields or 'time_end' in update_fields:
+        new_start = update_fields.get('time_start', existing.get('time_start', ''))
+        new_end   = update_fields.get('time_end',   existing.get('time_end', ''))
+        changes_desc.append(f'Time: {new_start} – {new_end}')
+
+    notice_title   = f'🔄 Slot Updated: {course_name} ({day})'
+    notice_content = (
+        f'<p>The following change has been made to <strong>{course_name}</strong> ({day}):</p>'
+        f'<ul>' + ''.join(f'<li>{c}</li>' for c in changes_desc) + '</ul>'
+        f'<p style="color:#718096;font-size:.85em;">— {author}</p>'
+    )
+    _publish_notice(sb, user_id, profile,
+                    title=notice_title,
+                    content=notice_content,
+                    content_text=f'{course_name} slot updated: ' + ', '.join(changes_desc),
+                    notice_type='general',
+                    program=program, year=year, semester=semester)
+
+    _push_notify_batch(sb, program, year, semester,
+                       title=notice_title,
+                       body=f'{course_name} — ' + ', '.join(changes_desc))
+
+    return jsonify({'success': True, 'updated': update_fields})
+
+
+# ─────────────────────────────────────────────────────────────
+# POST: Offline sync
+# ─────────────────────────────────────────────────────────────
+
 @classmanagement_bp.route('/api/class-changes/sync', methods=['POST'])
 def sync_offline_changes():
-    """
-    Batch sync of offline-queued class changes (both 'cancel' and 'extra').
-    Called by offline-sync.js when connection is restored.
-    """
     data    = request.get_json() or {}
     user_id = data.get('user_id', '').strip()
     actions = data.get('actions', [])
 
-    profile = _require_cr(user_id)
+    profile = _require_cr_or_teacher(user_id)
     if not profile:
         return jsonify({'error': 'Forbidden'}), 403
 
@@ -249,7 +423,6 @@ def sync_offline_changes():
         action_type = action.get('type', 'cancel')
         try:
             course_code = action.get('course_code', '')
-            course_name = _resolve_course_name(sb, course_code)
             program     = action.get('program', profile.get('program', 'BBA'))
             year        = int(action.get('year', profile.get('year', 1)))
             semester    = int(action.get('semester', profile.get('semester', 1)))
@@ -266,7 +439,6 @@ def sync_offline_changes():
                 'created_by':      user_id,
                 'created_by_name': profile.get('full_name', 'CR'),
             }
-
             if action_type == 'extra':
                 payload['time_start'] = action.get('time_start', '')
                 payload['time_end']   = action.get('time_end', '')
@@ -274,19 +446,20 @@ def sync_offline_changes():
 
             sb.table('class_changes').insert(payload).execute()
             synced.append(local_id)
-
         except Exception as e:
             failed.append({'local_id': local_id, 'error': str(e)})
 
     return jsonify({'success': True, 'synced': synced, 'failed': failed})
 
 
-# ── DELETE ────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# DELETE
+# ─────────────────────────────────────────────────────────────
 
 @classmanagement_bp.route('/api/class-changes/<change_id>', methods=['DELETE'])
 def delete_change(change_id):
     user_id = request.args.get('user_id', '').strip()
-    if not _require_cr(user_id):
+    if not _require_cr_or_teacher(user_id):
         return jsonify({'error': 'Forbidden'}), 403
     sb = get_supabase_admin()
     try:
