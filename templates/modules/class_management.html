@@ -4,290 +4,193 @@
 
 {% block extra_css %}
 <style>
-/* ── Tabs ─────────────────────────────────────────────────── */
-.cm-tabs {
-  display: flex; gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px; padding-bottom: 0;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-}
-.cm-tab {
-  padding: 10px 18px; border: none; background: none;
-  font-weight: 600; font-size: 0.85rem; white-space: nowrap;
-  color: var(--text-muted); cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s; margin-bottom: -1px; flex-shrink: 0;
-}
-.cm-tab.active { color: var(--terra); border-bottom-color: var(--terra); }
-.cm-panel { display: none; }
-.cm-panel.active { display: block; }
-
-/* ── Change rows ──────────────────────────────────────────── */
-.change-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 13px 16px;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-md); margin-bottom: 8px;
-  flex-wrap: wrap; transition: border-color .2s;
-}
-.change-row:hover { border-color: rgba(188,111,55,.3); }
-.change-row .change-info { flex: 1; min-width: 200px; }
-.change-row .change-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 3px; }
-.change-row .change-meta  { font-size: 0.76rem; color: var(--text-muted); line-height: 1.6; }
-
-/* ── Access denied ────────────────────────────────────────── */
-.no-access-msg {
-  text-align: center; padding: 60px 24px;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-
-/* ── Role badge ───────────────────────────────────────────── */
-.role-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: .68rem; font-weight: 700; letter-spacing: .06em;
-  padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
-}
-.role-badge.cr      { background: rgba(188,111,55,.12); color: var(--terra); border: 1px solid rgba(188,111,55,.25); }
-.role-badge.teacher { background: rgba(56,161,105,.10); color: #276749; border: 1px solid rgba(56,161,105,.25); }
-.role-badge.admin   { background: rgba(99,102,241,.10); color: #4338CA; border: 1px solid rgba(99,102,241,.25); }
-
-/* ── Slot update list ─────────────────────────────────────── */
-.slot-row {
-  display: grid; grid-template-columns: 80px 1fr auto auto auto;
-  align-items: center; gap: 10px;
-  padding: 10px 14px;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-md); margin-bottom: 6px; font-size: .84rem;
-}
-.slot-row-day  { font-size: .7rem; font-weight: 700; color: var(--terra); text-transform: uppercase; }
-.slot-row-name { font-weight: 700; }
-.slot-row-meta { font-size: .72rem; color: var(--text-muted); }
-.slot-edit-btn {
-  padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--bg-secondary); color: var(--text-secondary);
-  font-size: .72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
-  transition: all .2s;
-}
-.slot-edit-btn:hover { border-color: var(--terra); color: var(--terra); }
-
-/* ── Edit modal ───────────────────────────────────────────── */
-.slot-modal-overlay {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.slot-modal-overlay.hidden { display: none; }
-.slot-modal-box {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 24px; width: 100%; max-width: 400px;
-  animation: slotFadeIn .2s ease;
-}
-@keyframes slotFadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-.slot-modal-box h3 { margin: 0 0 16px; font-size: 1rem; }
-.slot-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.slot-input {
-  width: 100%; box-sizing: border-box; padding: 9px 12px;
-  background: var(--bg-secondary); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); color: var(--text-primary);
-  font-size: .88rem; font-family: inherit; transition: border-color .2s;
-}
-.slot-input:focus { outline: none; border-color: var(--terra); }
+.cm-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto;}
+.cm-tab{padding:11px 20px;border:none;background:none;font-weight:600;font-size:.85rem;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;flex-shrink:0;}
+.cm-tab:hover{color:var(--text-primary);}
+.cm-tab.active{color:var(--terra);border-bottom-color:var(--terra);}
+.cm-panel{display:none;}.cm-panel.active{display:block;}
+.role-badge{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em;}
+.role-badge.cr{background:rgba(188,111,55,.12);color:var(--terra);border:1px solid rgba(188,111,55,.3);}
+.role-badge.teacher{background:rgba(56,161,105,.10);color:#276749;border:1px solid rgba(56,161,105,.3);}
+.role-badge.admin{background:rgba(99,102,241,.10);color:#4338CA;border:1px solid rgba(99,102,241,.3);}
+.change-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:8px;transition:border-color .2s;flex-wrap:wrap;}
+.change-row:hover{border-color:rgba(188,111,55,.3);}
+.change-row.type-cancel{border-left:3px solid #E53E3E;}
+.change-row.type-extra{border-left:3px solid #38A169;}
+.change-info{flex:1;min-width:180px;}
+.change-title{font-weight:700;font-size:.9rem;margin-bottom:4px;}
+.change-meta{font-size:.74rem;color:var(--text-muted);line-height:1.6;}
+.cc-chip{display:inline-block;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+.cc-chip.cancel{background:rgba(229,62,62,.10);color:#C53030;border:1px solid rgba(229,62,62,.2);}
+.cc-chip.extra{background:rgba(56,161,105,.10);color:#276749;border:1px solid rgba(56,161,105,.2);}
+.cm-msg{padding:10px 14px;border-radius:var(--radius-sm);font-size:.83rem;margin-bottom:14px;display:none;line-height:1.5;}
+.cm-msg.show{display:block;}
+.cm-msg.success{background:rgba(56,161,105,.10);border:1px solid rgba(56,161,105,.3);color:#276749;}
+.cm-msg.error{background:rgba(229,62,62,.08);border:1px solid rgba(229,62,62,.25);color:#C53030;}
+.no-access-box{text-align:center;padding:60px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);}
+.conflict-box{padding:10px 14px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:12px;display:none;}
+.conflict-box.show{display:block;}
+.conflict-box.ok{background:rgba(56,161,105,.08);border:1px solid rgba(56,161,105,.25);color:#276749;}
+.conflict-box.warning{background:rgba(229,62,62,.08);border:1px solid rgba(229,62,62,.25);color:#C53030;}
+.slot-row{display:grid;grid-template-columns:90px 1fr 110px 100px auto;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:6px;font-size:.83rem;transition:border-color .2s;}
+.slot-row:hover{border-color:rgba(188,111,55,.3);}
+@media(max-width:640px){.slot-row{grid-template-columns:1fr 1fr;gap:6px;}}
+.slot-day{font-size:.7rem;font-weight:700;color:var(--terra);text-transform:uppercase;}
+.slot-name{font-weight:700;}
+.slot-meta{font-size:.72rem;color:var(--text-muted);}
+.cm-modal-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;}
+.cm-modal-overlay.hidden{display:none;}
+.cm-modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:420px;animation:cmFadeIn .2s ease;}
+@keyframes cmFadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.cm-input{width:100%;box-sizing:border-box;padding:9px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.88rem;transition:border-color .2s;}
+.cm-input:focus{outline:none;border-color:var(--terra);}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
 
-  <!-- Header -->
   <div class="page-header scroll-reveal">
     <div>
       <h1 class="page-title">Class Management</h1>
       <p class="page-sub" id="cmSubTitle">Loading…</p>
     </div>
-    <span class="role-badge" id="cmRoleBadge" style="display:none;"></span>
+    <span class="role-badge hidden" id="cmRoleBadge"></span>
   </div>
 
-  <!-- Non-CR/Teacher message -->
-  <div id="noAccessMsg" class="no-access-msg hidden">
-    <div style="font-size:3rem;margin-bottom:12px;">🔒</div>
-    <h3 style="font-weight:700;margin-bottom:8px;">CR / Teacher Access Required</h3>
-    <p style="color:var(--text-muted);font-size:0.88rem;max-width:340px;margin:0 auto 16px;">
-      Only Class Representatives (CR) and Teachers can manage class changes.
-      Students can <a href="/auth/become-cr" style="color:var(--terra)">register as CR</a> for their batch.
-    </p>
-    <a href="/auth/become-cr" class="btn-primary" style="display:inline-flex;text-decoration:none;">
-      Become a CR →
-    </a>
+  <div id="noAccessBox" class="no-access-box hidden">
+    <div style="font-size:2.5rem;margin-bottom:12px;">🔒</div>
+    <h3 style="margin-bottom:8px;">CR / Teacher এক্সেস দরকার</h3>
+    <p style="color:var(--text-muted);font-size:.87rem;max-width:340px;margin:0 auto 20px;">শুধু CR এবং Teacher রা ক্লাস ম্যানেজ করতে পারবেন।</p>
+    <a href="/auth/become-cr" class="btn-primary" style="display:inline-flex;text-decoration:none;">Become CR →</a>
   </div>
 
-  <!-- Management Panel -->
-  <div id="crPanel" class="hidden">
+  <div id="cmPanel" class="hidden">
 
-    <!-- Tabs: teacher gets extra "Update Slot" tab -->
-    <div class="cm-tabs" id="cmTabs">
-      <button class="cm-tab active" onclick="switchTab('cancel', this)">❌ Cancel Class</button>
-      <button class="cm-tab" onclick="switchTab('extra', this)">📅 Extra Class</button>
-      <button class="cm-tab teacher-tab hidden" onclick="switchTab('update', this)">🔄 Update Slot</button>
-      <button class="cm-tab" onclick="switchTab('history', this)">📋 History</button>
+    <div class="cm-tabs">
+      <button class="cm-tab active" onclick="switchTab('cancel',this)">❌ Class Cancel</button>
+      <button class="cm-tab" onclick="switchTab('extra',this)">📅 Extra Class</button>
+      <button class="cm-tab teacher-tab hidden" onclick="switchTab('update',this)">🔄 Slot Update</button>
+      <button class="cm-tab" onclick="switchTab('history',this)">📋 History</button>
     </div>
 
-    <!-- ── TAB: CANCEL CLASS ──────────────────────────────── -->
+    <!-- TAB: CANCEL -->
     <div id="panel-cancel" class="cm-panel active">
       <div class="cr-compose-panel">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">❌ Cancel a Class</h3>
-        <div id="cancelMsg" class="hidden"
-             style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
-
+        <h3 style="font-weight:700;font-size:1rem;margin-bottom:16px;">❌ একটি ক্লাস বাতিল করুন</h3>
+        <div id="cancelMsg" class="cm-msg"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
-            <label>Course *</label>
-            <select id="cancelCourse"><option value="">Loading…</option></select>
+            <label>Course <span style="color:#E53E3E">*</span></label>
+            <select id="cancelCourse" class="cm-input"><option value="">— বেছে নিন —</option></select>
           </div>
           <div class="form-group">
-            <label>Date *</label>
-            <input type="date" id="cancelDate">
+            <label>তারিখ <span style="color:#E53E3E">*</span></label>
+            <input type="date" id="cancelDate" class="cm-input">
           </div>
         </div>
-
-        <div class="form-group" style="margin-bottom:14px;">
-          <label>Reason <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
-          <input type="text" id="cancelReason" placeholder="e.g. Teacher on leave, official duty…">
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>কারণ <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+          <input type="text" id="cancelReason" class="cm-input" placeholder="যেমন: শিক্ষক অসুস্থ…">
         </div>
-
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn-primary" onclick="submitCancel()">❌ Cancel This Class</button>
-          <button class="btn-offline-draft" onclick="queueCancelOffline()">💾 Save Offline</button>
+          <button class="btn-primary" onclick="submitCancel()" id="cancelBtn">❌ ক্লাস বাতিল করুন</button>
+          <button class="btn-offline-draft" onclick="queueCancelOffline()">💾 Offline সংরক্ষণ</button>
         </div>
       </div>
-
-      <div style="margin-top:20px;">
+      <div style="margin-top:24px;">
         <div class="section-header">
-          <h3 style="font-size:0.95rem;font-weight:700;">Upcoming Cancellations</h3>
-          <a href="#" onclick="switchTab('history', document.querySelector('.cm-tab:last-child'));return false;"
-             class="view-all-link">View All →</a>
+          <h3 style="font-size:.93rem;font-weight:700;">আগামী ৭ দিনের পরিবর্তন</h3>
+          <button onclick="switchTab('history',document.querySelectorAll('.cm-tab')[3])" style="background:none;border:none;color:var(--terra);font-size:.78rem;font-weight:600;cursor:pointer;">সব দেখুন →</button>
         </div>
-        <div id="recentCancels">
-          <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem;">Loading…</div>
-        </div>
+        <div id="recentCancels"><div style="padding:16px;text-align:center;color:var(--text-muted);font-size:.83rem;">Loading…</div></div>
       </div>
     </div>
 
-    <!-- ── TAB: EXTRA CLASS ───────────────────────────────── -->
+    <!-- TAB: EXTRA CLASS -->
     <div id="panel-extra" class="cm-panel">
       <div class="cr-compose-panel">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">📅 Schedule Extra Class</h3>
-        <div id="extraMsg" class="hidden"
-             style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
-
+        <h3 style="font-weight:700;font-size:1rem;margin-bottom:16px;">📅 অতিরিক্ত ক্লাস যোগ করুন</h3>
+        <div id="extraMsg" class="cm-msg"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
-            <label>Course *</label>
-            <select id="extraCourse"><option value="">Loading…</option></select>
+            <label>Course <span style="color:#E53E3E">*</span></label>
+            <select id="extraCourse" class="cm-input"><option value="">— বেছে নিন —</option></select>
           </div>
           <div class="form-group">
-            <label>Date *</label>
-            <input type="date" id="extraDate">
+            <label>তারিখ <span style="color:#E53E3E">*</span></label>
+            <input type="date" id="extraDate" class="cm-input">
           </div>
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
-            <label>Start Time *</label>
-            <input type="time" id="extraStart">
+            <label>শুরু <span style="color:#E53E3E">*</span></label>
+            <input type="time" id="extraStart" class="cm-input" onchange="clearConflict()">
           </div>
           <div class="form-group">
-            <label>End Time *</label>
-            <input type="time" id="extraEnd">
+            <label>শেষ <span style="color:#E53E3E">*</span></label>
+            <input type="time" id="extraEnd" class="cm-input" onchange="clearConflict()">
           </div>
           <div class="form-group">
-            <label>Room</label>
-            <input type="text" id="extraRoom" placeholder="e.g. 302">
+            <label>Room নং</label>
+            <input type="text" id="extraRoom" class="cm-input" placeholder="যেমন: 302">
           </div>
         </div>
-
-        <!-- Conflict check result -->
-        <div id="conflictResult" class="hidden"
-             style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;
-                    background:rgba(214,158,46,.08);border:1px solid rgba(214,158,46,.25);color:#B7791F;">
-        </div>
-
-        <div class="form-group" style="margin-bottom:14px;">
+        <div id="conflictBox" class="conflict-box"></div>
+        <div class="form-group" style="margin-bottom:16px;">
           <label>Note <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
-          <input type="text" id="extraNote" placeholder="e.g. Make-up class for last week">
+          <input type="text" id="extraNote" class="cm-input" placeholder="যেমন: গত সপ্তাহের পরিবর্তে…">
         </div>
-
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn-sm" style="padding:9px 14px;border:1px solid var(--border);"
-                  onclick="checkConflicts()">🔍 Check Conflicts</button>
-          <button class="btn-primary" onclick="submitExtra()">📅 Schedule Extra Class</button>
-          <button class="btn-offline-draft" onclick="queueExtraOffline()">💾 Save Offline</button>
+          <button class="btn-sm" style="padding:9px 14px;border:1px solid var(--border);" onclick="checkConflicts()">🔍 Conflict চেক</button>
+          <button class="btn-primary" onclick="submitExtra()" id="extraBtn">📅 Extra Class যোগ</button>
+          <button class="btn-offline-draft" onclick="queueExtraOffline()">💾 Offline সংরক্ষণ</button>
         </div>
       </div>
     </div>
 
-    <!-- ── TAB: UPDATE SLOT (Teacher / Admin only) ─────────── -->
+    <!-- TAB: SLOT UPDATE -->
     <div id="panel-update" class="cm-panel">
       <div class="cr-compose-panel" style="margin-bottom:20px;">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px;">🔄 Update Room / Time</h3>
-        <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:0;">
-          Select a class slot from your schedule below and update room number or time.
-          The batch will be notified automatically.
-        </p>
+        <h3 style="font-weight:700;font-size:1rem;margin-bottom:6px;">🔄 Class Slot আপডেট করুন</h3>
+        <p style="font-size:.82rem;color:var(--text-muted);margin:0;">নিচের list থেকে slot বেছে room/সময় পরিবর্তন করুন। Batch কে auto-notify করা হবে।</p>
       </div>
-
-      <div id="updateMsg" class="hidden"
-           style="margin-bottom:12px;padding:9px 13px;border-radius:var(--radius-sm);font-size:0.82rem;"></div>
-
-      <div id="slotsList">
-        <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.85rem;">
-          Loading your class slots…
-        </div>
-      </div>
+      <div id="updateMsg" class="cm-msg"></div>
+      <div id="slotsList"><div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.83rem;">Loading…</div></div>
     </div>
 
-    <!-- ── TAB: HISTORY ──────────────────────────────────────── -->
+    <!-- TAB: HISTORY -->
     <div id="panel-history" class="cm-panel">
-      <div id="historyList">
-        <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem;">
-          Switch to this tab to load full history.
-        </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <span class="cc-chip cancel" onclick="filterHistory('cancel')" style="cursor:pointer;">❌ বাতিল</span>
+        <span class="cc-chip extra"  onclick="filterHistory('extra')"  style="cursor:pointer;">📅 Extra</span>
+        <span onclick="filterHistory('all')" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;color:var(--text-muted);">সব</span>
       </div>
+      <div id="historyList"><div style="padding:20px;text-align:center;color:var(--text-muted);">History load হচ্ছে…</div></div>
     </div>
 
-  </div><!-- /#crPanel -->
+  </div>
 </div>
 
-<!-- Slot Edit Modal -->
-<div class="slot-modal-overlay hidden" id="slotEditModal">
-  <div class="slot-modal-box">
-    <h3>✏️ Update Class Slot</h3>
-    <p id="slotEditDesc" style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;"></p>
-    <input type="hidden" id="slotEditId">
-    <input type="hidden" id="slotEditProgram">
-    <input type="hidden" id="slotEditYear">
-    <input type="hidden" id="slotEditSemester">
-    <div class="slot-form-grid" style="margin-bottom:14px;">
-      <div class="form-group">
-        <label style="font-size:.76rem;">New Room No.</label>
-        <input type="text" id="slotEditRoom" class="slot-input" placeholder="e.g. 302">
-      </div>
-      <div class="form-group">
-        <label style="font-size:.76rem;">Reason</label>
-        <input type="text" id="slotEditReason" class="slot-input" placeholder="Optional">
-      </div>
-      <div class="form-group">
-        <label style="font-size:.76rem;">New Start Time</label>
-        <input type="time" id="slotEditStart" class="slot-input">
-      </div>
-      <div class="form-group">
-        <label style="font-size:.76rem;">New End Time</label>
-        <input type="time" id="slotEditEnd" class="slot-input">
-      </div>
+<!-- Slot Modal -->
+<div class="cm-modal-overlay hidden" id="slotModal">
+  <div class="cm-modal-box">
+    <h3 style="margin:0 0 6px;font-size:1rem;">✏️ Slot আপডেট</h3>
+    <p id="slotModalDesc" style="font-size:.8rem;color:var(--text-muted);margin:0 0 16px;"></p>
+    <input type="hidden" id="slotId">
+    <input type="hidden" id="slotProgram">
+    <input type="hidden" id="slotYear">
+    <input type="hidden" id="slotSemester">
+    <div id="slotModalMsg" class="cm-msg"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group"><label style="font-size:.76rem;">নতুন Room নং</label><input type="text" id="slotRoom" class="cm-input" placeholder="যেমন: 203"></div>
+      <div class="form-group"><label style="font-size:.76rem;">কারণ</label><input type="text" id="slotReason" class="cm-input" placeholder="Optional"></div>
+      <div class="form-group"><label style="font-size:.76rem;">নতুন Start</label><input type="time" id="slotStart" class="cm-input"></div>
+      <div class="form-group"><label style="font-size:.76rem;">নতুন End</label><input type="time" id="slotEnd" class="cm-input"></div>
     </div>
     <div style="display:flex;gap:10px;">
-      <button class="btn-primary" onclick="submitSlotUpdate()">Save & Notify Batch</button>
-      <button class="btn-sm" style="padding:9px 18px;" onclick="closeSlotModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitSlotUpdate()">✅ Save &amp; Notify</button>
+      <button class="btn-sm" style="padding:9px 18px;" onclick="closeSlotModal()">বাতিল</button>
     </div>
   </div>
 </div>
@@ -295,441 +198,291 @@
 
 {% block extra_js %}
 <script>
-var _user    = null;
-var _courses = [];
-var _slots   = [];
+var _user=null,_courses=[],_slots=[],_history=[],_hFilter='all';
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded',async function(){
   UniSync.requireAuth();
-  _user = UniSync.getUser();
-  if (!_user) return;
-
-  var role = _user.role || 'student';
-
-  if (role === 'cr' || role === 'admin' || role === 'teacher') {
-    document.getElementById('noAccessMsg').classList.add('hidden');
-    document.getElementById('crPanel').classList.remove('hidden');
-
-    // Badge
-    var badge = document.getElementById('cmRoleBadge');
-    badge.style.display = 'inline-flex';
-    badge.className = 'role-badge ' + (role === 'teacher' ? 'teacher' : role === 'admin' ? 'admin' : 'cr');
-    badge.textContent = role === 'teacher' ? '👨‍🏫 TEACHER' : role === 'admin' ? '⚡ ADMIN' : '🏅 CR';
-
-    // Subtitle
-    document.getElementById('cmSubTitle').textContent =
-      (role === 'teacher' ? 'Managing your classes' : 'Managing classes') +
-      ' for ' + (_user.program||'BBA') + ' Year ' + (_user.year||1) + ' Sem ' + (_user.semester||1);
-
-    // Show Update Slot tab for teachers and admins
-    if (role === 'teacher' || role === 'admin') {
-      document.querySelectorAll('.teacher-tab').forEach(function(el) {
-        el.classList.remove('hidden');
-      });
+  _user=UniSync.getUser();
+  if(!_user)return;
+  var role=_user.role||'student';
+  if(role==='cr'||role==='admin'||role==='teacher'){
+    document.getElementById('noAccessBox').classList.add('hidden');
+    document.getElementById('cmPanel').classList.remove('hidden');
+    var badge=document.getElementById('cmRoleBadge');
+    badge.classList.remove('hidden');
+    badge.className='role-badge '+(role==='teacher'?'teacher':role==='admin'?'admin':'cr');
+    badge.textContent=role==='teacher'?'👨‍🏫 Teacher':role==='admin'?'⚡ Admin':'🏅 CR';
+    document.getElementById('cmSubTitle').textContent=(_user.program||'BBA')+' — Year '+(_user.year||1)+', Sem '+(_user.semester||1);
+    if(role==='teacher'||role==='admin'){
+      document.querySelectorAll('.teacher-tab').forEach(function(el){el.classList.remove('hidden');});
     }
-
-    var today = new Date().toISOString().split('T')[0];
-    document.getElementById('cancelDate').value = today;
-    document.getElementById('extraDate').value  = today;
-
+    var today=new Date().toISOString().split('T')[0];
+    document.getElementById('cancelDate').value=today;
+    document.getElementById('extraDate').value=today;
     await loadCourses();
     await loadRecentCancels();
-  } else {
-    document.getElementById('noAccessMsg').classList.remove('hidden');
-    document.getElementById('crPanel').classList.add('hidden');
+  }else{
+    document.getElementById('noAccessBox').classList.remove('hidden');
+    document.getElementById('cmPanel').classList.add('hidden');
   }
 });
 
-// ── Load courses ─────────────────────────────────────────────
-async function loadCourses() {
-  try {
-    var res  = await fetch('/academic/api/routine?program=' + (_user.program||'BBA') +
-                           '&year=' + (_user.year||1) + '&semester=' + (_user.semester||1));
-    var data = await res.json();
-
-    if (data.success) {
-      var seen = new Set();
-      _courses = (data.data || []).filter(function(r) {
-        if (seen.has(r.course_code)) return false;
-        seen.add(r.course_code);
-        return true;
-      });
-      _slots = data.data || [];
-
-      // For teachers — only show their own courses
-      var role = _user.role || 'student';
-      if (role === 'teacher') {
-        // Filter by teacher_code if we know it (from profile)
-        // We'll show all and let backend validate
-      }
-
-      var opts = _courses.map(function(c) {
-        return '<option value="' + c.course_code + '" data-teacher="' + (c.teacher_code||'') + '">'
-             + c.course_code + ' — ' + (c.course_name || c.course_code) + '</option>';
-      }).join('');
-      var blank = '<option value="">Select course…</option>';
-
-      document.getElementById('cancelCourse').innerHTML = blank + opts;
-      document.getElementById('extraCourse').innerHTML  = blank + opts;
+async function loadCourses(){
+  try{
+    var res=await fetch('/academic/api/routine?program='+(_user.program||'BBA')+'&year='+(_user.year||1)+'&semester='+(_user.semester||1));
+    var data=await res.json();
+    if(data.success){
+      _slots=data.data||[];
+      var seen=new Set();
+      _courses=_slots.filter(function(r){if(seen.has(r.course_code))return false;seen.add(r.course_code);return true;});
+      var opts=_courses.map(function(c){return'<option value="'+c.course_code+'" data-teacher="'+(c.teacher_code||'')+'">'+c.course_code+' — '+(c.course_name||c.course_code)+'</option>';}).join('');
+      var blank='<option value="">— Course বেছে নিন —</option>';
+      document.getElementById('cancelCourse').innerHTML=blank+opts;
+      document.getElementById('extraCourse').innerHTML=blank+opts;
     }
-  } catch(e) {
-    document.getElementById('cancelCourse').innerHTML = '<option value="">Could not load courses</option>';
-    document.getElementById('extraCourse').innerHTML  = '<option value="">Could not load courses</option>';
+  }catch(e){
+    document.getElementById('cancelCourse').innerHTML='<option value="">Load হয়নি</option>';
+    document.getElementById('extraCourse').innerHTML='<option value="">Load হয়নি</option>';
   }
 }
 
-// ── Load slots for teacher update tab ─────────────────────────
-async function loadSlots() {
-  var list = document.getElementById('slotsList');
-  if (!list || !_slots.length) {
-    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.85rem;">No class slots found for your batch.</div>';
-    return;
+function switchTab(tab,btn){
+  document.querySelectorAll('.cm-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.cm-panel').forEach(function(p){p.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  var panel=document.getElementById('panel-'+tab);
+  if(panel)panel.classList.add('active');
+  if(tab==='history')loadHistory();
+  if(tab==='update')loadSlots();
+}
+
+function clearConflict(){
+  var box=document.getElementById('conflictBox');
+  box.className='conflict-box';box.textContent='';
+}
+
+async function checkConflicts(){
+  var date=document.getElementById('extraDate').value;
+  var start=document.getElementById('extraStart').value;
+  var end=document.getElementById('extraEnd').value;
+  if(!date||!start||!end){showConflict('⚠️ তারিখ, শুরু ও শেষ সময় দিন।','warning');return;}
+  try{
+    var day=new Date(date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long'});
+    var params=new URLSearchParams({from:start,to:end,day:day,program:_user.program||'BBA',year:_user.year||1,semester:_user.semester||1});
+    var res=await fetch('/academic/api/duration-search?'+params);
+    var data=await res.json();
+    if(data.success&&data.data&&data.data.length){
+      showConflict('⚠️ Conflict! '+data.data.length+' টি ক্লাস আছে: '+data.data.map(function(c){return c.course_name||c.course_code;}).join(', '),'warning');
+    }else{
+      showConflict('✅ কোনো conflict নেই — সময়টা ফাঁকা!','ok');
+    }
+  }catch(e){showConflict('⚠️ Check করা যাচ্ছে না।','warning');}
+}
+
+function showConflict(msg,type){
+  var box=document.getElementById('conflictBox');
+  box.textContent=msg;box.className='conflict-box show '+type;
+}
+
+async function submitCancel(){
+  var course=document.getElementById('cancelCourse').value;
+  var date=document.getElementById('cancelDate').value;
+  var reason=document.getElementById('cancelReason').value.trim();
+  var sel=document.getElementById('cancelCourse');
+  var teacher=sel.options[sel.selectedIndex]?(sel.options[sel.selectedIndex].dataset.teacher||''):'';
+  if(!course){showMsg('cancelMsg','Course বাছাই করুন','error');return;}
+  if(!date){showMsg('cancelMsg','তারিখ দিন','error');return;}
+  var btn=document.getElementById('cancelBtn');
+  btn.disabled=true;btn.textContent='Processing…';
+  var payload={user_id:_user.id,course_code:course,teacher_code:teacher,change_date:date,reason:reason,program:_user.program||'BBA',year:_user.year||1,semester:_user.semester||1};
+  try{
+    if(!navigator.onLine)throw new Error('offline');
+    var res=await fetch('/classmanagement/api/class-changes/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var data=await res.json();
+    if(data.success){
+      showMsg('cancelMsg','✅ ক্লাস বাতিল হয়েছে! Notice auto-publish হয়েছে।','success');
+      document.getElementById('cancelReason').value='';
+      await loadRecentCancels();
+    }else{showMsg('cancelMsg',data.error||'বাতিল হয়নি','error');}
+  }catch(err){
+    if(!navigator.onLine||err.message==='offline'){
+      await OfflineSync.queue('cancel_class',Object.assign({},payload,{type:'cancel'}));
+      showMsg('cancelMsg','💾 Offline সংরক্ষণ হয়েছে।','success');
+    }else{showMsg('cancelMsg','সার্ভার error। আবার চেষ্টা করুন।','error');}
   }
+  btn.disabled=false;btn.textContent='❌ ক্লাস বাতিল করুন';
+}
 
-  var DAY_ORDER = {Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4};
-  var sorted = _slots.slice().sort(function(a,b) {
-    var dA = DAY_ORDER[a.day]||0, dB = DAY_ORDER[b.day]||0;
-    if (dA !== dB) return dA - dB;
-    return (a.time_start||'').localeCompare(b.time_start||'');
-  });
+async function queueCancelOffline(){
+  var course=document.getElementById('cancelCourse').value;
+  var date=document.getElementById('cancelDate').value;
+  if(!course||!date){showMsg('cancelMsg','Course এবং তারিখ দিন','error');return;}
+  await OfflineSync.queue('cancel_class',{course_code:course,change_date:date,reason:document.getElementById('cancelReason').value.trim(),type:'cancel',program:_user.program,year:_user.year,semester:_user.semester});
+  showMsg('cancelMsg','💾 Offline সংরক্ষণ হয়েছে।','success');
+}
 
-  list.innerHTML = sorted.map(function(s) {
-    var ts  = s.time_start_12h || s.time_start || '';
-    var te  = s.time_end_12h   || s.time_end   || '';
-    return '<div class="slot-row">'
-      + '<div class="slot-row-day">' + s.day + '</div>'
-      + '<div>'
-        + '<div class="slot-row-name">' + (s.course_name || s.course_code) + '</div>'
-        + '<div class="slot-row-meta">' + s.course_code + ' &nbsp;·&nbsp; Room ' + (s.room_no||'—') + '</div>'
-      + '</div>'
-      + '<div style="font-size:.78rem;color:var(--text-secondary);">' + ts + ' – ' + te + '</div>'
-      + '<div style="font-size:.7rem;color:var(--text-muted);">' + (s.teacher_name||s.teacher_code||'') + '</div>'
-      + '<button class="slot-edit-btn" onclick="openSlotModal(\'' + s.id + '\', \'' +
-          (s.course_name||s.course_code) + '\', \'' + s.day + '\', \'' + s.room_no + '\', \'' +
-          s.time_start + '\', \'' + s.time_end + '\', \'' +
-          (s.program||_user.program||'BBA') + '\', ' + (s.course_year||_user.year||1) + ', ' +
-          (s.course_semester||_user.semester||1) + ')">'
-        + '✏️ Edit'
-      + '</button>'
-    + '</div>';
+async function submitExtra(){
+  var course=document.getElementById('extraCourse').value;
+  var date=document.getElementById('extraDate').value;
+  var start=document.getElementById('extraStart').value;
+  var end=document.getElementById('extraEnd').value;
+  var room=document.getElementById('extraRoom').value.trim();
+  var note=document.getElementById('extraNote').value.trim();
+  var sel=document.getElementById('extraCourse');
+  var teacher=sel.options[sel.selectedIndex]?(sel.options[sel.selectedIndex].dataset.teacher||''):'';
+  if(!course){showMsg('extraMsg','Course বাছাই করুন','error');return;}
+  if(!date){showMsg('extraMsg','তারিখ দিন','error');return;}
+  if(!start){showMsg('extraMsg','শুরুর সময় দিন','error');return;}
+  if(!end){showMsg('extraMsg','শেষ সময় দিন','error');return;}
+  if(start>=end){showMsg('extraMsg','শুরুর সময় শেষের আগে হতে হবে','error');return;}
+  var btn=document.getElementById('extraBtn');
+  btn.disabled=true;btn.textContent='Processing…';
+  var payload={user_id:_user.id,course_code:course,teacher_code:teacher,change_date:date,time_start:start,time_end:end,room_no:room||'TBD',reason:note,program:_user.program||'BBA',year:_user.year||1,semester:_user.semester||1};
+  try{
+    if(!navigator.onLine)throw new Error('offline');
+    var res=await fetch('/classmanagement/api/class-changes/extra',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var data=await res.json();
+    if(data.success){
+      showMsg('extraMsg','✅ Extra class যোগ হয়েছে! Batch notify করা হয়েছে।','success');
+      document.getElementById('extraStart').value='';
+      document.getElementById('extraEnd').value='';
+      document.getElementById('extraNote').value='';
+      clearConflict();
+    }else{showMsg('extraMsg',data.error||'যোগ হয়নি','error');}
+  }catch(err){
+    if(!navigator.onLine||err.message==='offline'){
+      await OfflineSync.queue('extra_class',Object.assign({},payload,{type:'extra'}));
+      showMsg('extraMsg','💾 Offline সংরক্ষণ হয়েছে।','success');
+    }else{showMsg('extraMsg','সার্ভার error।','error');}
+  }
+  btn.disabled=false;btn.textContent='📅 Extra Class যোগ করুন';
+}
+
+function queueExtraOffline(){submitExtra();}
+
+async function loadRecentCancels(){
+  var el=document.getElementById('recentCancels');
+  var today=new Date().toISOString().split('T')[0];
+  var in7d=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  try{
+    var params=new URLSearchParams({program:_user.program||'BBA',year:_user.year||1,semester:_user.semester||1,from:today,to:in7d});
+    var res=await fetch('/classmanagement/api/class-changes?'+params);
+    var data=await res.json();
+    if(data.success&&data.data&&data.data.length){
+      el.innerHTML=data.data.map(function(c){return renderRow(c,true);}).join('');
+    }else{
+      el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:.83rem;">আগামী ৭ দিনে কোনো পরিবর্তন নেই।</div>';
+    }
+  }catch(e){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text-muted);">📡 Load হয়নি।</div>';}
+}
+
+async function loadHistory(){
+  var el=document.getElementById('historyList');
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);">Loading…</div>';
+  try{
+    var params=new URLSearchParams({program:_user.program||'BBA',year:_user.year||1,semester:_user.semester||1});
+    var res=await fetch('/classmanagement/api/class-changes?'+params);
+    var data=await res.json();
+    _history=(data.success&&data.data)?data.data:[];
+    renderHistory();
+  }catch(e){document.getElementById('historyList').innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);">Load হয়নি।</div>';}
+}
+
+function renderHistory(){
+  var el=document.getElementById('historyList');
+  var arr=_hFilter==='all'?_history:_history.filter(function(c){return c.type===_hFilter;});
+  if(!arr.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-muted);">কোনো রেকর্ড নেই।</div>';return;}
+  el.innerHTML=arr.map(function(c){return renderRow(c,false);}).join('');
+}
+
+function filterHistory(f){_hFilter=f;renderHistory();}
+
+function renderRow(c,showDel){
+  var isCr=_user&&(_user.role==='cr'||_user.role==='admin'||_user.role==='teacher');
+  return'<div class="change-row type-'+c.type+'">'
+    +'<span class="cc-chip '+c.type+'">'+(c.type==='cancel'?'❌ বাতিল':'📅 Extra')+'</span>'
+    +'<div class="change-info">'
+      +'<div class="change-title">'+(c.course_name||c.course_code)+'</div>'
+      +'<div class="change-meta">📅 '+c.change_date
+        +(c.time_start?' &nbsp;⏰ '+c.time_start+'–'+c.time_end:'')
+        +(c.room_no&&c.type==='extra'?' &nbsp;🏛 Room '+c.room_no:'')
+        +(c.reason?'<br>💬 '+c.reason:'')
+        +'<br>— '+(c.created_by_name||'CR')
+      +'</div>'
+    +'</div>'
+    +(showDel&&isCr?'<button onclick="deleteChange(\''+c.id+'\',this)" style="padding:4px 10px;border:1px solid rgba(229,62,62,.3);border-radius:8px;background:none;color:#C53030;font-size:.72rem;cursor:pointer;flex-shrink:0;">মুছুন</button>':'')
+  +'</div>';
+}
+
+async function deleteChange(id,btn){
+  if(!confirm('এই পরিবর্তন মুছবেন?'))return;
+  try{
+    await fetch('/classmanagement/api/class-changes/'+id+'?user_id='+_user.id,{method:'DELETE'});
+    btn.closest('.change-row').remove();
+    UniSync.toast('মুছে ফেলা হয়েছে','success');
+  }catch(e){UniSync.toast('Error','error');}
+}
+
+function loadSlots(){
+  var el=document.getElementById('slotsList');
+  if(!_slots.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);">কোনো slot নেই।</div>';return;}
+  var DAY_ORDER={Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4};
+  var sorted=_slots.slice().sort(function(a,b){var dA=DAY_ORDER[a.day]||0,dB=DAY_ORDER[b.day]||0;if(dA!==dB)return dA-dB;return(a.time_start||'').localeCompare(b.time_start||'');});
+  el.innerHTML=sorted.map(function(s){
+    var ts=s.time_start_12h||s.time_start||'';
+    var te=s.time_end_12h||s.time_end||'';
+    return'<div class="slot-row">'
+      +'<div><div class="slot-day">'+s.day+'</div></div>'
+      +'<div><div class="slot-name">'+(s.course_name||s.course_code)+'</div><div class="slot-meta">'+s.course_code+'</div></div>'
+      +'<div style="font-size:.78rem;color:var(--text-secondary);">'+ts+'–'+te+'</div>'
+      +'<div class="slot-meta">Room '+(s.room_no||'—')+'</div>'
+      +'<button onclick="openSlotModal(\''+s.id+'\',\''+(s.course_name||s.course_code)+'\',\''+s.day+'\',\''+(s.room_no||'')+'\',\''+(s.time_start||'')+'\',\''+(s.time_end||'')+'\',\''+(s.program||_user.program||'BBA')+'\',' +(s.course_year||_user.year||1)+','+(s.course_semester||_user.semester||1)+')" class="btn-sm" style="padding:5px 12px;white-space:nowrap;">✏️ Edit</button>'
+    +'</div>';
   }).join('');
 }
 
-// ── Slot modal ────────────────────────────────────────────────
-function openSlotModal(id, name, day, room, tStart, tEnd, prog, year, sem) {
-  document.getElementById('slotEditId').value       = id;
-  document.getElementById('slotEditProgram').value  = prog;
-  document.getElementById('slotEditYear').value     = year;
-  document.getElementById('slotEditSemester').value = sem;
-  document.getElementById('slotEditDesc').textContent =
-    name + ' — ' + day + ' ' + tStart + '–' + tEnd + ' (Room ' + room + ')';
-  document.getElementById('slotEditRoom').value  = room || '';
-  document.getElementById('slotEditStart').value = tStart || '';
-  document.getElementById('slotEditEnd').value   = tEnd || '';
-  document.getElementById('slotEditReason').value = '';
-  document.getElementById('slotEditModal').classList.remove('hidden');
+function openSlotModal(id,name,day,room,ts,te,prog,yr,sem){
+  document.getElementById('slotId').value=id;
+  document.getElementById('slotProgram').value=prog;
+  document.getElementById('slotYear').value=yr;
+  document.getElementById('slotSemester').value=sem;
+  document.getElementById('slotModalDesc').textContent=name+' — '+day+' · '+ts+'–'+te+' (Room '+room+')';
+  document.getElementById('slotRoom').value=room||'';
+  document.getElementById('slotStart').value=ts||'';
+  document.getElementById('slotEnd').value=te||'';
+  document.getElementById('slotReason').value='';
+  var msg=document.getElementById('slotModalMsg');msg.className='cm-msg';msg.textContent='';
+  document.getElementById('slotModal').classList.remove('hidden');
 }
 
-function closeSlotModal() {
-  document.getElementById('slotEditModal').classList.add('hidden');
+function closeSlotModal(){document.getElementById('slotModal').classList.add('hidden');}
+
+async function submitSlotUpdate(){
+  var id=document.getElementById('slotId').value;
+  var room=document.getElementById('slotRoom').value.trim();
+  var tStart=document.getElementById('slotStart').value;
+  var tEnd=document.getElementById('slotEnd').value;
+  var reason=document.getElementById('slotReason').value.trim();
+  var prog=document.getElementById('slotProgram').value;
+  var yr=parseInt(document.getElementById('slotYear').value);
+  var sem=parseInt(document.getElementById('slotSemester').value);
+  var msgEl=document.getElementById('slotModalMsg');
+  if(!room&&!tStart&&!tEnd){showMsgEl(msgEl,'অন্তত একটা field পূরণ করুন।','error');return;}
+  var payload={user_id:_user.id,routine_id:id,program:prog,year:yr,semester:sem,reason:reason};
+  if(room)payload.room_no=room;
+  if(tStart)payload.time_start=tStart;
+  if(tEnd)payload.time_end=tEnd;
+  try{
+    var res=await fetch('/classmanagement/api/update-slot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var data=await res.json();
+    if(data.success){
+      UniSync.toast('✅ Slot আপডেট হয়েছে! Batch notify করা হয়েছে।','success',4000);
+      closeSlotModal();await loadCourses();loadSlots();
+    }else{showMsgEl(msgEl,data.error||'আপডেট হয়নি','error');}
+  }catch(e){showMsgEl(msgEl,'Connection error।','error');}
 }
 
-async function submitSlotUpdate() {
-  var id      = document.getElementById('slotEditId').value;
-  var room    = document.getElementById('slotEditRoom').value.trim();
-  var tStart  = document.getElementById('slotEditStart').value;
-  var tEnd    = document.getElementById('slotEditEnd').value;
-  var reason  = document.getElementById('slotEditReason').value.trim();
-  var prog    = document.getElementById('slotEditProgram').value;
-  var year    = parseInt(document.getElementById('slotEditYear').value);
-  var sem     = parseInt(document.getElementById('slotEditSemester').value);
-  var msgEl   = document.getElementById('updateMsg');
-
-  if (!room && !tStart && !tEnd) {
-    _msg(msgEl, 'Please enter at least one field to update.', 'error');
-    return;
-  }
-
-  var payload = {
-    user_id:    _user.id,
-    routine_id: id,
-    program:    prog,
-    year:       year,
-    semester:   sem,
-    reason:     reason,
-  };
-  if (room)   payload.room_no    = room;
-  if (tStart) payload.time_start = tStart;
-  if (tEnd)   payload.time_end   = tEnd;
-
-  try {
-    var res  = await fetch('/classmanagement/api/update-slot', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    var data = await res.json();
-
-    if (data.success) {
-      UniSync.toast('✅ Slot updated — batch notified!', 'success', 4000);
-      closeSlotModal();
-      await loadCourses();  // Refresh slot data
-      if (_slots.length) loadSlots();
-    } else {
-      _msg(msgEl, data.error || 'Update failed', 'error');
-      document.getElementById('updateMsg').classList.remove('hidden');
-    }
-  } catch(e) {
-    _msg(msgEl, 'Connection error. Please try again.', 'error');
-    document.getElementById('updateMsg').classList.remove('hidden');
-  }
-}
-
-// ── Conflict check ────────────────────────────────────────────
-async function checkConflicts() {
-  var date  = document.getElementById('extraDate').value;
-  var start = document.getElementById('extraStart').value;
-  var end   = document.getElementById('extraEnd').value;
-  var res_el = document.getElementById('conflictResult');
-
-  if (!date || !start || !end) {
-    res_el.textContent = '⚠️ Please fill date, start and end time first.';
-    res_el.classList.remove('hidden');
-    return;
-  }
-
-  try {
-    var day   = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-    var params = new URLSearchParams({
-      from: start, to: end, day: day,
-      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
-    });
-    var res  = await fetch('/academic/api/duration-search?' + params);
-    var data = await res.json();
-
-    if (data.success && data.data && data.data.length) {
-      res_el.style.background = 'rgba(229,62,62,.08)';
-      res_el.style.borderColor = 'rgba(229,62,62,.25)';
-      res_el.style.color = '#C53030';
-      res_el.textContent = '⚠️ Conflict! ' + data.data.length + ' existing class(es) at this time: ' +
-        data.data.map(function(c) { return c.course_name || c.course_code; }).join(', ');
-    } else {
-      res_el.style.background = 'rgba(56,161,105,.08)';
-      res_el.style.borderColor = 'rgba(56,161,105,.25)';
-      res_el.style.color = '#276749';
-      res_el.textContent = '✅ No conflicts — this time slot is free!';
-    }
-    res_el.classList.remove('hidden');
-  } catch(e) {
-    res_el.textContent = '⚠️ Could not check conflicts — offline?';
-    res_el.classList.remove('hidden');
-  }
-}
-
-// ── Submit cancel ─────────────────────────────────────────────
-async function submitCancel() {
-  var course = document.getElementById('cancelCourse').value;
-  var date   = document.getElementById('cancelDate').value;
-  var reason = document.getElementById('cancelReason').value.trim();
-  var msgEl  = document.getElementById('cancelMsg');
-  var sel    = document.getElementById('cancelCourse');
-  var teacher= sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.teacher : '';
-
-  if (!course || !date) { _msg(msgEl, 'Course and date are required', 'error'); return; }
-
-  var payload = {
-    user_id: _user.id, course_code: course, teacher_code: teacher,
-    change_date: date, reason: reason,
-    program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
-  };
-
-  try {
-    if (!navigator.onLine) throw new Error('offline');
-    var res  = await fetch('/classmanagement/api/class-changes/cancel', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload),
-    });
-    var data = await res.json();
-    if (data.success) {
-      _msg(msgEl, '✅ Class cancelled — notice auto-published + batch notified!', 'success');
-      document.getElementById('cancelReason').value = '';
-      await loadRecentCancels();
-    } else {
-      _msg(msgEl, data.error || 'Failed', 'error');
-    }
-  } catch(err) {
-    if (!navigator.onLine || err.message === 'offline') {
-      await queueCancelOffline(payload);
-    } else {
-      _msg(msgEl, 'Server error. Try again.', 'error');
-    }
-  }
-}
-
-async function queueCancelOffline(payloadOverride) {
-  var msgEl  = document.getElementById('cancelMsg');
-  var course = (payloadOverride && payloadOverride.course_code) || document.getElementById('cancelCourse').value;
-  var date   = (payloadOverride && payloadOverride.change_date)  || document.getElementById('cancelDate').value;
-  if (!course || !date) { _msg(msgEl, 'Course and date required', 'error'); return; }
-  await OfflineSync.queue('cancel_class', {
-    course_code: course, change_date: date,
-    reason: (payloadOverride&&payloadOverride.reason) || document.getElementById('cancelReason').value.trim(),
-    type: 'cancel', program: _user.program, year: _user.year, semester: _user.semester,
-  });
-  _msg(msgEl, '💾 Saved offline — will sync when connected.', 'success');
-}
-
-// ── Submit extra ──────────────────────────────────────────────
-async function submitExtra() {
-  var course = document.getElementById('extraCourse').value;
-  var date   = document.getElementById('extraDate').value;
-  var start  = document.getElementById('extraStart').value;
-  var end    = document.getElementById('extraEnd').value;
-  var room   = document.getElementById('extraRoom').value.trim();
-  var note   = document.getElementById('extraNote').value.trim();
-  var msgEl  = document.getElementById('extraMsg');
-  var sel    = document.getElementById('extraCourse');
-  var teacher= sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.teacher : '';
-
-  if (!course || !date || !start || !end) {
-    _msg(msgEl, 'Course, date, start and end time are required', 'error'); return;
-  }
-  if (start >= end) { _msg(msgEl, 'Start time must be before end time', 'error'); return; }
-
-  var payload = {
-    user_id: _user.id, course_code: course, teacher_code: teacher,
-    change_date: date, time_start: start, time_end: end,
-    room_no: room || 'TBD', reason: note,
-    program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
-  };
-
-  try {
-    if (!navigator.onLine) throw new Error('offline');
-    var res  = await fetch('/classmanagement/api/class-changes/extra', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload),
-    });
-    var data = await res.json();
-    if (data.success) {
-      _msg(msgEl, '✅ Extra class scheduled — notice auto-published + batch notified!', 'success');
-      document.getElementById('extraStart').value = '';
-      document.getElementById('extraEnd').value   = '';
-      document.getElementById('extraNote').value  = '';
-      document.getElementById('conflictResult').classList.add('hidden');
-    } else {
-      _msg(msgEl, data.error || 'Failed', 'error');
-    }
-  } catch(err) {
-    if (!navigator.onLine || err.message === 'offline') {
-      await OfflineSync.queue('extra_class', Object.assign({}, payload, {type:'extra'}));
-      _msg(msgEl, '💾 Saved offline — will sync when connected.', 'success');
-    } else {
-      _msg(msgEl, 'Server error.', 'error');
-    }
-  }
-}
-
-async function queueExtraOffline() { submitExtra(); }
-
-// ── Recent cancels ────────────────────────────────────────────
-async function loadRecentCancels() {
-  var el    = document.getElementById('recentCancels');
-  var today = new Date().toISOString().split('T')[0];
-  var in7d  = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-  try {
-    var params = new URLSearchParams({
-      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
-      from: today, to: in7d,
-    });
-    var res  = await fetch('/classmanagement/api/class-changes?' + params);
-    var data = await res.json();
-    if (data.success && data.data && data.data.length) {
-      el.innerHTML = data.data.map(function(c) {
-        return '<div class="change-row">'
-          + '<span class="class-change-chip ' + c.type + '">' + (c.type==='cancel'?'❌ CANCELLED':'📅 EXTRA') + '</span>'
-          + '<div class="change-info">'
-            + '<div class="change-title">' + (c.course_name||c.course_code) + '</div>'
-            + '<div class="change-meta">' + c.change_date
-              + (c.time_start ? ' · ' + c.time_start + '–' + c.time_end : '')
-              + (c.reason ? ' · ' + c.reason : '')
-            + '</div>'
-          + '</div>'
-          + '<button onclick="deleteChange(\'' + c.id + '\', this)" '
-            + 'style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid rgba(229,62,62,0.3);'
-            + 'background:transparent;color:#C53030;font-size:0.72rem;cursor:pointer;">Remove</button>'
-        + '</div>';
-      }).join('');
-    } else {
-      el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.83rem;">No upcoming changes in the next 7 days.</div>';
-    }
-  } catch(e) {
-    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Could not load changes.</div>';
-  }
-}
-
-// ── History ───────────────────────────────────────────────────
-async function loadHistory() {
-  var el = document.getElementById('historyList');
-  el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Loading…</div>';
-  try {
-    var params = new URLSearchParams({
-      program: _user.program||'BBA', year: _user.year||1, semester: _user.semester||1,
-    });
-    var res  = await fetch('/classmanagement/api/class-changes?' + params);
-    var data = await res.json();
-    if (data.success && data.data && data.data.length) {
-      el.innerHTML = data.data.map(function(c) {
-        return '<div class="change-row">'
-          + '<span class="class-change-chip ' + c.type + '">' + (c.type==='cancel'?'❌':'📅') + ' ' + c.type.toUpperCase() + '</span>'
-          + '<div class="change-info">'
-            + '<div class="change-title">' + (c.course_name||c.course_code) + '</div>'
-            + '<div class="change-meta">📅 ' + c.change_date
-              + (c.time_start ? ' · ⏰ ' + c.time_start + '–' + c.time_end : '')
-              + (c.room_no && c.type==='extra' ? ' · Room ' + c.room_no : '')
-              + (c.reason ? '<br>💬 ' + c.reason : '')
-              + '<br>— ' + (c.created_by_name||'CR')
-            + '</div>'
-          + '</div>'
-        + '</div>';
-      }).join('');
-    } else {
-      el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);">No class changes recorded yet.</div>';
-    }
-  } catch(e) {
-    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Could not load history.</div>';
-  }
-}
-
-async function deleteChange(id, btn) {
-  if (!confirm('Remove this class change?')) return;
-  try {
-    await fetch('/classmanagement/api/class-changes/' + id + '?user_id=' + _user.id, { method: 'DELETE' });
-    btn.closest('.change-row').remove();
-    UniSync.toast('Change removed', 'success');
-  } catch(e) { UniSync.toast('Error', 'error'); }
-}
-
-// ── Tab switching ─────────────────────────────────────────────
-function switchTab(tab, btn) {
-  document.querySelectorAll('.cm-tab').forEach(function(t) { t.classList.remove('active'); });
-  document.querySelectorAll('.cm-panel').forEach(function(p) { p.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  var panel = document.getElementById('panel-' + tab);
-  if (panel) panel.classList.add('active');
-  if (tab === 'history') loadHistory();
-  if (tab === 'update')  loadSlots();
-}
-
-function _msg(el, msg, type) {
-  if (!el) return;
-  el.textContent   = msg;
-  el.style.background = type === 'success' ? 'rgba(56,161,105,.1)'  : 'rgba(229,62,62,.1)';
-  el.style.color      = type === 'success' ? '#276749' : '#C53030';
-  el.style.border     = type === 'success' ? '1px solid rgba(56,161,105,.25)' : '1px solid rgba(229,62,62,.25)';
-  el.style.padding    = '9px 13px';
-  el.style.borderRadius = 'var(--radius-sm)';
-  el.style.fontSize   = '0.83rem';
-  el.classList.remove('hidden');
-  setTimeout(function() { el.classList.add('hidden'); }, 7000);
-}
+function showMsg(id,msg,type){var el=document.getElementById(id);if(!el)return;showMsgEl(el,msg,type);}
+function showMsgEl(el,msg,type){el.textContent=msg;el.className='cm-msg show '+type;setTimeout(function(){el.className='cm-msg';},7000);}
 </script>
 {% endblock %}

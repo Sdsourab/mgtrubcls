@@ -2,65 +2,32 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "150mb",
-        "includeFiles": [
-          "requirements.txt",
-          "templates/**",
-          "static/**",
-          "app/**",
-          "core/**",
-          "config.py"
-        ]
-      }
+      "src": "wsgi.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/sw\\.js$",
+      "src": "/sw.js",
+      "dest": "/sw.js",
       "headers": {
         "Service-Worker-Allowed": "/",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Content-Type": "application/javascript; charset=utf-8"
-      },
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/manifest\\.json$",
-      "headers": {
-        "Cache-Control": "public, max-age=86400",
-        "Content-Type": "application/manifest+json; charset=utf-8"
-      },
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/static/(css|js)/(.+)\\.(css|js)$",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/static/(.+)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot)$",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000, immutable"
-      },
-      "dest": "api/index.py"
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "/wsgi.py"
     }
   ],
   "crons": [
     {
+      "path": "/api/cron/push-reminders",
+      "schedule": "*/5 * * * 0-4"
+    },
+    {
       "path": "/api/cron/daily",
-      "schedule": "0 13 * * 0-4"
+      "schedule": "0 18 * * 0-4"
     }
-  ],
-  "env": {
-    "FLASK_ENV": "production"
-  }
+  ]
 }

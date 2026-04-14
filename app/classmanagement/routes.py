@@ -78,49 +78,12 @@ def _publish_notice(sb, user_id: str, profile: dict, title: str,
 
 def _push_notify_batch(sb, program: str, year: int, semester: int,
                        title: str, body: str):
-    """
-    Send Web Push to all subscribed users in this batch.
-    Non-fatal — push failure never breaks the main operation.
-    """
+    """Send Web Push via core.push — non-fatal."""
     try:
-        import json, pywebpush
-        # Get subscriptions for users in this batch
-        profiles = sb.table('profiles') \
-                     .select('id') \
-                     .eq('program', program) \
-                     .eq('year', year) \
-                     .eq('semester', semester) \
-                     .execute().data or []
-
-        user_ids = [p['id'] for p in profiles]
-        if not user_ids:
-            return
-
-        # Batch fetch subscriptions
-        subs = sb.table('push_subscriptions') \
-                 .select('subscription_json') \
-                 .in_('user_id', user_ids) \
-                 .execute().data or []
-
-        import os
-        vapid_private = os.environ.get('VAPID_PRIVATE_KEY', '')
-        vapid_claims  = {'sub': 'mailto:' + os.environ.get('MAIL_FROM_EMAIL', 'admin@unisync.bd')}
-
-        payload = json.dumps({'title': title, 'body': body, 'icon': '/static/icons/icon-192x192.png'})
-
-        for row in subs:
-            try:
-                sub_info = json.loads(row['subscription_json'])
-                pywebpush.webpush(
-                    subscription_info    = sub_info,
-                    data                 = payload,
-                    vapid_private_key    = vapid_private,
-                    vapid_claims         = vapid_claims,
-                )
-            except Exception:
-                pass  # Individual push failure is non-fatal
+        from core.push import push_to_batch
+        push_to_batch(program, year, semester, title=title, body=body, url='/notices/')
     except Exception:
-        pass  # Push module unavailable — skip silently
+        pass
 
 
 # ─────────────────────────────────────────────────────────────
