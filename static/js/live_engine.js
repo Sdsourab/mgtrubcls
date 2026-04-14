@@ -37,24 +37,32 @@ const LiveEngine = (() => {
   }
 
   function _nowInfo() {
-    var d = new Date();
-    var h = d.getHours(), m = d.getMinutes();
+    // Use BST (UTC+6) to match server-side time
+    var utc = new Date();
+    var bst = new Date(utc.getTime() + 6 * 60 * 60 * 1000);
+    var h = bst.getUTCHours(), m = bst.getUTCMinutes();
+    var day = DAYS[bst.getUTCDay()];
+    var dateStr = bst.getUTCFullYear() + '-'
+      + String(bst.getUTCMonth()+1).padStart(2,'0') + '-'
+      + String(bst.getUTCDate()).padStart(2,'0');
     return {
-      day:  DAYS[d.getDay()],
+      day:  day,
       h: h, m: m,
       time: String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'),
-      date: d,
-      dateStr: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'),
+      date: bst,
+      dateStr: dateStr,
     };
   }
 
   function _getTarget() {
     var info = _nowInfo();
     if (info.h >= 18) {
-      var tom = new Date(info.date);
-      tom.setDate(info.date.getDate() + 1);
-      var tomStr = tom.getFullYear() + '-' + String(tom.getMonth()+1).padStart(2,'0') + '-' + String(tom.getDate()).padStart(2,'0');
-      return { day: DAYS[tom.getDay()], label: "Tomorrow's Classes", isTomorrow: true, dateStr: tomStr };
+      // After 6pm BST → show tomorrow
+      var utcTom = new Date(info.date.getTime() + 24 * 60 * 60 * 1000);
+      var tomStr = utcTom.getUTCFullYear() + '-'
+        + String(utcTom.getUTCMonth()+1).padStart(2,'0') + '-'
+        + String(utcTom.getUTCDate()).padStart(2,'0');
+      return { day: DAYS[utcTom.getUTCDay()], label: "Tomorrow's Classes", isTomorrow: true, dateStr: tomStr };
     }
     return { day: info.day, label: "Today's Classes", isTomorrow: false, dateStr: info.dateStr };
   }
