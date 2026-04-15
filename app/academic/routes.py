@@ -1,20 +1,18 @@
 """
-app/academic/routes.py — Fixed version
-Clean single query path. Batch mapping fetch (no N+1).
-BST-aligned. Proper error handling.
+app/academic/routes.py — Fixed
+Handles both old (no program/course_year) and new column structure.
+Uses batch mapping fetch. BST timezone aligned.
 """
 
 from flask import Blueprint, jsonify, request, render_template
 from core.supabase_client import get_supabase_admin
 from core.holidays import is_holiday, get_upcoming_holidays
 from datetime import datetime, date
-import math
 
 academic_bp = Blueprint('academic', __name__)
 
 
 def _get_mapping(sb) -> dict:
-    """Batch-fetch all mappings once. Returns {code: full_name}."""
     try:
         rows = sb.table('mappings').select('code,full_name').execute().data or []
         return {r['code']: r['full_name'] for r in rows}
@@ -34,7 +32,25 @@ def _fmt12h(t: str) -> str:
         h, m = map(int, str(t).split(':'))
         return f"{h%12 or 12}:{m:02d} {'AM' if h < 12 else 'PM'}"
     except Exception:
-        return t
+        return t or ''
+
+
+def _apply_filters(q, program: str, year: str, semester: str):
+    if program and year and semester:
+        try:
+            q = q.eq('program', program) \
+                 .eq('course_year', int(year)) \
+                 .eq('course_semester', int(semester))
+        except Exception:
+            pass
+    return q
+
+
+def _with_12h(rows):
+    for r in rows:
+        r['time_start_12h'] = _fmt12h(r.get('time_start', ''))
+        r['time_end_12h']   = _fmt12h(r.get('time_end',   ''))
+    return rows
 
 
 # ── Pages ──────────────────────────────────────────────────────
@@ -49,7 +65,6 @@ def courses_page():
 
 
 # ── API: Routine ───────────────────────────────────────────────
-# live_engine.js: /academic/api/routine?day=Monday&program=BBA&year=3&semester=1
 
 @academic_bp.route('/api/routine', methods=['GET'])
 def get_routine():
@@ -63,22 +78,17 @@ def get_routine():
         q = sb.table('routines').select('*')
         if day:
             q = q.eq('day', day)
-        if program and year and semester:
-            try:
-                q = q.eq('program', program) \
-                     .eq('course_year', int(year)) \
-                     .eq('course_semester', int(semester))
-            except (ValueError, TypeError):
-                pass
-
+        q = _apply_filters(q, program, year, semester)
         rows = q.order('time_start').execute().data or []
-        mp   = _get_mapping(sb)
-        rows = _enrich(rows, mp)
 
-        for r in rows:
-            r['time_start_12h'] = _fmt12h(r.get('time_start', ''))
-            r['time_end_12h']   = _fmt12h(r.get('time_end',   ''))
+        # Fallback: if filtered result empty, try without program filter
+        if not rows and program and year and semester:
+            q2 = sb.table('routines').select('*')
+            if day:
+                q2 = q2.eq('day', day)
+            rows = q2.order('time_start').execute().data or []
 
+        rows = _with_12h(_enrich(rows, _get_mapping(sb)))
         return jsonify({'success': True, 'data': rows, 'count': len(rows)})
 
     except Exception as e:
@@ -89,8 +99,8 @@ def get_routine():
 
 @academic_bp.route('/api/live-class', methods=['GET'])
 def get_live_class():
-    day      = request.args.get('day',  '').strip()
-    time_now = request.args.get('time', '').strip()
+    day      = request.args.get('day',      '').strip()
+    time_now = request.args.get('time',     '').strip()
     program  = request.args.get('program',  '').strip()
     year     = request.args.get('year',     '').strip()
     semester = request.args.get('semester', '').strip()
@@ -100,7 +110,8 @@ def get_live_class():
 
     is_hol, hol_name = is_holiday(date.today())
     if is_hol:
-        return jsonify({'success': True, 'live': [], 'is_holiday': True, 'holiday_name': hol_name})
+        return jsonify({'success': True, 'live': [],
+                        'is_holiday': True, 'holiday_name': hol_name})
 
     sb = get_supabase_admin()
     try:
@@ -108,20 +119,8 @@ def get_live_class():
               .eq('day', day) \
               .lte('time_start', time_now) \
               .gte('time_end',   time_now)
-
-        if program and year and semester:
-            try:
-                q = q.eq('program', program) \
-                     .eq('course_year', int(year)) \
-                     .eq('course_semester', int(semester))
-            except (ValueError, TypeError):
-                pass
-
-        rows = _enrich(q.execute().data or [], _get_mapping(sb))
-        for r in rows:
-            r['time_start_12h'] = _fmt12h(r.get('time_start', ''))
-            r['time_end_12h']   = _fmt12h(r.get('time_end',   ''))
-
+        q = _apply_filters(q, program, year, semester)
+        rows = _with_12h(_enrich(q.execute().data or [], _get_mapping(sb)))
         return jsonify({'success': True, 'live': rows, 'is_holiday': False})
 
     except Exception as e:
@@ -159,70 +158,15 @@ def duration_search():
         q = sb.table('routines').select('*') \
               .lt('time_start', tn) \
               .gt('time_end',   fn)
-
         if day:
             q = q.eq('day', day)
-        if program and year and semester:
-            try:
-                q = q.eq('program', program) \
-                     .eq('course_year', int(year)) \
-                     .eq('course_semester', int(semester))
-            except (ValueError, TypeError):
-                pass
-
-        rows = _enrich(q.order('time_start').execute().data or [], _get_mapping(sb))
-        for r in rows:
-            r['time_start_12h'] = _fmt12h(r.get('time_start', ''))
-            r['time_end_12h']   = _fmt12h(r.get('time_end',   ''))
-
-        # Simple ML suggestions
-        ml = _ml_suggestions(fn, rows)
-
-        return jsonify({'success': True, 'data': rows, 'count': len(rows),
-                        'ml': ml, 'window': {'from': fn, 'to': tn}})
+        q = _apply_filters(q, program, year, semester)
+        rows = _with_12h(_enrich(q.order('time_start').execute().data or [], _get_mapping(sb)))
+        return jsonify({'success': True, 'data': rows,
+                        'count': len(rows), 'window': {'from': fn, 'to': tn}})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-def _ml_suggestions(time_str: str, classes: list) -> dict:
-    """Simple smart suggestions for duration search."""
-    if not classes:
-        return {'suggestions': []}
-
-    def to_mins(t):
-        try:
-            h, m = map(int, t.split(':'))
-            return h * 60 + m
-        except Exception:
-            return 0
-
-    q    = to_mins(time_str)
-    suggestions = []
-
-    for cls in classes:
-        start = to_mins(cls.get('time_start', ''))
-        end   = to_mins(cls.get('time_end',   ''))
-        if end <= 0:
-            continue
-
-        duration    = max(end - start, 1)
-        late_mins   = q - start
-        remain_mins = end - q
-        course      = cls.get('course_name') or cls.get('course_code', 'Class')
-        room        = cls.get('room_no', '?')
-
-        if late_mins <= 0:
-            mins_until = abs(late_mins)
-            tip = f"⏰ '{course}' শুরু হবে {mins_until} মিনিটে — Room {room}"
-        elif remain_mins > 0:
-            tip = f"📝 '{course}' চলছে — {remain_mins} মিনিট বাকি, Room {room}"
-        else:
-            continue
-
-        suggestions.append({'course': course, 'room': room, 'suggestion': tip})
-
-    return {'suggestions': suggestions}
 
 
 # ── API: Holiday check ─────────────────────────────────────────
@@ -235,7 +179,8 @@ def holiday_check():
     except Exception:
         return jsonify({'error': 'Use YYYY-MM-DD'}), 400
     is_hol, name = is_holiday(d)
-    return jsonify({'is_holiday': is_hol, 'name': name, 'upcoming': get_upcoming_holidays(30)})
+    return jsonify({'is_holiday': is_hol, 'name': name,
+                    'upcoming': get_upcoming_holidays(30)})
 
 
 # ── API: Mappings ──────────────────────────────────────────────
@@ -244,8 +189,8 @@ def holiday_check():
 def get_mappings():
     sb = get_supabase_admin()
     try:
-        resp = sb.table('mappings').select('*').execute()
-        return jsonify({'success': True, 'data': resp.data or []})
+        return jsonify({'success': True,
+                        'data': sb.table('mappings').select('*').execute().data or []})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -267,10 +212,9 @@ def dashboard_schedule():
 
     is_hol, hol_name = is_holiday(target['date'])
     if is_hol:
-        return jsonify({
-            'success': True, 'mode': mode, 'day': day_name, 'label': label,
-            'bst_time': bst_time, 'is_holiday': True, 'holiday_name': hol_name, 'classes': [],
-        })
+        return jsonify({'success': True, 'mode': mode, 'day': day_name, 'label': label,
+                        'bst_time': bst_time, 'is_holiday': True,
+                        'holiday_name': hol_name, 'classes': []})
 
     program  = request.args.get('program',  '').strip()
     year     = request.args.get('year',     '').strip()
@@ -279,15 +223,14 @@ def dashboard_schedule():
     sb = get_supabase_admin()
     try:
         q = sb.table('routines').select('*').eq('day', day_name)
-        if program and year and semester:
-            try:
-                q = q.eq('program', program) \
-                     .eq('course_year', int(year)) \
-                     .eq('course_semester', int(semester))
-            except (ValueError, TypeError):
-                pass
+        q = _apply_filters(q, program, year, semester)
+        rows = q.order('time_start').execute().data or []
 
-        rows = _enrich(q.order('time_start').execute().data or [], _get_mapping(sb))
+        if not rows and program:
+            rows = sb.table('routines').select('*') \
+                     .eq('day', day_name).order('time_start').execute().data or []
+
+        rows = _enrich(rows, _get_mapping(sb))
         enriched = []
         for cls in rows:
             ts = cls.get('time_start', '') or ''
@@ -303,10 +246,9 @@ def dashboard_schedule():
             cls.update(classify_class_status(ts, te, bst_time, mode))
             enriched.append(cls)
 
-        return jsonify({
-            'success': True, 'mode': mode, 'day': day_name, 'label': label,
-            'bst_time': bst_time, 'is_holiday': False, 'holiday_name': None, 'classes': enriched,
-        })
+        return jsonify({'success': True, 'mode': mode, 'day': day_name, 'label': label,
+                        'bst_time': bst_time, 'is_holiday': False,
+                        'holiday_name': None, 'classes': enriched})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

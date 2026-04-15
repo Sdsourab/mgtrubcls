@@ -4,37 +4,52 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-*.egg-info/
-dist/
-build/
-.eggs/
+*.pyc
 
 # Virtual environments
 venv/
 env/
 .venv/
-.env/
+ENV/
 
-# Environment secrets — NEVER commit this
+# Environment variables (SECRET - never push!)
 .env
+.env.local
+.env.production
 
-# IDE
-.idea/
+# IDEs
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Test / dev artefacts
-deep_test.py
-test_connection.py
-fix_config.py
-Codebase.py
-ai_master_context.txt
+# Logs
 *.log
+logs/
 
-# Vercel
-.vercel/
+# Temp files
+*.tmp
+tmp/
+temp/
+
+# Uploads (user-uploaded files)
+uploads/
+static/uploads/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+site-packages/
+
+# Context/AI files (large — don't push)
+ai_master_context.txt
+Codebase.py
+
+# Node (if any)
+node_modules/
