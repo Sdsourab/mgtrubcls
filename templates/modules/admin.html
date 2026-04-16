@@ -162,6 +162,23 @@
                onkeydown="if(event.key==='Enter') adminLogin()">
         <span class="forgot-link" onclick="showForgot()">Forgot password?</span>
         <button class="btn-primary btn-full" id="loginBtn" onclick="adminLogin()">Sign In</button>
+
+        <!-- Bypass code section -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <p style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin:0 0 10px;">
+            — অথবা Bypass Code দিয়ে প্রবেশ করুন —
+          </p>
+          <div class="login-error" id="bypassError"></div>
+          <input type="password" id="bypassCode" class="login-input"
+                 placeholder="Admin bypass code"
+                 style="font-family:var(--font-mono);letter-spacing:0.06em;"
+                 onkeydown="if(event.key==='Enter') bypassLogin()">
+          <button class="btn-primary btn-full" id="bypassBtn"
+                  style="background:linear-gradient(135deg,#2C5F2E,#4A8F4D);margin-top:8px;"
+                  onclick="bypassLogin()">
+            🔑 Bypass প্রবেশ করুন
+          </button>
+        </div>
       </div>
 
       <!-- Forgot password view -->
@@ -291,6 +308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Verify token with backend ─────────────────────────────────
 async function verifyToken(token) {
+    // Bypass tokens skip server verification
+    if (token && token.startsWith('bypass-valid-')) return true;
     try {
         const res = await fetch('/admin/api/verify', {
             headers: { 'X-Admin-Token': token }
@@ -367,6 +386,53 @@ async function adminLogin() {
 
     btn.disabled = false;
     btn.textContent = 'Sign In';
+}
+
+// ── Bypass Code Login ──────────────────────────────────────────
+async function bypassLogin() {
+    var btn   = document.getElementById('bypassBtn');
+    var errEl = document.getElementById('bypassError');
+    var code  = document.getElementById('bypassCode').value.trim();
+    errEl.classList.remove('show');
+
+    if (!code) {
+        errEl.textContent = 'Bypass code দিন।';
+        errEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Checking…';
+
+    try {
+        var res  = await fetch('/auth/api/admin-bypass', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ code: code }),
+        });
+        var data = await res.json();
+
+        if (data.success) {
+            // Store a bypass token so verifyToken() passes
+            // We use a special bypass sentinel in sessionStorage
+            sessionStorage.setItem(ADMIN_TOKEN_KEY, 'bypass-valid-' + code);
+            sessionStorage.setItem(ADMIN_EMAIL_KEY, 'admin@unisync.local');
+            // Also store in localStorage for UniSync.getUser()
+            localStorage.setItem('us_token', data.token);
+            localStorage.setItem('us_user',  JSON.stringify(data.user));
+            showPanel();
+        } else {
+            errEl.textContent = data.error || 'ভুল code। আবার চেষ্টা করুন।';
+            errEl.classList.add('show');
+            btn.disabled    = false;
+            btn.textContent = '🔑 Bypass প্রবেশ করুন';
+        }
+    } catch(e) {
+        errEl.textContent = 'Connection error। আবার চেষ্টা করুন।';
+        errEl.classList.add('show');
+        btn.disabled    = false;
+        btn.textContent = '🔑 Bypass প্রবেশ করুন';
+    }
 }
 
 // ── Logout ────────────────────────────────────────────────────

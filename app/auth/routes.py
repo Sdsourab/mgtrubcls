@@ -453,3 +453,55 @@ def api_logout():
     except Exception:
         pass
     return jsonify({'success': True})
+
+
+# ── Admin Bypass (Code-based access) ──────────────────────────
+
+@auth_bp.route('/admin-bypass', methods=['GET'])
+def admin_bypass_page():
+    return render_template('auth/admin_bypass.html')
+
+
+@auth_bp.route('/api/admin-bypass', methods=['POST'])
+def api_admin_bypass():
+    """
+    Validate a bypass code from admin_codes table.
+    On success → return a synthetic admin session token + user object
+    so the frontend can store it in localStorage and enter the admin panel.
+    """
+    import uuid, secrets
+    data = request.get_json(silent=True) or {}
+    code = (data.get('code') or '').strip()
+
+    if not code:
+        return jsonify({'success': False, 'error': 'Code দিন।'}), 400
+
+    sb = get_supabase_admin()
+    try:
+        result = sb.table('admin_codes') \
+                   .select('id, code, label, is_active') \
+                   .eq('code', code) \
+                   .eq('is_active', True) \
+                   .limit(1) \
+                   .execute()
+
+        if not result.data:
+            return jsonify({'success': False, 'error': 'ভুল code। আবার চেষ্টা করুন।'}), 401
+
+        # Build a synthetic admin user object for localStorage
+        admin_user = {
+            'id':         'admin-bypass-' + str(uuid.uuid4())[:8],
+            'email':      'admin@unisync.local',
+            'full_name':  'Admin',
+            'role':       'admin',
+            'program':    'BBA',
+            'year':       1,
+            'semester':   1,
+        }
+        # A simple token — just needs to exist in localStorage for requireAuth()
+        token = 'bypass-' + secrets.token_urlsafe(32)
+
+        return jsonify({'success': True, 'token': token, 'user': admin_user})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Server error: ' + str(e)}), 500
