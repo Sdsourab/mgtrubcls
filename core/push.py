@@ -39,7 +39,7 @@ def _is_configured() -> bool:
 
 # ── Send a single push notification ───────────────────────────
 
-def send_push(subscription_json: dict | str, title: str, body: str,
+def send_push(subscription_json, title: str, body: str,
               url: str = '/notices/', icon: str = '/static/icons/icon-192x192.png',
               badge: str = '/static/icons/badge-72x72.png',
               tag: str = 'unisync') -> bool:

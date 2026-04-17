@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/sw.js",
-      "dest": "/sw.js",
+      "dest": "/api/index.py",
       "headers": {
         "Service-Worker-Allowed": "/",
         "Cache-Control": "no-cache, no-store, must-revalidate"
@@ -17,17 +17,13 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/wsgi.py"
+      "dest": "/api/index.py"
     }
   ],
   "crons": [
     {
-      "path": "/api/cron/push-reminders",
-      "schedule": "*/5 * * * 0-4"
-    },
-    {
       "path": "/api/cron/daily",
-      "schedule": "0 18 * * 0-4"
+      "schedule": "0 12 * * *"
     }
   ]
 }
