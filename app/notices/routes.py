@@ -2,12 +2,7 @@
 app/notices/routes.py
 ─────────────────────
 Notice system.
-FIXED: Role check এ 'cr', 'admin', 'teacher' — এবং
-       যদি user এর role valid না থাকে তাহলেও
-       notices post করতে পারবে (CR assign করার আগেও কাজ করবে)।
-       
-       সঠিক production setup:
-         Supabase এ CR user এর role = 'cr' set করুন।
+FIX: Notice create করলে push notification যাবে সবার কাছে।
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -30,26 +25,17 @@ def _get_profile(user_id: str) -> dict:
         return {}
 
 
-def _can_post(user_id: str) -> tuple[bool, dict]:
-    """
-    Return (authorized, profile).
-    Authorised = any authenticated user who has a profile.
-    Role-based posting is enforced in the frontend UI (only CR sees compose panel).
-    Backend check ensures at minimum the user exists in profiles.
-    """
+def _can_post(user_id: str) -> tuple:
     if not user_id:
         return False, {}
     profile = _get_profile(user_id)
     if not profile:
         return False, {}
-    # Allow: cr, admin, teacher — and 'student' with cr_flag
     role = profile.get('role', 'student')
     if role in ('cr', 'admin', 'teacher'):
         return True, profile
-    # Also allow if is_cr flag is set (flexible — admin can set this)
     if profile.get('is_cr'):
         return True, profile
-    # Fallback: allow any existing user (remove this line for strict mode)
     return True, profile
 
 
@@ -121,6 +107,11 @@ def create_notice():
 
     content_text = re.sub(r'<[^>]+>', ' ', content).strip()
 
+    program     = data.get('program') or profile.get('program', 'BBA')
+    target_year = data.get('target_year') or None
+    target_sem  = data.get('target_sem')  or None
+    is_draft    = bool(data.get('is_draft', False))
+
     sb = get_supabase_admin()
     try:
         payload = {
@@ -130,13 +121,44 @@ def create_notice():
             'content':      content,
             'content_text': content_text[:500],
             'type':         data.get('type', 'general'),
-            'program':      data.get('program') or profile.get('program', 'BBA'),
-            'target_year':  data.get('target_year') or None,
-            'target_sem':   data.get('target_sem')  or None,
-            'is_draft':     bool(data.get('is_draft', False)),
+            'program':      program,
+            'target_year':  target_year,
+            'target_sem':   target_sem,
+            'is_draft':     is_draft,
             'pinned':       bool(data.get('pinned', False)),
         }
         resp = sb.table('notices').insert(payload).execute()
+
+        # ── Push notification to affected batch ──────────────
+        if not is_draft:
+            try:
+                from core.push import push_to_batch
+                notice_type = data.get('type', 'general')
+                type_emoji = {
+                    'exam':      '📝',
+                    'holiday':   '🎉',
+                    'urgent':    '🚨',
+                    'class':     '📚',
+                    'general':   '📢',
+                }.get(notice_type, '📢')
+
+                author = profile.get('full_name', 'CR')
+                push_body = f"{type_emoji} {author}: {content_text[:80]}{'...' if len(content_text) > 80 else ''}"
+
+                year_int = int(target_year) if target_year else profile.get('year', 1)
+                sem_int  = int(target_sem)  if target_sem  else profile.get('semester', 1)
+
+                push_to_batch(
+                    program  = program,
+                    year     = year_int,
+                    semester = sem_int,
+                    title    = f"New Notice: {title}",
+                    body     = push_body,
+                    url      = '/notices/',
+                )
+            except Exception:
+                pass  # Push failure doesn't block notice creation
+
         return jsonify({'success': True, 'data': resp.data}), 201
 
     except Exception as e:
