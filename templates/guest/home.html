@@ -18,7 +18,7 @@
         }
         .guest-title { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; letter-spacing:-0.04em; margin-bottom:8px; }
         .guest-sub { color:var(--text-muted); font-size:0.9rem; }
-        .guest-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+        .guest-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
         .guest-card {
             background:var(--bg-card); border:1px solid var(--border);
             border-radius:var(--radius); padding:24px 20px;
@@ -34,8 +34,25 @@
         .icon-green  { background:rgba(52,211,153,0.15);  color:#34d399; }
         .guest-card-title { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; }
         .guest-card-desc  { font-size:0.8rem; color:var(--text-muted); line-height:1.5; }
+
+        /* Bottom action row */
+        .guest-actions { display:flex; flex-direction:column; gap:10px; }
+        .back-dashboard-btn {
+            display:flex; align-items:center; justify-content:center; gap:8px;
+            padding:12px 20px;
+            background:linear-gradient(135deg,rgba(188,111,55,0.15),rgba(205,169,106,0.1));
+            border:1px solid rgba(188,111,55,0.35);
+            border-radius:var(--radius-sm);
+            color:var(--terra); font-size:0.88rem; font-weight:700;
+            text-decoration:none; transition:all 0.2s;
+            display:none; /* shown by JS if logged in */
+        }
+        .back-dashboard-btn:hover {
+            background:linear-gradient(135deg,rgba(188,111,55,0.25),rgba(205,169,106,0.18));
+            border-color:rgba(188,111,55,0.6);
+        }
         .guest-login-note {
-            text-align:center; padding:16px; background:var(--bg-elevated);
+            text-align:center; padding:14px 16px; background:var(--bg-elevated);
             border:1px solid var(--border); border-radius:var(--radius-sm);
             font-size:0.85rem; color:var(--text-muted);
         }
@@ -77,9 +94,33 @@
         </a>
     </div>
 
-    <div class="guest-login-note">
-        Want full access? <a href="/auth/login">Sign in</a> or <a href="/auth/register">Create an account</a>
+    <div class="guest-actions">
+        <!-- Shown only if user is logged in -->
+        <a href="/dashboard" class="back-dashboard-btn" id="dashboardBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="m15 18-6-6 6-6"/>
+            </svg>
+            ← Dashboard এ ফিরে যান
+        </a>
+
+        <div class="guest-login-note" id="loginNote">
+            Want full access? <a href="/auth/login">Sign in</a> or <a href="/auth/register">Create an account</a>
+        </div>
     </div>
 </div>
+
+<script>
+// Show dashboard button if logged in
+(function() {
+    try {
+        const user = JSON.parse(localStorage.getItem('us_user') || 'null');
+        const token = localStorage.getItem('us_token');
+        if (user && token) {
+            document.getElementById('dashboardBtn').style.display = 'flex';
+            document.getElementById('loginNote').style.display    = 'none';
+        }
+    } catch(e) {}
+})();
+</script>
 </body>
 </html>
