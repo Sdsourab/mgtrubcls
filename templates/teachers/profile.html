@@ -3,233 +3,435 @@
 
 {% block extra_css %}
 <style>
-/* ── Teacher Profile Layout ──────────────────────────────── */
-.teacher-hero {
-    background: linear-gradient(135deg, rgba(188,111,55,.12), rgba(205,169,106,.07));
-    border: 1px solid rgba(188,111,55,.25);
-    border-radius: var(--radius-lg);
-    padding: 28px 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-.teacher-avatar {
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg,#BC6F37,#CDA96A);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.7rem; font-weight: 800; color: #fff;
-    flex-shrink: 0;
-    letter-spacing: -1px;
-}
-.teacher-info { flex: 1; min-width: 0; }
-.teacher-name { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
-.teacher-meta { font-size: .8rem; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
-.teacher-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: .68rem; font-weight: 700; letter-spacing: .06em;
-    background: rgba(188,111,55,.12); color: var(--terra);
-    border: 1px solid rgba(188,111,55,.25); border-radius: 20px;
-    padding: 3px 10px; text-transform: uppercase;
-}
+/* ══════════════════════════════════════════════════════════
+   TEACHER PROFILE — Elegant Redesign
+   ══════════════════════════════════════════════════════════ */
 
-/* ── Schedule Grid ───────────────────────────────────────── */
-.teacher-schedule-grid {
-    display: flex; flex-direction: column; gap: 10px;
+/* ── Hero Banner ─────────────────────────────────────────── */
+.t-hero {
+    position: relative;
+    background: linear-gradient(135deg,
+        rgba(188,111,55,.18) 0%,
+        rgba(205,169,106,.10) 50%,
+        rgba(124,111,255,.08) 100%);
+    border: 1px solid rgba(188,111,55,.28);
+    border-radius: var(--radius-lg);
+    padding: 32px 28px;
+    margin-bottom: 24px;
+    overflow: hidden;
 }
-.schedule-row {
-    display: grid;
-    grid-template-columns: 90px 1fr auto auto;
-    align-items: center;
-    gap: 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 12px 16px;
-    transition: border-color .2s;
+.t-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 80% 50%,
+        rgba(188,111,55,.07) 0%, transparent 65%);
+    pointer-events: none;
 }
-.schedule-row:hover { border-color: rgba(188,111,55,.35); }
-.sched-day-chip {
-    font-size: .7rem; font-weight: 700; letter-spacing: .07em;
-    background: rgba(188,111,55,.1); color: var(--terra);
-    border-radius: 8px; padding: 4px 8px; text-align: center;
+.t-hero-inner {
+    display: flex; align-items: center; gap: 24px;
+    position: relative; z-index: 1; flex-wrap: wrap;
+}
+.t-avatar-wrap { position: relative; flex-shrink: 0; }
+.t-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #BC6F37, #CDA96A);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.9rem; font-weight: 800; color: #fff;
+    letter-spacing: -1px;
+    box-shadow: 0 4px 20px rgba(188,111,55,.35);
+    border: 3px solid rgba(188,111,55,.3);
+}
+.t-online-dot {
+    position: absolute; bottom: 4px; right: 4px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #68D391;
+    border: 2.5px solid var(--bg-surface);
+    box-shadow: 0 0 0 2px rgba(104,211,145,.25);
+}
+.t-hero-info { flex: 1; min-width: 0; }
+.t-name {
+    font-size: 1.55rem; font-weight: 800;
+    letter-spacing: -.03em; margin-bottom: 4px;
+    line-height: 1.2;
+}
+.t-designation {
+    font-size: .9rem; color: var(--text-secondary);
+    margin-bottom: 10px; font-weight: 500;
+}
+.t-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.t-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .07em;
+    border-radius: 20px; padding: 4px 12px;
     text-transform: uppercase;
 }
-.sched-course-name { font-size: .9rem; font-weight: 700; margin-bottom: 2px; }
-.sched-course-meta { font-size: .74rem; color: var(--text-muted); }
-.sched-time-badge {
-    font-size: .75rem; font-weight: 600;
-    background: var(--bg-secondary); border: 1px solid var(--border);
-    border-radius: 8px; padding: 4px 10px; white-space: nowrap;
-    color: var(--text-secondary);
+.t-tag-teacher {
+    background: rgba(188,111,55,.12);
+    border: 1px solid rgba(188,111,55,.28);
+    color: var(--terra);
+}
+.t-tag-code {
+    background: rgba(124,111,255,.12);
+    border: 1px solid rgba(124,111,255,.28);
+    color: #a78bfa;
+    font-family: var(--font-mono, monospace);
+    letter-spacing: .1em;
+}
+.t-tag-dept {
+    background: rgba(52,211,153,.1);
+    border: 1px solid rgba(52,211,153,.25);
+    color: #34d399;
+}
+.t-hero-actions { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.t-edit-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    background: rgba(188,111,55,.12);
+    border: 1px solid rgba(188,111,55,.35);
+    border-radius: var(--radius-sm);
+    color: var(--terra); font-size: .82rem; font-weight: 700;
+    cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.t-edit-btn:hover { background: rgba(188,111,55,.22); border-color: var(--terra); }
+.t-degree-badge {
+    font-size: .72rem; color: var(--text-muted);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px 12px;
 }
 
-/* ── Cancel Button ───────────────────────────────────────── */
-.btn-cancel-class {
-    font-size: .72rem; font-weight: 700; color: #E53E3E;
-    background: rgba(229,62,62,.08); border: 1px solid rgba(229,62,62,.22);
-    border-radius: 8px; padding: 5px 10px; cursor: pointer;
-    white-space: nowrap; transition: background .15s;
+/* ── Stats Row ───────────────────────────────────────────── */
+.t-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 24px;
 }
-.btn-cancel-class:hover { background: rgba(229,62,62,.15); }
+.t-stat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 16px 18px;
+    text-align: center; transition: border-color .2s;
+}
+.t-stat-card:hover { border-color: rgba(188,111,55,.3); }
+.t-stat-val {
+    font-size: 1.7rem; font-weight: 800;
+    background: linear-gradient(135deg, #BC6F37, #CDA96A);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; line-height: 1.1; margin-bottom: 4px;
+}
+.t-stat-lbl { font-size: .70rem; color: var(--text-muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 
-/* ── Edit Profile Form ───────────────────────────────────── */
-.profile-form-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 24px;
-    margin-bottom: 20px;
+/* ── Edit Form ───────────────────────────────────────────── */
+.t-edit-card {
+    background: var(--bg-card); border: 1px solid rgba(188,111,55,.25);
+    border-radius: var(--radius-lg); padding: 24px;
+    margin-bottom: 24px;
+    animation: slideDown .22s ease;
 }
-.profile-form-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+@keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.t-edit-card h3 { margin: 0 0 18px; font-size: 1rem; display:flex; align-items:center; gap:8px; }
+.t-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:600px){ .t-form-grid { grid-template-columns: 1fr; } }
+.t-field label {
+    font-size: .75rem; font-weight: 700;
+    color: var(--text-muted); display: block; margin-bottom: 5px;
+    letter-spacing: .04em; text-transform: uppercase;
 }
-@media (max-width: 600px) { .profile-form-grid { grid-template-columns: 1fr; } }
-.form-field label { font-size: .78rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 5px; }
-.form-field input, .form-field select {
+.t-field input, .t-field select {
     width: 100%; box-sizing: border-box;
-    padding: 9px 12px;
+    padding: 10px 13px;
     background: var(--bg-secondary); border: 1px solid var(--border);
     border-radius: var(--radius-sm); color: var(--text-primary);
-    font-size: .88rem; font-family: inherit;
-    transition: border-color .2s;
+    font-size: .88rem; font-family: inherit; transition: border-color .2s;
 }
-.form-field input:focus, .form-field select:focus {
+.t-field input:focus, .t-field select:focus {
     outline: none; border-color: var(--terra);
 }
 
+/* ── Schedule Section ────────────────────────────────────── */
+.t-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; gap: 12px; flex-wrap: wrap;
+}
+.t-section-title {
+    font-size: 1rem; font-weight: 800;
+    display: flex; align-items: center; gap: 8px;
+}
+.t-section-count {
+    font-size: .72rem; background: rgba(188,111,55,.1);
+    border: 1px solid rgba(188,111,55,.2); color: var(--terra);
+    border-radius: 20px; padding: 3px 12px; font-weight: 700;
+}
+
+/* Day-grouped schedule */
+.t-day-group { margin-bottom: 16px; }
+.t-day-label {
+    font-size: .65rem; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-muted);
+    padding: 0 4px; margin-bottom: 8px; display: flex;
+    align-items: center; gap: 8px;
+}
+.t-day-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+}
+
+.t-class-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 14px 16px;
+    margin-bottom: 8px; transition: all .2s;
+}
+.t-class-card:hover {
+    border-color: rgba(188,111,55,.3);
+    background: rgba(188,111,55,.03);
+}
+.t-class-time {
+    font-family: var(--font-mono, monospace);
+    font-size: .72rem; font-weight: 600;
+    color: var(--text-muted); min-width: 80px;
+    text-align: center;
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 8px; flex-shrink: 0;
+}
+.t-class-body { flex: 1; min-width: 0; }
+.t-class-name {
+    font-size: .9rem; font-weight: 700; margin-bottom: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.t-class-meta {
+    font-size: .73rem; color: var(--text-muted);
+    display: flex; gap: 10px; flex-wrap: wrap;
+}
+.t-class-meta span { display: flex; align-items: center; gap: 4px; }
+.t-class-badges { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.t-batch-badge {
+    font-size: .65rem; font-weight: 700;
+    background: rgba(124,111,255,.1); border: 1px solid rgba(124,111,255,.2);
+    color: #a78bfa; border-radius: 6px; padding: 3px 8px;
+}
+.t-room-badge {
+    font-size: .65rem; font-weight: 700;
+    background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.2);
+    color: #34d399; border-radius: 6px; padding: 3px 8px;
+}
+.btn-cancel-cls {
+    font-size: .70rem; font-weight: 700; color: #fc8181;
+    background: rgba(229,62,62,.08); border: 1px solid rgba(229,62,62,.22);
+    border-radius: 8px; padding: 5px 11px; cursor: pointer;
+    white-space: nowrap; transition: background .15s; flex-shrink: 0;
+}
+.btn-cancel-cls:hover { background: rgba(229,62,62,.18); }
+
+/* ── Assign Course Card ───────────────────────────────────── */
+.t-assign-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 22px;
+    margin-top: 24px;
+}
+.t-assign-card h3 {
+    margin: 0 0 6px; font-size: .95rem;
+    display: flex; align-items: center; gap: 8px;
+}
+.t-assign-card p { font-size: .8rem; color: var(--text-muted); margin: 0 0 18px; }
+
 /* ── Cancel Modal ────────────────────────────────────────── */
-.cancel-modal-overlay {
+.t-modal-overlay {
     position: fixed; inset: 0; z-index: 200;
     background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
 }
-.cancel-modal-overlay.hidden { display: none; }
-.cancel-modal-box {
+.t-modal-overlay.hidden { display: none; }
+.t-modal-box {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); padding: 28px 24px;
-    width: 100%; max-width: 420px;
+    width: 100%; max-width: 440px;
     animation: slideUp .2s ease;
 }
 @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-.cancel-modal-box h3 { margin: 0 0 16px; font-size: 1.05rem; }
+.t-modal-box h3 {
+    margin: 0 0 18px; font-size: 1.05rem;
+    color: #fc8181; display: flex; align-items: center; gap: 8px;
+}
+
+.empty-schedule {
+    text-align: center; padding: 48px 20px;
+    color: var(--text-muted);
+}
+.empty-schedule svg { opacity: .3; margin-bottom: 14px; }
+.empty-schedule h3 { margin: 0 0 6px; font-size: .95rem; color: var(--text-secondary); }
+.empty-schedule p  { font-size: .82rem; margin: 0; }
+
+@media(max-width:600px){
+    .t-stats { grid-template-columns: 1fr 1fr; }
+    .t-hero-actions { align-items: flex-start; }
+    .t-class-badges { display: none; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-wrapper">
 
-  <div class="page-header">
-    <div>
-      <h1 class="page-title">Teacher Profile</h1>
-      <p class="page-sub">Your teaching schedule and profile settings</p>
+  <!-- ═══════════════════════════════════════════════════════
+       HERO BANNER
+       ═══════════════════════════════════════════════════════ -->
+  <div class="t-hero">
+    <div class="t-hero-inner">
+
+      <div class="t-avatar-wrap">
+        <div class="t-avatar" id="tAvatar">—</div>
+        <div class="t-online-dot"></div>
+      </div>
+
+      <div class="t-hero-info">
+        <div class="t-name" id="tName">Loading…</div>
+        <div class="t-designation" id="tDesig">—</div>
+        <div class="t-tags">
+          <span class="t-tag t-tag-teacher">👨‍🏫 Faculty</span>
+          <span class="t-tag t-tag-code" id="tCodeTag">Code: —</span>
+          <span class="t-tag t-tag-dept">Dept. of Management</span>
+        </div>
+      </div>
+
+      <div class="t-hero-actions">
+        <button class="t-edit-btn" onclick="toggleEditForm()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Profile
+        </button>
+        <span class="t-degree-badge" id="tDegree">—</span>
+      </div>
+
     </div>
-    <button class="btn-primary" onclick="toggleEditForm()">✏️ Edit Profile</button>
   </div>
 
-  <!-- Hero Card -->
-  <div class="teacher-hero" id="teacherHero">
-    <div class="teacher-avatar" id="avatarInitials">—</div>
-    <div class="teacher-info">
-      <div class="teacher-name" id="teacherName">Loading…</div>
-      <div class="teacher-meta">
-        <span id="teacherDesignation">—</span>
-        <span id="teacherDegree">—</span>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-        <span class="teacher-badge">👨‍🏫 Teacher</span>
-        <span class="teacher-badge" id="teacherCode">Code: —</span>
-      </div>
+  <!-- ═══════════════════════════════════════════════════════
+       STATS ROW
+       ═══════════════════════════════════════════════════════ -->
+  <div class="t-stats">
+    <div class="t-stat-card">
+      <div class="t-stat-val" id="statClasses">—</div>
+      <div class="t-stat-lbl">Total Classes/Week</div>
+    </div>
+    <div class="t-stat-card">
+      <div class="t-stat-val" id="statDays">—</div>
+      <div class="t-stat-lbl">Teaching Days</div>
+    </div>
+    <div class="t-stat-card">
+      <div class="t-stat-val" id="statCourses">—</div>
+      <div class="t-stat-lbl">Unique Courses</div>
     </div>
   </div>
 
-  <!-- Edit Profile Form (hidden by default) -->
-  <div class="profile-form-card hidden" id="editFormCard">
-    <h3 style="margin:0 0 18px;font-size:1rem;">Update Profile</h3>
-    <div class="profile-form-grid">
-      <div class="form-field">
+  <!-- ═══════════════════════════════════════════════════════
+       EDIT PROFILE FORM (hidden by default)
+       ═══════════════════════════════════════════════════════ -->
+  <div class="t-edit-card hidden" id="editCard">
+    <h3>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+      </svg>
+      Update Profile
+    </h3>
+    <div class="t-form-grid">
+      <div class="t-field">
         <label>Full Name *</label>
         <input type="text" id="ef_name" placeholder="Dr. Md. Rakibul Karim">
       </div>
-      <div class="form-field">
-        <label>Degree</label>
+      <div class="t-field">
+        <label>Academic Degree</label>
         <input type="text" id="ef_degree" placeholder="PhD in Management">
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Designation</label>
-        <input type="text" id="ef_designation" placeholder="Assistant Professor">
+        <input type="text" id="ef_designation" placeholder="Associate Professor">
       </div>
-      <div class="form-field">
-        <label>Teacher Code <small style="color:var(--text-muted)">(matches routine)</small></label>
-        <input type="text" id="ef_code" placeholder="e.g. MRK" style="text-transform:uppercase">
+      <div class="t-field">
+        <label>Teacher Code <small style="color:var(--text-muted);text-transform:none">(must match routine)</small></label>
+        <input type="text" id="ef_code" placeholder="e.g. MRK" style="text-transform:uppercase;font-family:var(--font-mono,monospace);letter-spacing:.08em;">
       </div>
     </div>
-    <div class="form-field" style="margin-top:14px;">
-      <label>Short Bio (optional)</label>
-      <input type="text" id="ef_bio" placeholder="Research interests, specialization…">
+    <div class="t-field" style="margin-top:14px;">
+      <label>Short Bio / Research Interests</label>
+      <input type="text" id="ef_bio" placeholder="Organizational behavior, strategic management…">
     </div>
     <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+      <button class="btn-primary" onclick="saveProfile()">💾 Save Changes</button>
       <button class="btn-sm" style="padding:9px 18px;" onclick="toggleEditForm()">Cancel</button>
     </div>
   </div>
 
-  <!-- My Schedule -->
-  <div class="section-header scroll-reveal" style="margin-top:24px;">
-    <h2>📅 My Teaching Schedule</h2>
-    <span class="section-sub" id="scheduleCount">Loading…</span>
-  </div>
-
-  <div id="scheduleContainer" class="teacher-schedule-grid">
-    <div class="resource-skeleton"></div>
-    <div class="resource-skeleton"></div>
-  </div>
-
-  <!-- Assign New Course -->
-  <div class="admin-card" style="margin-top:24px;">
-    <div class="admin-card-header">
-      <h3>➕ Assign Yourself to a Course Slot</h3>
-      <p>Fill in the details to add a new class to your schedule. This will update the master routine.</p>
+  <!-- ═══════════════════════════════════════════════════════
+       WEEKLY SCHEDULE
+       ═══════════════════════════════════════════════════════ -->
+  <div class="t-section-header">
+    <div class="t-section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+      </svg>
+      Weekly Teaching Schedule
     </div>
-    <div class="profile-form-grid" style="margin-bottom:14px;">
-      <div class="form-field">
+    <span class="t-section-count" id="schedCount">Loading…</span>
+  </div>
+
+  <div id="schedContainer">
+    <div class="resource-skeleton" style="height:70px;margin-bottom:8px;"></div>
+    <div class="resource-skeleton" style="height:70px;margin-bottom:8px;"></div>
+    <div class="resource-skeleton" style="height:70px;"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ASSIGN NEW COURSE SLOT
+       ═══════════════════════════════════════════════════════ -->
+  <div class="t-assign-card">
+    <h3>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/>
+        <line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      Add New Course Slot
+    </h3>
+    <p>Add a class slot to the master routine under your teacher code.</p>
+    <div class="t-form-grid" style="margin-bottom:14px;">
+      <div class="t-field">
         <label>Day</label>
         <select id="as_day">
           <option>Sunday</option><option>Monday</option><option>Tuesday</option>
           <option>Wednesday</option><option>Thursday</option>
         </select>
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Course Code</label>
-        <input type="text" id="as_course" placeholder="e.g. MGT-3103">
+        <input type="text" id="as_course" placeholder="e.g. MGT-3103" style="text-transform:uppercase">
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Program</label>
         <select id="as_program"><option>BBA</option><option>MBA</option></select>
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Year</label>
         <select id="as_year">
           <option value="1">Year 1</option><option value="2">Year 2</option>
           <option value="3">Year 3</option><option value="4">Year 4</option>
         </select>
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Semester</label>
         <select id="as_sem"><option value="1">Semester 1</option><option value="2">Semester 2</option></select>
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Room No.</label>
-        <input type="text" id="as_room" placeholder="e.g. 301">
+        <input type="text" id="as_room" placeholder="e.g. 101">
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>Start Time</label>
         <input type="time" id="as_start">
       </div>
-      <div class="form-field">
+      <div class="t-field">
         <label>End Time</label>
         <input type="time" id="as_end">
       </div>
@@ -240,35 +442,43 @@
 
 </div><!-- /page-wrapper -->
 
-<!-- Cancel Class Modal -->
-<div class="cancel-modal-overlay hidden" id="cancelModal">
-  <div class="cancel-modal-box">
-    <h3>❌ Cancel a Class</h3>
-    <div class="form-field" style="margin-bottom:14px;">
+<!-- ═════════════════════════════════════════════════════════
+     CANCEL CLASS MODAL
+     ═════════════════════════════════════════════════════════ -->
+<div class="t-modal-overlay hidden" id="cancelModal">
+  <div class="t-modal-box">
+    <h3>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      Cancel a Class
+    </h3>
+    <div class="t-field" style="margin-bottom:14px;">
       <label>Course</label>
       <input type="text" id="cm_course" readonly style="background:var(--bg-secondary);opacity:.7;">
     </div>
-    <div class="form-field" style="margin-bottom:14px;">
-      <label>Batch (Program / Year / Semester)</label>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;">Batch (Program / Year / Semester)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <select id="cm_program"><option>BBA</option><option>MBA</option></select>
-        <select id="cm_year">
-          <option value="1">Y1</option><option value="2">Y2</option>
-          <option value="3">Y3</option><option value="4">Y4</option>
-        </select>
+        <select id="cm_program" class="t-field"><option>BBA</option><option>MBA</option></select>
+        <select id="cm_year"><option value="1">Y1</option><option value="2">Y2</option><option value="3">Y3</option><option value="4">Y4</option></select>
         <select id="cm_sem"><option value="1">S1</option><option value="2">S2</option></select>
       </div>
     </div>
-    <div class="form-field" style="margin-bottom:14px;">
+    <div class="t-field" style="margin-bottom:14px;">
       <label>Date of Cancellation</label>
       <input type="date" id="cm_date">
     </div>
-    <div class="form-field" style="margin-bottom:18px;">
+    <div class="t-field" style="margin-bottom:20px;">
       <label>Reason (shown to students)</label>
-      <input type="text" id="cm_reason" placeholder="e.g. Official duty, personal leave…">
+      <input type="text" id="cm_reason" placeholder="Official duty, personal leave…">
     </div>
     <div style="display:flex;gap:10px;">
-      <button class="btn-primary" style="background:linear-gradient(135deg,#C53030,#E53E3E);" onclick="submitCancel()">Cancel Class & Notify Batch</button>
+      <button class="btn-primary"
+              style="background:linear-gradient(135deg,#C53030,#E53E3E);"
+              onclick="submitCancel()">
+        ❌ Cancel Class & Notify Batch
+      </button>
       <button class="btn-sm" style="padding:9px 18px;" onclick="closeCancel()">Back</button>
     </div>
   </div>
@@ -277,16 +487,17 @@
 
 {% block extra_js %}
 <script>
-var _user = null;
+var _user    = null;
 var _profile = null;
-var _selectedCourseCode = '';
+var _selCourse = '';
+
+const DAY_ORDER = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
 
 document.addEventListener('DOMContentLoaded', async () => {
     UniSync.requireAuth();
     _user = UniSync.getUser();
     if (!_user) return;
 
-    // Guard: only teachers can access this page
     if (_user.role !== 'teacher' && _user.role !== 'admin') {
         UniSync.toast('This page is for teachers only.', 'error');
         setTimeout(() => window.location.href = '/dashboard', 1500);
@@ -294,8 +505,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadProfile();
-
-    // Set today's date as default for cancel modal
     document.getElementById('cm_date').value = new Date().toISOString().split('T')[0];
 });
 
@@ -306,79 +515,112 @@ async function loadProfile() {
         const data = await res.json();
         if (!data.success) return;
 
-        _profile = data.profile;
+        _profile   = data.profile;
         const base = data.base || {};
         const name = base.full_name || _user.full_name || '?';
 
         // Hero
-        document.getElementById('teacherName').textContent = name;
-        document.getElementById('avatarInitials').textContent =
-            name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+        document.getElementById('tName').textContent  = name;
+        document.getElementById('tAvatar').textContent =
+            name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0,2).toUpperCase();
 
         if (_profile) {
-            document.getElementById('teacherDesignation').textContent = _profile.designation || 'No designation set';
-            document.getElementById('teacherDegree').textContent      = _profile.degree      || '';
-            document.getElementById('teacherCode').textContent        = 'Code: ' + (_profile.teacher_code || '—');
+            const desig  = _profile.designation || 'Faculty Member';
+            const degree = _profile.degree       || '';
+            const code   = _profile.teacher_code || '—';
+            const bio    = _profile.bio           || '';
+
+            document.getElementById('tDesig').textContent  =
+                desig + (bio ? ' · ' + bio : '');
+            document.getElementById('tDegree').textContent = degree || 'Degree not set';
+            document.getElementById('tCodeTag').textContent = 'Code: ' + code;
 
             // Pre-fill edit form
             document.getElementById('ef_name').value        = name;
-            document.getElementById('ef_degree').value      = _profile.degree      || '';
-            document.getElementById('ef_designation').value = _profile.designation || '';
-            document.getElementById('ef_code').value        = _profile.teacher_code || '';
-            document.getElementById('ef_bio').value         = _profile.bio          || '';
+            document.getElementById('ef_degree').value      = degree;
+            document.getElementById('ef_designation').value = desig !== 'Faculty Member' ? desig : '';
+            document.getElementById('ef_code').value        = code !== '—' ? code : '';
+            document.getElementById('ef_bio').value         = bio;
         }
 
         renderSchedule(data.schedule || []);
-    } catch(e) {
-        console.error(e);
-    }
+    } catch(e) { console.error(e); }
 }
 
 // ── Render schedule ───────────────────────────────────────────
 function renderSchedule(classes) {
-    const container = document.getElementById('scheduleContainer');
-    const countEl   = document.getElementById('scheduleCount');
-    countEl.textContent = classes.length + ' class slot' + (classes.length !== 1 ? 's' : '');
+    const container = document.getElementById('schedContainer');
+    const countEl   = document.getElementById('schedCount');
+
+    countEl.textContent = classes.length + ' slot' + (classes.length !== 1 ? 's' : '');
+
+    // Stats
+    const days    = new Set(classes.map(c => c.day));
+    const courses = new Set(classes.map(c => c.course_code));
+    document.getElementById('statClasses').textContent  = classes.length;
+    document.getElementById('statDays').textContent     = days.size;
+    document.getElementById('statCourses').textContent  = courses.size;
 
     if (!classes.length) {
         container.innerHTML = `
-        <div class="empty-state-full">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
-            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+        <div class="empty-schedule">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="56" height="56">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
             <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
           </svg>
-          <h3>No classes found</h3>
-          <p>Set your Teacher Code above and classes from the routine will appear here.</p>
+          <h3>No classes assigned yet</h3>
+          <p>Set your Teacher Code in Edit Profile — classes will appear automatically.</p>
         </div>`;
         return;
     }
 
-    const DAY_ORDER = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+    // Sort by day then time
     classes.sort((a,b) => {
         const di = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
-        return di !== 0 ? di : a.time_start.localeCompare(b.time_start);
+        return di !== 0 ? di : (a.time_start||'').localeCompare(b.time_start||'');
     });
 
-    container.innerHTML = classes.map(c => `
-    <div class="schedule-row">
-      <div class="sched-day-chip">${c.day}</div>
-      <div>
-        <div class="sched-course-name">${c.course_name || c.course_code}</div>
-        <div class="sched-course-meta">
-          ${c.course_code} &nbsp;·&nbsp; Room ${c.room_no || '—'}
-          &nbsp;·&nbsp; ${c.program || ''} Year ${c.course_year || '?'} Sem ${c.course_semester || '?'}
-        </div>
-      </div>
-      <div class="sched-time-badge">${c.time_start_12h} – ${c.time_end_12h}</div>
-      <button class="btn-cancel-class" onclick="openCancel('${c.course_code}', '${c.program||'BBA'}', ${c.course_year||1}, ${c.course_semester||1})">
-        Cancel
-      </button>
-    </div>`).join('');
+    // Group by day
+    const groups = {};
+    DAY_ORDER.forEach(d => { groups[d] = []; });
+    classes.forEach(c => { if (groups[c.day]) groups[c.day].push(c); });
+
+    let html = '';
+    DAY_ORDER.forEach(day => {
+        if (!groups[day].length) return;
+        html += `<div class="t-day-group">
+            <div class="t-day-label">${day}</div>`;
+        groups[day].forEach(c => {
+            html += `
+            <div class="t-class-card">
+              <div class="t-class-time">${c.time_start_12h||c.time_start}<br>${c.time_end_12h||c.time_end}</div>
+              <div class="t-class-body">
+                <div class="t-class-name">${c.course_name || c.course_code}</div>
+                <div class="t-class-meta">
+                  <span>📋 ${c.course_code}</span>
+                  <span>🚪 Room ${c.room_no||'—'}</span>
+                </div>
+              </div>
+              <div class="t-class-badges">
+                <span class="t-batch-badge">${c.program||'BBA'} Y${c.course_year||'?'} S${c.course_semester||'?'}</span>
+                <span class="t-room-badge">Room ${c.room_no||'—'}</span>
+              </div>
+              <button class="btn-cancel-cls"
+                onclick="openCancel('${c.course_code}','${c.program||'BBA'}',${c.course_year||1},${c.course_semester||1})">
+                Cancel
+              </button>
+            </div>`;
+        });
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
 }
 
 // ── Edit profile ──────────────────────────────────────────────
 function toggleEditForm() {
-    document.getElementById('editFormCard').classList.toggle('hidden');
+    document.getElementById('editCard').classList.toggle('hidden');
 }
 
 async function saveProfile() {
@@ -390,10 +632,7 @@ async function saveProfile() {
         teacher_code: document.getElementById('ef_code').value.trim().toUpperCase(),
         bio:          document.getElementById('ef_bio').value.trim(),
     };
-
-    if (!payload.full_name) {
-        UniSync.toast('Name is required', 'error'); return;
-    }
+    if (!payload.full_name) { UniSync.toast('Name is required', 'error'); return; }
 
     try {
         const res  = await fetch('/teachers/api/profile', {
@@ -403,29 +642,27 @@ async function saveProfile() {
         });
         const data = await res.json();
         if (data.success) {
-            UniSync.toast('Profile updated!', 'success');
+            UniSync.toast('Profile updated! ✅', 'success');
             toggleEditForm();
             loadProfile();
         } else {
             UniSync.toast(data.error || 'Update failed', 'error');
         }
-    } catch(e) {
-        UniSync.toast('Connection error', 'error');
-    }
+    } catch(e) { UniSync.toast('Connection error', 'error'); }
 }
 
 // ── Assign course ─────────────────────────────────────────────
 async function assignCourse() {
     const payload = {
-        user_id:          _user.id,
-        day:              document.getElementById('as_day').value,
-        course_code:      document.getElementById('as_course').value.trim().toUpperCase(),
-        room_no:          document.getElementById('as_room').value.trim(),
-        program:          document.getElementById('as_program').value,
-        course_year:      parseInt(document.getElementById('as_year').value),
-        course_semester:  parseInt(document.getElementById('as_sem').value),
-        time_start:       document.getElementById('as_start').value,
-        time_end:         document.getElementById('as_end').value,
+        user_id:         _user.id,
+        day:             document.getElementById('as_day').value,
+        course_code:     document.getElementById('as_course').value.trim().toUpperCase(),
+        room_no:         document.getElementById('as_room').value.trim(),
+        program:         document.getElementById('as_program').value,
+        course_year:     parseInt(document.getElementById('as_year').value),
+        course_semester: parseInt(document.getElementById('as_sem').value),
+        time_start:      document.getElementById('as_start').value,
+        time_end:        document.getElementById('as_end').value,
     };
 
     const resultEl = document.getElementById('assignResult');
@@ -446,46 +683,40 @@ async function assignCourse() {
             resultEl.textContent = '✅ Course slot added to the routine!';
             resultEl.className   = 'admin-result success';
             resultEl.classList.remove('hidden');
-            loadProfile(); // Refresh schedule
+            loadProfile();
         } else {
             resultEl.textContent = '❌ ' + (data.error || 'Failed');
             resultEl.className   = 'admin-result error';
             resultEl.classList.remove('hidden');
         }
-    } catch(e) {
-        UniSync.toast('Connection error', 'error');
-    }
+    } catch(e) { UniSync.toast('Connection error', 'error'); }
 }
 
-// ── Cancel class modal ────────────────────────────────────────
-function openCancel(courseCode, program, year, sem) {
-    _selectedCourseCode = courseCode;
-    document.getElementById('cm_course').value  = courseCode;
-    document.getElementById('cm_program').value = program;
-    document.getElementById('cm_year').value    = year;
+// ── Cancel class ──────────────────────────────────────────────
+function openCancel(code, prog, yr, sem) {
+    _selCourse = code;
+    document.getElementById('cm_course').value  = code;
+    document.getElementById('cm_program').value = prog;
+    document.getElementById('cm_year').value    = yr;
     document.getElementById('cm_sem').value     = sem;
     document.getElementById('cancelModal').classList.remove('hidden');
 }
-
 function closeCancel() {
     document.getElementById('cancelModal').classList.add('hidden');
-    _selectedCourseCode = '';
+    _selCourse = '';
 }
 
 async function submitCancel() {
     const payload = {
-        user_id:      _user.id,
-        course_code:  _selectedCourseCode,
-        change_date:  document.getElementById('cm_date').value,
-        program:      document.getElementById('cm_program').value,
-        year:         parseInt(document.getElementById('cm_year').value),
-        semester:     parseInt(document.getElementById('cm_sem').value),
-        reason:       document.getElementById('cm_reason').value.trim(),
+        user_id:     _user.id,
+        course_code: _selCourse,
+        change_date: document.getElementById('cm_date').value,
+        program:     document.getElementById('cm_program').value,
+        year:        parseInt(document.getElementById('cm_year').value),
+        semester:    parseInt(document.getElementById('cm_sem').value),
+        reason:      document.getElementById('cm_reason').value.trim(),
     };
-
-    if (!payload.change_date) {
-        UniSync.toast('Please select a date', 'error'); return;
-    }
+    if (!payload.change_date) { UniSync.toast('Please select a date', 'error'); return; }
 
     try {
         const res  = await fetch('/teachers/api/cancel-class', {
@@ -500,9 +731,7 @@ async function submitCancel() {
         } else {
             UniSync.toast(data.error || 'Failed to cancel', 'error');
         }
-    } catch(e) {
-        UniSync.toast('Connection error', 'error');
-    }
+    } catch(e) { UniSync.toast('Connection error', 'error'); }
 }
 </script>
 {% endblock %}
