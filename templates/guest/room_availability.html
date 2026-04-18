@@ -11,13 +11,23 @@
         .guest-nav {
             position:sticky; top:0; z-index:50;
             background:var(--bg-surface); border-bottom:1px solid var(--border);
-            padding:14px 24px; display:flex; align-items:center; gap:14px;
+            padding:14px 24px; display:flex; align-items:center; gap:10px;
         }
-        .back-btn { display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem;text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:6px;transition:all 0.15s; }
+        .back-btn {
+            display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem;
+            text-decoration:none;padding:6px 12px;border:1px solid var(--border);
+            border-radius:6px;transition:all 0.15s;white-space:nowrap;
+        }
         .back-btn:hover { color:var(--text-primary);border-color:var(--border-strong); }
+        .back-btn.dashboard {
+            color:var(--terra);border-color:rgba(188,111,55,0.35);
+            background:rgba(188,111,55,0.08);
+        }
+        .back-btn.dashboard:hover { background:rgba(188,111,55,0.15); }
         .guest-nav-title { font-family:'Syne',sans-serif;font-weight:700;font-size:1rem; }
-        .guest-badge-sm { margin-left:auto;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;padding:3px 10px;border-radius:20px; }
-        .page-wrap { max-width:860px;margin:0 auto;padding:28px 20px; }
+        .guest-badge-sm { margin-left:auto;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:0.65rem;font-weight:700;letter-spacing:0.1em;padding:3px 10px;border-radius:20px;flex-shrink:0; }
+
+        .page-wrap { max-width:900px;margin:0 auto;padding:28px 20px; }
         .controls-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end; }
         .ctrl-group { display:flex;flex-direction:column;gap:6px;flex:1;min-width:130px; }
         .ctrl-group label { font-size:0.78rem;font-weight:600;color:var(--text-muted); }
@@ -27,21 +37,27 @@
         .room-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden; }
         .room-card-header { padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
         .room-name { font-family:'Syne',sans-serif;font-size:1rem;font-weight:700; }
-        .room-free-count { font-size:0.75rem;color:var(--green);font-weight:600; }
+        .room-free-count { font-size:0.75rem;font-weight:600; }
+        .room-free-count.all-free { color:var(--green); }
+        .room-free-count.some-busy { color:#fbbf24; }
+        .room-free-count.all-busy  { color:var(--red); }
 
         .time-slot-row { display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04); }
         .time-slot-row:last-child { border-bottom:none; }
         .slot-indicator { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
         .slot-indicator.busy { background:var(--red); }
         .slot-indicator.free { background:var(--green); }
-        .slot-time-lbl { font-family:'JetBrains Mono',monospace;font-size:0.74rem;color:var(--text-muted);min-width:105px;flex-shrink:0; }
-        .slot-info { flex:1;font-size:0.82rem; }
-        .slot-busy-text { color:var(--text-primary);font-weight:600; }
+        .slot-time-lbl { font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-muted);min-width:110px;flex-shrink:0; }
+        .slot-info { flex:1;font-size:0.82rem;min-width:0; }
+        .slot-busy-text { color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
         .slot-free-text { color:var(--green); }
-        .slot-teacher { font-size:0.74rem;color:var(--text-muted);margin-top:2px; }
+        .slot-teacher { font-size:0.74rem;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 
-        .lunch-row { padding:8px 16px;background:rgba(124,111,255,0.05);border-bottom:1px solid rgba(255,255,255,0.04); }
-        .lunch-row-inner { font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-align:center; }
+        .lunch-row { padding:7px 16px;background:rgba(124,111,255,0.05);border-bottom:1px solid rgba(255,255,255,0.04); }
+        .lunch-row-inner { font-size:0.70rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);text-align:center; }
+
+        .error-msg { padding:32px;text-align:center;color:var(--text-muted);font-size:0.88rem; }
+        .last-updated { font-size:0.72rem;color:var(--text-muted);margin-top:12px;text-align:right; }
 
         @media(max-width:700px){ .rooms-grid{grid-template-columns:1fr;} }
     </style>
@@ -54,6 +70,11 @@
         Back
     </a>
     <span class="guest-nav-title">Room Availability</span>
+    <!-- Dashboard button: shown by JS if logged in -->
+    <a href="/dashboard" class="back-btn dashboard" id="dashBtn" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Dashboard
+    </a>
     <span class="guest-badge-sm">GUEST</span>
 </nav>
 
@@ -69,8 +90,8 @@
                 <option value="Thursday">Thursday</option>
             </select>
         </div>
-        <div style="padding-bottom:2px;color:var(--text-muted);font-size:0.82rem;align-self:center;">
-            🟢 Free &nbsp; 🔴 Occupied
+        <div style="padding-bottom:4px;color:var(--text-muted);font-size:0.82rem;align-self:center;white-space:nowrap;">
+            🟢 Available &nbsp; 🔴 Occupied
         </div>
     </div>
 
@@ -79,29 +100,47 @@
         <div class="skeleton-block" style="height:300px;"></div>
         <div class="skeleton-block" style="height:300px;"></div>
     </div>
+    <div class="last-updated" id="lastUpdated"></div>
 </div>
 
 <script>
+// ── Rooms to display ──────────────────────────────────────────
 const ROOMS = [
-    {no:'101', label:'Room 101'},
-    {no:'201', label:'Room 201'},
-    {no:'100', label:'Computer Lab'},
-];
-const ALL_SLOTS = [
-    {slot:'9:00-10:30',  start:'09:00', end:'10:30'},
-    {slot:'10:30-12:00', start:'10:30', end:'12:00'},
-    {slot:'12:00-1:30',  start:'12:00', end:'13:30'},
-    {slot:'2:00-3:30',   start:'14:00', end:'15:30'},
-    {slot:'3:30-5:00',   start:'15:30', end:'17:00'},
+    { no: '101',  label: 'Room 101' },
+    { no: '201',  label: 'Room 201' },
+    { no: '1001', label: 'Room 1001' },
 ];
 
+// ── Actual DB time slots (must match routine_seed.sql exactly) ─
+// Format: { display, slot (DB time_slot value) }
+const DB_SLOTS = [
+    { display: '9:00 – 10:10',   slot: '09:00-10:10'  },
+    { display: '10:15 – 11:25',  slot: '10:15-11:25'  },
+    { display: '11:30 – 12:40',  slot: '11:30-12:40'  },
+    // Prayer & Lunch Break 12:40 – 13:35
+    { display: '1:35 – 2:45 PM', slot: '13:35-14:45'  },
+    { display: '2:50 – 4:00 PM', slot: '14:50-16:00'  },
+];
+
+const LUNCH_AFTER_INDEX = 2; // show lunch break after slot index 2
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Auto-select today
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const today = days[new Date().getDay()];
+    // Show dashboard button if logged in
+    try {
+        const user  = JSON.parse(localStorage.getItem('us_user') || 'null');
+        const token = localStorage.getItem('us_token');
+        if (user && token) {
+            document.getElementById('dashBtn').style.display = 'flex';
+        }
+    } catch(e) {}
+
+    // Auto-select today (if weekday)
+    const days      = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const today     = days[new Date().getDay()];
     const validDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
-    const sel = document.getElementById('daySelect');
+    const sel       = document.getElementById('daySelect');
     if (validDays.includes(today)) sel.value = today;
+
     loadRooms();
 });
 
@@ -111,43 +150,59 @@ async function loadRooms() {
     grid.innerHTML = ROOMS.map(() => '<div class="skeleton-block" style="height:280px;"></div>').join('');
 
     try {
-        const res  = await fetch(`/guest/api/room-availability?day=${day}`);
+        const res  = await fetch(`/guest/api/room-availability?day=${encodeURIComponent(day)}`);
         const data = await res.json();
-        if (!data.success) { grid.innerHTML = '<p style="color:var(--text-muted);">Could not load data.</p>'; return; }
 
-        // Build lookup: room_no -> time_slot -> entry
+        if (!data.success) {
+            grid.innerHTML = `<div class="error-msg" style="grid-column:1/-1">❌ Could not load data. Please try again.</div>`;
+            return;
+        }
+
+        // Build lookup: room_no → time_slot → entry
         const lookup = {};
-        data.data.forEach(r => {
-            if (!lookup[r.room_no]) lookup[r.room_no] = {};
-            lookup[r.room_no][r.time_slot] = r;
+        (data.data || []).forEach(r => {
+            const rn = String(r.room_no);
+            if (!lookup[rn]) lookup[rn] = {};
+            lookup[rn][r.time_slot] = r;
         });
 
-        grid.innerHTML = ROOMS.map(({no, label}) => {
-            const roomData = lookup[no] || {};
-            const freeCount = ALL_SLOTS.filter(s => !roomData[s.slot]).length;
+        grid.innerHTML = ROOMS.map(({ no, label }) => {
+            const roomData  = lookup[no] || {};
+            const freeCount = DB_SLOTS.filter(s => !roomData[s.slot]).length;
+            const totalSlots = DB_SLOTS.length;
+
+            let countClass = 'all-free';
+            if (freeCount === 0)          countClass = 'all-busy';
+            else if (freeCount < totalSlots) countClass = 'some-busy';
 
             let slotsHtml = '';
-            ALL_SLOTS.forEach((s, i) => {
-                const entry = roomData[s.slot];
-                if (i === 2) { // after slot 3, add lunch
-                    slotsHtml += `<div class="lunch-row"><div class="lunch-row-inner">Prayer & Lunch Break (1:30–2:00)</div></div>`;
+            DB_SLOTS.forEach((s, i) => {
+                // Lunch break row after index 2
+                if (i === LUNCH_AFTER_INDEX + 1) {
+                    slotsHtml += `
+                    <div class="lunch-row">
+                        <div class="lunch-row-inner">🕐 Prayer &amp; Lunch Break — 12:40 to 1:35 PM</div>
+                    </div>`;
                 }
+                const entry = roomData[s.slot];
                 if (entry) {
+                    const courseName  = entry.course_name  || entry.course_code  || '—';
+                    const teacherName = entry.teacher_name || entry.teacher_code || '—';
                     slotsHtml += `
                     <div class="time-slot-row">
                         <div class="slot-indicator busy"></div>
-                        <div class="slot-time-lbl">${s.slot}</div>
+                        <div class="slot-time-lbl">${s.display}</div>
                         <div class="slot-info">
-                            <div class="slot-busy-text">${entry.course_code}</div>
-                            <div class="slot-teacher">${entry.teacher_name || entry.teacher_code}</div>
+                            <div class="slot-busy-text" title="${courseName}">${courseName}</div>
+                            <div class="slot-teacher">${teacherName}</div>
                         </div>
                     </div>`;
                 } else {
                     slotsHtml += `
                     <div class="time-slot-row">
                         <div class="slot-indicator free"></div>
-                        <div class="slot-time-lbl">${s.slot}</div>
-                        <div class="slot-info"><div class="slot-free-text">Available</div></div>
+                        <div class="slot-time-lbl">${s.display}</div>
+                        <div class="slot-info"><div class="slot-free-text">✓ Available</div></div>
                     </div>`;
                 }
             });
@@ -156,14 +211,19 @@ async function loadRooms() {
             <div class="room-card">
                 <div class="room-card-header">
                     <div class="room-name">${label}</div>
-                    <div class="room-free-count">${freeCount} free slots</div>
+                    <div class="room-free-count ${countClass}">${freeCount}/${totalSlots} free</div>
                 </div>
                 ${slotsHtml}
             </div>`;
         }).join('');
 
+        // Last updated
+        const now = new Date();
+        document.getElementById('lastUpdated').textContent =
+            `Last updated: ${now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})}`;
+
     } catch(e) {
-        grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Failed to load. Check connection.</p>';
+        grid.innerHTML = `<div class="error-msg" style="grid-column:1/-1">⚠️ Failed to load. Check your connection and try again.</div>`;
     }
 }
 </script>
