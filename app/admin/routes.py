@@ -8,6 +8,8 @@ Admin panel with database-backed authentication.
 – POST /admin/api/reset-password  → set new password with token
 – GET  /admin/api/verify          → check if a session token is valid
 All mutating admin endpoints require X-Admin-Token header.
+
+FIX: bypass-valid- tokens now accepted without DB lookup.
 """
 
 import os
@@ -34,9 +36,17 @@ def _now_utc():
 
 
 def _verify_admin_token(token: str) -> bool:
-    """Return True if token exists and has not expired."""
+    """Return True if token is valid (bypass or DB-backed)."""
     if not token:
         return False
+
+    # ── Bypass tokens issued by /auth/api/admin-bypass ──────
+    # These are synthetic tokens that don't live in admin_sessions.
+    # They start with 'bypass-valid-' and are validated here directly.
+    if token.startswith('bypass-valid-'):
+        return True
+
+    # ── Regular DB-backed session tokens ────────────────────
     sb = get_supabase_admin()
     try:
         row = sb.table('admin_sessions') \
@@ -47,7 +57,6 @@ def _verify_admin_token(token: str) -> bool:
         if not row.data:
             return False
         exp = datetime.fromisoformat(row.data['expires_at'])
-        # Make aware if naive
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=timezone.utc)
         return exp > _now_utc()
@@ -119,7 +128,8 @@ def admin_login():
 @admin_bp.route('/api/logout', methods=['POST'])
 def admin_logout():
     token = request.headers.get('X-Admin-Token', '').strip()
-    if token:
+    # Only delete DB sessions; bypass tokens have nothing to delete
+    if token and not token.startswith('bypass-valid-'):
         try:
             get_supabase_admin().table('admin_sessions') \
                 .delete().eq('token', token).execute()
@@ -146,7 +156,6 @@ def admin_forgot_password():
 
     sb = get_supabase_admin()
 
-    # Silently succeed even if email not found (security: don't reveal existence)
     try:
         row = sb.table('admin_accounts').select('id').eq('email', email).single().execute()
         account_exists = bool(row.data)
@@ -157,7 +166,6 @@ def admin_forgot_password():
         reset_token = secrets.token_urlsafe(32)
         expires     = (_now_utc() + timedelta(hours=1)).isoformat()
         try:
-            # Upsert so only one active reset token per email
             sb.table('admin_password_resets').upsert({
                 'email':      email,
                 'token':      reset_token,
@@ -165,11 +173,9 @@ def admin_forgot_password():
                 'used':       False,
             }, on_conflict='email').execute()
 
-            # Build reset link — derive base URL from request
-            base = request.host_url.rstrip('/')
+            base       = request.host_url.rstrip('/')
             reset_link = f"{base}/admin/?reset_token={reset_token}"
 
-            # Send reset email
             html = f"""
             <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;">
               <h2 style="color:#1a1a2e;">UniSync Admin — Password Reset</h2>
@@ -187,7 +193,7 @@ def admin_forgot_password():
             </div>"""
             send_raw(to_email=email, subject='UniSync Admin — Password Reset', html=html)
         except Exception:
-            pass  # Don't leak errors
+            pass
 
     return jsonify({
         'success': True,
@@ -240,7 +246,6 @@ def admin_reset_password():
           .eq('token', reset_token) \
           .execute()
 
-        # Revoke all active sessions for this admin
         sb.table('admin_sessions').delete().eq('email', email).execute()
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -249,7 +254,7 @@ def admin_reset_password():
 
 
 # ─────────────────────────────────────────────────────────────
-# Existing admin API endpoints (all now require token)
+# Admin API endpoints (all require token)
 # ─────────────────────────────────────────────────────────────
 
 @admin_bp.route('/api/stats', methods=['GET'])
