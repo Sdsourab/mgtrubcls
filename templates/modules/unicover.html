@@ -38,7 +38,7 @@
     background: rgba(229,62,62,.08);
     border: 1px solid rgba(229,62,62,.22);
     border-radius: var(--radius-md);
-    padding: 20px 24px;
+    padding: 28px 24px;
     text-align: center;
     color: #E53E3E;
     font-size: .88rem;
@@ -94,7 +94,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <span class="unicover-badge">🎓 Rabindra University</span>
-            <a href="https://sdsourab.github.io/unicover/"
+            <a href="https://rubunicover.vercel.app/"
                target="_blank"
                class="unicover-open-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
@@ -121,7 +121,7 @@
             <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
         <p style="margin-bottom:16px;">UniCover could not be loaded in the embedded view.</p>
-        <a href="https://sdsourab.github.io/unicover/"
+        <a href="https://rubunicover.vercel.app/"
            target="_blank"
            class="btn-primary"
            style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
@@ -137,7 +137,7 @@
     <!-- Embedded UniCover iframe -->
     <iframe
         id="unicoverFrame"
-        src="https://sdsourab.github.io/unicover/"
+        src="https://rubunicover.vercel.app/"
         class="unicover-wrap"
         style="display:none;"
         title="UniCover Assignment Cover Page Generator"
@@ -156,32 +156,31 @@ document.addEventListener('DOMContentLoaded', function() {
     var frame   = document.getElementById('unicoverFrame');
     var loading = document.getElementById('ucLoading');
     var errDiv  = document.getElementById('ucError');
+    var loaded  = false;
 
-    // Show iframe once loaded
     frame.addEventListener('load', function() {
+        if (loaded) return;
+        loaded = true;
+        clearTimeout(timeout);
         loading.style.display = 'none';
         errDiv.style.display  = 'none';
         frame.style.display   = 'block';
     });
 
-    // If iframe fails to load (e.g. X-Frame-Options), show fallback
     frame.addEventListener('error', function() {
+        clearTimeout(timeout);
         loading.style.display = 'none';
         errDiv.style.display  = 'block';
         frame.style.display   = 'none';
     });
 
-    // Timeout fallback — if 8 seconds pass with no load event, show error
+    // Timeout fallback — 10 seconds
     var timeout = setTimeout(function() {
-        if (frame.style.display === 'none') {
+        if (!loaded) {
             loading.style.display = 'none';
             errDiv.style.display  = 'block';
         }
-    }, 8000);
-
-    frame.addEventListener('load', function() {
-        clearTimeout(timeout);
-    });
+    }, 10000);
 });
 </script>
 {% endblock %}
