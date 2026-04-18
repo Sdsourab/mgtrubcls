@@ -87,7 +87,7 @@
 }
 .forgot-link:hover { text-decoration: underline; }
 
-/* ── Forgot password view ──────────────────────────────────── */
+/* ── Forgot / Reset views ──────────────────────────────────── */
 #forgotView, #resetView { display: none; }
 #forgotView.active, #resetView.active { display: block; }
 .back-link {
@@ -274,15 +274,16 @@
 
 {% block extra_js %}
 <script>
-// ── Session storage key ──────────────────────────────────────
+// ── KEY FIX: localStorage (না sessionStorage) ─────────────────
+// sessionStorage page navigate করলে clear হয়।
+// localStorage persist করে — admin logout না করা পর্যন্ত থাকে।
 const ADMIN_TOKEN_KEY = 'unisync_admin_token';
 const ADMIN_EMAIL_KEY = 'unisync_admin_email';
 
 let selectedFile = null;
 
-// ── Boot ─────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check for reset_token in URL first
     const params = new URLSearchParams(window.location.search);
     const resetToken = params.get('reset_token');
     if (resetToken) {
@@ -291,24 +292,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Try to restore session
-    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (token) {
         const ok = await verifyToken(token);
         if (ok) {
             showPanel();
             return;
         } else {
-            sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-            sessionStorage.removeItem(ADMIN_EMAIL_KEY);
+            localStorage.removeItem(ADMIN_TOKEN_KEY);
+            localStorage.removeItem(ADMIN_EMAIL_KEY);
         }
     }
     showLogin();
 });
 
-// ── Verify token with backend ─────────────────────────────────
+// ── Verify token ──────────────────────────────────────────────
 async function verifyToken(token) {
-    // Bypass tokens skip server verification
+    // Bypass tokens are validated by prefix — no DB lookup needed
     if (token && token.startsWith('bypass-valid-')) return true;
     try {
         const res = await fetch('/admin/api/verify', {
@@ -341,7 +341,7 @@ function showReset() {
 function showPanel() {
     document.getElementById('loginWall').style.display  = 'none';
     document.getElementById('adminPanel').classList.add('active');
-    const email = sessionStorage.getItem(ADMIN_EMAIL_KEY) || '';
+    const email = localStorage.getItem(ADMIN_EMAIL_KEY) || 'admin@unisync.local';
     document.getElementById('sessionEmail').textContent = email;
     loadAdminStats();
 }
@@ -372,8 +372,8 @@ async function adminLogin() {
         const data = await res.json();
 
         if (data.success) {
-            sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
-            sessionStorage.setItem(ADMIN_EMAIL_KEY, data.email);
+            localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+            localStorage.setItem(ADMIN_EMAIL_KEY, data.email);
             showPanel();
         } else {
             errEl.textContent = data.error || 'Login failed.';
@@ -413,11 +413,10 @@ async function bypassLogin() {
         var data = await res.json();
 
         if (data.success) {
-            // Store a bypass token so verifyToken() passes
-            // We use a special bypass sentinel in sessionStorage
-            sessionStorage.setItem(ADMIN_TOKEN_KEY, 'bypass-valid-' + code);
-            sessionStorage.setItem(ADMIN_EMAIL_KEY, 'admin@unisync.local');
-            // Also store in localStorage for UniSync.getUser()
+            // Store bypass token in localStorage (persists across page loads)
+            localStorage.setItem(ADMIN_TOKEN_KEY, 'bypass-valid-' + code);
+            localStorage.setItem(ADMIN_EMAIL_KEY, 'admin@unisync.local');
+            // Also store UniSync user
             localStorage.setItem('us_token', data.token);
             localStorage.setItem('us_user',  JSON.stringify(data.user));
             showPanel();
@@ -437,25 +436,26 @@ async function bypassLogin() {
 
 // ── Logout ────────────────────────────────────────────────────
 async function adminLogout() {
-    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-    if (token) {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    // Only call API logout for real DB tokens (bypass tokens have no DB record)
+    if (token && !token.startsWith('bypass-valid-')) {
         fetch('/admin/api/logout', {
             method: 'POST',
             headers: { 'X-Admin-Token': token }
         }).catch(() => {});
     }
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-    sessionStorage.removeItem(ADMIN_EMAIL_KEY);
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_EMAIL_KEY);
     showLogin();
     document.getElementById('adminPassword').value = '';
 }
 
 // ── Forgot password ───────────────────────────────────────────
 async function sendForgot() {
-    const btn     = document.getElementById('forgotBtn');
-    const errEl   = document.getElementById('forgotError');
-    const succEl  = document.getElementById('forgotSuccess');
-    const email   = document.getElementById('forgotEmail').value.trim();
+    const btn    = document.getElementById('forgotBtn');
+    const errEl  = document.getElementById('forgotError');
+    const succEl = document.getElementById('forgotSuccess');
+    const email  = document.getElementById('forgotEmail').value.trim();
 
     errEl.classList.remove('show');
     succEl.classList.remove('show');
@@ -489,27 +489,18 @@ async function sendForgot() {
 
 // ── Reset password ────────────────────────────────────────────
 async function doReset() {
-    const btn     = document.getElementById('resetBtn');
-    const errEl   = document.getElementById('resetError');
-    const succEl  = document.getElementById('resetSuccess');
-    const pass1   = document.getElementById('newPassword').value;
-    const pass2   = document.getElementById('confirmPassword').value;
+    const btn    = document.getElementById('resetBtn');
+    const errEl  = document.getElementById('resetError');
+    const succEl = document.getElementById('resetSuccess');
+    const pass1  = document.getElementById('newPassword').value;
+    const pass2  = document.getElementById('confirmPassword').value;
 
     errEl.classList.remove('show');
     succEl.classList.remove('show');
 
-    if (!pass1 || !pass2) {
-        errEl.textContent = 'Please fill in both fields.';
-        errEl.classList.add('show'); return;
-    }
-    if (pass1 !== pass2) {
-        errEl.textContent = 'Passwords do not match.';
-        errEl.classList.add('show'); return;
-    }
-    if (pass1.length < 8) {
-        errEl.textContent = 'Password must be at least 8 characters.';
-        errEl.classList.add('show'); return;
-    }
+    if (!pass1 || !pass2) { errEl.textContent = 'Please fill in both fields.'; errEl.classList.add('show'); return; }
+    if (pass1 !== pass2)  { errEl.textContent = 'Passwords do not match.';     errEl.classList.add('show'); return; }
+    if (pass1.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.add('show'); return; }
 
     btn.disabled = true;
     btn.textContent = 'Updating…';
@@ -522,7 +513,7 @@ async function doReset() {
         });
         const data = await res.json();
         if (data.success) {
-            succEl.textContent = data.message || 'Password updated! Redirecting to login…';
+            succEl.textContent = data.message || 'Password updated! Redirecting…';
             succEl.classList.add('show');
             setTimeout(() => {
                 window.history.replaceState({}, '', '/admin/');
@@ -545,7 +536,7 @@ async function doReset() {
 // ── Auth header helper ────────────────────────────────────────
 function adminHeaders(extra = {}) {
     return {
-        'X-Admin-Token': sessionStorage.getItem(ADMIN_TOKEN_KEY) || '',
+        'X-Admin-Token': localStorage.getItem(ADMIN_TOKEN_KEY) || '',
         ...extra
     };
 }
@@ -554,7 +545,14 @@ function adminHeaders(extra = {}) {
 async function loadAdminStats() {
     try {
         const res  = await fetch('/admin/api/stats', { headers: adminHeaders() });
-        if (res.status === 401) { adminLogout(); return; }
+        if (res.status === 401) {
+            // Only auto-logout for real sessions, not bypass tokens
+            const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+            if (!token || !token.startsWith('bypass-valid-')) {
+                adminLogout();
+            }
+            return;
+        }
         const data = await res.json();
         if (data.success) {
             document.getElementById('aStatRoutines').textContent = data.stats.routines;
@@ -622,7 +620,7 @@ async function uploadRoutine() {
     try {
         const res  = await fetch('/admin/api/upload-routine', {
             method: 'POST',
-            headers: adminHeaders(),   // Note: no Content-Type — let browser set multipart boundary
+            headers: adminHeaders(),
             body: formData
         });
         if (res.status === 401) { adminLogout(); return; }
