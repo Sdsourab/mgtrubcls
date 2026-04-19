@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% block title %}বাস শিডিউল — UniSync{% endblock %}
+{% block nav_bus %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.bs-hero {
+    position:relative; overflow:hidden;
+    background:linear-gradient(135deg,rgba(188,111,55,.10),rgba(205,169,106,.05));
+    border:1px solid var(--border-card); border-radius:var(--radius-lg);
+    padding:26px 28px 20px; margin-bottom:24px;
+}
+.bs-hero::after {
+    content:''; position:absolute; top:-40px; right:-40px;
+    width:200px; height:200px; border-radius:50%;
+    background:radial-gradient(circle,rgba(188,111,55,.08),transparent 70%);
+    pointer-events:none;
+}
+.bs-hero-row { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.bs-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:.63rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase;
+    padding:4px 12px; border-radius:20px;
+    background:rgba(188,111,55,.10); border:1px solid rgba(188,111,55,.26); color:var(--terra);
+    margin-bottom:10px;
+}
+.bs-pulse { width:6px; height:6px; border-radius:50%; background:var(--terra); animation:bsPulse 1.8s ease-in-out infinite; }
+@keyframes bsPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.55)} }
+.bs-title { font-family:'Syne',sans-serif; font-size:1.65rem; font-weight:800; letter-spacing:-.03em; color:var(--text-primary); margin-bottom:4px; line-height:1.15; }
+.bs-sub   { font-size:.8rem; color:var(--text-muted); }
+.bs-eff   { font-size:.7rem; color:var(--terra); margin-top:5px; font-weight:600; }
+.bs-clock-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+.bs-clock { font-family:'DM Mono',monospace; font-size:2.2rem; font-weight:500; color:var(--text-primary); letter-spacing:-.04em; line-height:1; }
+.bs-clock-date { font-size:.7rem; color:var(--text-muted); text-align:right; font-family:'DM Mono',monospace; }
+.bs-clock-tz   { font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--terra); font-weight:700; }
+
+/* ── Weekend ──────────────────────────────────────────────── */
+.bs-weekend { display:none; text-align:center; padding:32px 20px; background:linear-gradient(135deg,rgba(142,137,70,.07),rgba(188,111,55,.05)); border:1px solid var(--border-card); border-radius:var(--radius-lg); margin-bottom:24px; }
+.bs-weekend.show { display:block; }
+.bs-wknd-icon  { font-size:2.6rem; margin-bottom:10px; }
+.bs-wknd-title { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:5px; }
+.bs-wknd-sub   { font-size:.82rem; color:var(--text-muted); }
+
+/* ── Next bus ─────────────────────────────────────────────── */
+.bs-next {
+    background:linear-gradient(135deg,#1A1408,#2A1E0C);
+    border:1px solid rgba(205,169,106,.2); border-radius:var(--radius-lg);
+    padding:18px 22px; margin-bottom:22px;
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    position:relative; overflow:hidden;
+}
+.bs-next::after { content:'🚌'; position:absolute; right:18px; bottom:-6px; font-size:4.5rem; opacity:.06; pointer-events:none; animation:busFloat 4s ease-in-out infinite; }
+@keyframes busFloat { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-7px)} }
+.nb-lbl   { font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:rgba(205,169,106,.55); margin-bottom:3px; }
+.nb-name  { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; color:#DFC087; margin-bottom:1px; }
+.nb-route { font-size:.75rem; color:rgba(245,234,210,.45); }
+.nb-time  { font-family:'DM Mono',monospace; font-size:1.9rem; font-weight:500; color:#DFC087; letter-spacing:-.03em; }
+.nb-cd    { font-size:.68rem; color:rgba(205,169,106,.65); margin-top:2px; font-family:'DM Mono',monospace; }
+.nb-pill  { margin-left:auto; flex-shrink:0; background:rgba(188,111,55,.18); border:1px solid rgba(188,111,55,.3); border-radius:24px; padding:5px 14px; font-size:.68rem; font-weight:700; color:#D4884A; animation:pillGlow 2.4s ease-in-out infinite; }
+@keyframes pillGlow { 0%,100%{box-shadow:0 0 0 0 rgba(188,111,55,0)} 50%{box-shadow:0 0 14px rgba(188,111,55,.26)} }
+#noNextMsg { display:none; width:100%; text-align:center; font-size:.85rem; color:rgba(205,169,106,.45); }
+
+/* ── Timeline ─────────────────────────────────────────────── */
+.bs-tl-wrap { background:var(--bg-card); border:1px solid var(--border-card); border-radius:var(--radius-lg); padding:18px 22px; margin-bottom:22px; }
+.bs-tl-head { font-size:.68rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.bs-tl-head::after { content:''; flex:1; height:1px; background:var(--border); }
+.bs-tl { position:relative; height:60px; margin:0 6px; }
+.bs-tl-axis { position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border); transform:translateY(-50%); }
+.bs-tl-lbl-row { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; }
+.bs-tl-lbl { font-family:'DM Mono',monospace; font-size:.58rem; color:var(--text-muted); transform:translateX(-50%); }
+.bs-tl-dot { position:absolute; top:50%; transform:translate(-50%,-50%); width:9px; height:9px; border-radius:50%; border:2px solid var(--bg-base); cursor:pointer; transition:transform .18s; }
+.bs-tl-dot:hover { transform:translate(-50%,-50%) scale(1.5); }
+.bs-tl-now { position:absolute; top:0; bottom:0; width:2px; background:var(--danger,#B03A2A); border-radius:2px; transform:translateX(-50%); }
+.bs-tl-now::before { content:'এখন'; position:absolute; top:-2px; left:5px; font-size:.56rem; color:var(--danger,#B03A2A); font-weight:700; white-space:nowrap; }
+.tl-legend { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
+.tl-leg    { display:flex; align-items:center; gap:5px; font-size:.66rem; color:var(--text-muted); }
+.tl-leg-dot { width:7px; height:7px; border-radius:50%; }
+
+/* ── Filters ──────────────────────────────────────────────── */
+.bs-filters { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:18px; }
+.bs-fb { font-family:inherit; font-size:.73rem; font-weight:600; padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:var(--bg-card); color:var(--text-muted); cursor:pointer; transition:all .18s; }
+.bs-fb:hover { border-color:var(--border-mid); color:var(--text-primary); }
+.bs-fb.active { background:linear-gradient(135deg,rgba(188,111,55,.13),rgba(205,169,106,.07)); border-color:var(--terra); color:var(--terra); font-weight:700; }
+
+/* ── Bus cards ────────────────────────────────────────────── */
+.bs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; }
+.bus-card { background:var(--bg-card); border:1px solid var(--border-card); border-radius:var(--radius-lg); overflow:hidden; transition:box-shadow .2s,border-color .2s,transform .2s; }
+.bus-card:hover { box-shadow:var(--shadow); border-color:var(--border-mid); transform:translateY(-2px); }
+.bus-card.has-next { border-color:rgba(188,111,55,.38); box-shadow:0 0 0 1px rgba(188,111,55,.14),var(--shadow-sm); }
+.bus-card.no-service { opacity:.38; }
+.bc-hdr { padding:14px 16px 11px; display:flex; align-items:flex-start; gap:11px; border-bottom:1px solid var(--border); }
+.bc-icon { width:40px; height:40px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.2rem; border:1px solid var(--border); }
+.c-terra  { background:linear-gradient(135deg,rgba(188,111,55,.14),rgba(205,169,106,.08)); }
+.c-golden { background:linear-gradient(135deg,rgba(205,169,106,.14),rgba(188,111,55,.08)); }
+.c-green  { background:linear-gradient(135deg,rgba(74,140,74,.13),rgba(142,137,70,.07)); }
+.c-olive  { background:linear-gradient(135deg,rgba(142,137,70,.14),rgba(188,111,55,.06)); }
+.bc-name { font-family:'Syne',sans-serif; font-size:.95rem; font-weight:700; color:var(--text-primary); margin-bottom:1px; }
+.bc-reg  { font-family:'DM Mono',monospace; font-size:.6rem; color:var(--text-muted); letter-spacing:.03em; }
+.bc-day-pill { margin-left:auto; flex-shrink:0; font-size:.58rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; padding:3px 8px; border-radius:16px; }
+.dp-lim  { background:rgba(188,111,55,.10); border:1px solid rgba(188,111,55,.22); color:var(--terra); }
+.dp-dly  { background:rgba(74,140,74,.10);  border:1px solid rgba(74,140,74,.22);  color:var(--success,#4A8C4A); }
+.bc-route { padding:9px 16px; display:flex; align-items:center; gap:7px; background:rgba(188,111,55,.03); border-bottom:1px solid var(--border); font-size:.75rem; }
+.bc-stop { font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+.bc-arr  { flex:1; display:flex; align-items:center; gap:3px; color:var(--text-muted); font-size:.68rem; }
+.bc-arr::before,.bc-arr::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--border-mid),transparent); }
+.bc-trips { padding:11px 16px 13px; display:flex; flex-direction:column; gap:7px; }
+.bc-no-svc { font-size:.76rem; color:var(--text-muted); text-align:center; padding:10px 4px; display:none; }
+.bc-trip { display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:7px; border:1px solid transparent; transition:all .16s; }
+.bc-trip.s-past     { background:rgba(0,0,0,.02); opacity:.42; }
+.bc-trip.s-boarding { background:linear-gradient(135deg,rgba(188,111,55,.09),rgba(205,169,106,.05)); border-color:rgba(188,111,55,.26); animation:tripBoard 2s ease-in-out infinite; }
+@keyframes tripBoard { 0%,100%{border-color:rgba(188,111,55,.26)} 50%{border-color:rgba(188,111,55,.52)} }
+.bc-trip.s-soon     { background:rgba(142,137,70,.06); border-color:rgba(142,137,70,.2); }
+.bc-trip.s-upcoming { background:rgba(188,111,55,.03); border-color:var(--border); }
+.bc-trip-time { font-family:'DM Mono',monospace; font-size:.82rem; font-weight:500; color:var(--text-primary); min-width:42px; flex-shrink:0; }
+.bc-trip.s-past     .bc-trip-time { color:var(--text-muted); }
+.bc-trip.s-boarding .bc-trip-time { color:var(--terra); font-weight:600; }
+.bc-trip-dir { flex:1; min-width:0; }
+.bc-trip-from { font-size:.7rem;  color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bc-trip-to   { font-size:.76rem; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bc-trip.s-past .bc-trip-to { color:var(--text-muted); font-weight:400; }
+.bc-st { flex-shrink:0; font-size:.6rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:10px; }
+.st-p { background:rgba(0,0,0,.05); color:var(--text-muted); }
+.st-b { background:rgba(188,111,55,.13); color:var(--terra); }
+.st-s { background:rgba(142,137,70,.11); color:var(--olive,#8E8946); }
+.st-u { background:rgba(42,106,154,.09); color:var(--info,#2A6A9A); }
+
+/* ── Info ─────────────────────────────────────────────────── */
+.bs-info { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; }
+.bs-info-card { background:var(--bg-card); border:1px solid var(--border-card); border-radius:var(--radius-md); padding:13px 15px; }
+.bs-info-card h4 { font-size:.68rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--text-muted); margin-bottom:7px; }
+.bs-info-card p  { font-size:.78rem; color:var(--text-secondary); line-height:1.6; }
+
+@media(max-width:640px){
+    .bs-title{font-size:1.3rem;} .bs-clock{font-size:1.7rem;}
+    .bs-grid{grid-template-columns:1fr;} .bs-next{flex-direction:column;gap:10px;}
+    .nb-pill{margin-left:0;} .bs-info{grid-template-columns:1fr;} .bc-stop{max-width:78px;}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <!-- ══ HERO ═════════════════════════════════════════════════ -->
+  <div class="bs-hero">
+    <div class="bs-hero-row">
+      <div>
+        <div class="bs-badge"><span class="bs-pulse"></span>রবীন্দ্র বিশ্ববিদ্যালয় পরিবহন</div>
+        <h1 class="bs-title">বাস শিডিউল</h1>
+        <div class="bs-sub">Rabindra University, Bangladesh · শাহজাদপুর, সিরাজগঞ্জ</div>
+        <div class="bs-eff">📋 কার্যকর: {{ effective_date }} &nbsp;|&nbsp; স্মারক: {{ memo_ref }}</div>
+      </div>
+      <div class="bs-clock-wrap">
+        <div class="bs-clock" id="liveClock">--:--:--</div>
+        <div class="bs-clock-date" id="liveDate">—</div>
+        <div class="bs-clock-tz">BST (UTC+6)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WEEKEND ══════════════════════════════════════════════ -->
+  <div class="bs-weekend" id="weekendBanner">
+    <div class="bs-wknd-icon">🌙</div>
+    <div class="bs-wknd-title">আজ বাস সার্ভিস বন্ধ</div>
+    <div class="bs-wknd-sub">শুক্রবার ও শনিবার বিশ্ববিদ্যালয়ের বাস চলে না।<br>পরবর্তী সার্ভিস রবিবার সকাল ৬:০০ টায় শুরু হবে।</div>
+  </div>
+
+  <!-- ══ NEXT BUS ══════════════════════════════════════════════ -->
+  <div class="bs-next" id="nextPanel">
+    <div>
+      <div class="nb-lbl">পরবর্তী বাস</div>
+      <div class="nb-name"  id="nbName">—</div>
+      <div class="nb-route" id="nbRoute">—</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div class="nb-time" id="nbTime">--:--</div>
+      <div class="nb-cd"   id="nbCd">হিসাব হচ্ছে…</div>
+    </div>
+    <div class="nb-pill" id="nbPill">⏱ অপেক্ষায়</div>
+    <div id="noNextMsg">আজকের সব বাস ছেড়ে গেছে।</div>
+  </div>
+
+  <!-- ══ TIMELINE ══════════════════════════════════════════════ -->
+  <div class="bs-tl-wrap" id="tlWrap">
+    <div class="bs-tl-head">আজকের যাত্রা সময়রেখা</div>
+    <div class="bs-tl" id="tlCanvas"><div class="bs-tl-axis"></div></div>
+    <div class="tl-legend" id="tlLegend"></div>
+  </div>
+
+  <!-- ══ FILTERS ══════════════════════════════════════════════ -->
+  <div class="bs-filters">
+    <button class="bs-fb active" onclick="doFilter('all')"       data-f="all">সব রুট</button>
+    <button class="bs-fb"        onclick="doFilter('dilruba')"   data-f="dilruba">দিলরুবা থেকে</button>
+    <button class="bs-fb"        onclick="doFilter('bisik')"     data-f="bisik">বিসিক থেকে</button>
+    <button class="bs-fb"        onclick="doFilter('morning')"   data-f="morning">সকালের বাস</button>
+    <button class="bs-fb"        onclick="doFilter('afternoon')" data-f="afternoon">বিকেলের বাস</button>
+  </div>
+
+  <!-- ══ BUS CARDS ══════════════════════════════════════════════ -->
+  <div class="bs-grid" id="busGrid">
+    {%- for b in buses %}
+    <div class="bus-card"
+         id="card-{{ b.id }}"
+         data-id="{{ b.id }}"
+         data-origin="{{ b.origin }}"
+         data-active="{{ b.activeDays | join(',') }}">
+
+      <div class="bc-hdr">
+        <div class="bc-icon c-{{ b.color_key }}">🚌</div>
+        <div>
+          <div class="bc-name">{{ b.name }}</div>
+          <div class="bc-reg">{{ b.reg }}</div>
+        </div>
+        <div class="bc-day-pill {{ 'dp-lim' if b.activeDays|length < 5 else 'dp-dly' }}">
+          {{ b.day_label }}
+        </div>
+      </div>
+
+      {#- Use first trip from/to for route strip -#}
+      {%- set sample = b.trips[0] %}
+      <div class="bc-route">
+        <span class="bc-stop">{{ sample.from }}</span>
+        <span class="bc-arr">↔</span>
+        <span class="bc-stop" style="text-align:right;">{{ sample.to }}</span>
+      </div>
+
+      <div class="bc-trips" id="trips-{{ b.id }}">
+        {%- for t in b.trips %}
+        <div class="bc-trip s-upcoming"
+             data-h="{{ t.h }}" data-m="{{ t.m }}"
+             data-from="{{ t.from }}" data-to="{{ t.to }}"
+             data-days="{{ t.days | join(',') }}"
+             data-session="{{ t.session }}">
+          <div class="bc-trip-time">{{ '%02d'|format(t.h) }}:{{ '%02d'|format(t.m) }}</div>
+          <div class="bc-trip-dir">
+            <div class="bc-trip-from">{{ t.from }}</div>
+            <div class="bc-trip-to">{{ t.to }}</div>
+          </div>
+          <div class="bc-st st-u">—</div>
+        </div>
+        {%- endfor %}
+        <div class="bc-no-svc">আজ এই বাস চলছে না</div>
+      </div>
+    </div>
+    {%- endfor %}
+  </div>
+
+  <!-- ══ INFO ══════════════════════════════════════════════════ -->
+  <div class="bs-info">
+    <div class="bs-info-card">
+      <h4>📅 সাপ্তাহিক সূচি</h4>
+      <p>রবিবার থেকে বৃহস্পতিবার বাস চলে। শুক্র ও শনিবার বন্ধ।<br>
+         <strong>চিত্রা</strong> বাস শুধু সপ্তাহের ১ম দিন (রবিবার) ও শেষ দিন (বৃহস্পতিবার) চলে।</p>
+    </div>
+    <div class="bs-info-card">
+      <h4>📞 যোগাযোগ</h4>
+      <p>রবীন্দ্র বিশ্ববিদ্যালয়, বাংলাদেশ<br>
+         শাহজাদপুর, সিরাজগঞ্জ-6770<br>
+         ☎ 01819198081<br>
+         ✉ registrar@rub.ac.bd</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ══════════════════════════════════════════════════════════════
+// UniSync Transit Pulse Engine — BST (UTC+6)
+// Data source: app/bus/routes.py → BUS_DATA
+// ══════════════════════════════════════════════════════════════
+const DAYS_BN   = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+const MONTHS_BN = ['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+const COLORS    = { terra:'var(--terra)', golden:'var(--golden,#CDA96A)', green:'var(--success,#4A8C4A)', olive:'var(--olive,#8E8946)' };
+
+function nowBST(){ const d=new Date(); d.setTime(d.getTime()+(6*3600000)+d.getTimezoneOffset()*60000); return d; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtT(h,m){ return pad(h)+':'+pad(m); }
+function dayMins(bst){ return bst.getHours()*60+bst.getMinutes(); }
+function isWknd(d){ return d===5||d===6; }
+
+function tripSt(h,m,nowM){
+    const tm=h*60+m, diff=tm-nowM;
+    if(diff<-10) return {s:'past',    lbl:'গেছে',   cls:'st-p s-past'};
+    if(diff<=0)  return {s:'boarding',lbl:'ছাড়ছে!', cls:'st-b s-boarding'};
+    if(diff<=30) return {s:'soon',    lbl:diff+'মি', cls:'st-s s-soon'};
+    const hr=Math.floor(diff/60),mn=diff%60;
+    return {s:'upcoming', lbl:(hr?hr+'ঘ '+mn+'মি':mn+' মি'), cls:'st-u s-upcoming'};
+}
+
+function renderAll(dayJS, nowM){
+    document.querySelectorAll('.bus-card').forEach(card=>{
+        const activeDays = card.dataset.active.split(',').map(Number);
+        const tripsWrap  = card.querySelector('.bc-trips');
+        const noSvcEl    = card.querySelector('.bc-no-svc');
+        const tripEls    = card.querySelectorAll('.bc-trip');
+        let anyToday=false, hasNext=false;
+
+        tripEls.forEach(el=>{
+            const days=el.dataset.days.split(',').map(Number);
+            const runsToday=days.includes(dayJS);
+            el.style.display=runsToday?'':'none';
+            if(!runsToday) return;
+            anyToday=true;
+            const h=parseInt(el.dataset.h), m=parseInt(el.dataset.m);
+            const st=tripSt(h,m,nowM);
+            // Update trip row class
+            el.className='bc-trip '+st.cls.split(' ').pop();
+            const stEl=el.querySelector('.bc-st');
+            if(stEl){ stEl.className='bc-st '+st.cls.split(' ')[0]; stEl.textContent=st.lbl; }
+            if(st.s!=='past') hasNext=true;
+        });
+
+        if(!anyToday){
+            noSvcEl.style.display='block';
+            card.classList.add('no-service');
+            card.classList.remove('has-next');
+        } else {
+            noSvcEl.style.display='none';
+            card.classList.remove('no-service');
+            hasNext ? card.classList.add('has-next') : card.classList.remove('has-next');
+        }
+    });
+}
+
+function findNext(dayJS, nowM){
+    let best=null, bd=Infinity;
+    document.querySelectorAll('.bus-card').forEach(card=>{
+        card.querySelectorAll('.bc-trip').forEach(el=>{
+            const days=el.dataset.days.split(',').map(Number);
+            if(!days.includes(dayJS)) return;
+            const h=parseInt(el.dataset.h), m=parseInt(el.dataset.m);
+            const diff=(h*60+m)-nowM;
+            if(diff>=-5 && diff<bd){
+                bd=diff;
+                best={ name:card.querySelector('.bc-name').textContent, from:el.dataset.from, to:el.dataset.to, h, m, diff };
+            }
+        });
+    });
+    return best;
+}
+
+function updateNext(dayJS, nowM){
+    const next=findNext(dayJS,nowM);
+    const noMsg=document.getElementById('noNextMsg');
+    if(!next){
+        ['nbName','nbRoute','nbTime'].forEach(id=>document.getElementById(id).textContent='—');
+        document.getElementById('nbCd').textContent='আজকের সব বাস গেছে';
+        document.getElementById('nbPill').textContent='✓ শেষ';
+        noMsg.style.display='block'; return;
+    }
+    noMsg.style.display='none';
+    document.getElementById('nbName').textContent  = next.name;
+    document.getElementById('nbRoute').textContent = next.from+' → '+next.to;
+    document.getElementById('nbTime').textContent  = fmtT(next.h,next.m);
+    if(next.diff<=0){
+        document.getElementById('nbCd').textContent='🚌 এখনই ছাড়ছে!';
+        document.getElementById('nbPill').textContent='🚨 ছাড়ছে!';
+    } else {
+        const hr=Math.floor(next.diff/60),mn=next.diff%60;
+        document.getElementById('nbCd').textContent=(hr?hr+'ঘ '+mn+'মিনিটে':mn+' মিনিটে')+' ছাড়বে';
+        document.getElementById('nbPill').textContent=next.diff<=15?'⚡ শীঘ্রই':'⏱ অপেক্ষায়';
+    }
+}
+
+const TL_S=360, TL_E=1110;
+function tlP(h,m){ return Math.max(0,Math.min(100,(h*60+m-TL_S)/(TL_E-TL_S)*100)); }
+
+function buildTL(dayJS,nowM){
+    const cv=document.getElementById('tlCanvas');
+    const lg=document.getElementById('tlLegend');
+    let h='<div class="bs-tl-axis"></div><div class="bs-tl-lbl-row">';
+    [6,8,10,12,14,16,18].forEach(hr=> h+=`<div class="bs-tl-lbl" style="left:${tlP(hr,0)}%">${pad(hr)}:00</div>`);
+    h+='</div>';
+
+    let bi=0; const seen=new Set();
+    let lgH='';
+    document.querySelectorAll('.bus-card').forEach(card=>{
+        const ck=card.querySelector('.bc-icon').className.replace(/.*c-(\w+).*/,'$1');
+        const col=COLORS[ck]||'var(--terra)';
+        const nm=card.querySelector('.bc-name').textContent;
+        const off=(bi-1.5)*9;
+        lgH+=`<div class="tl-leg"><div class="tl-leg-dot" style="background:${col}"></div>${nm}</div>`;
+        card.querySelectorAll('.bc-trip').forEach(el=>{
+            const days=el.dataset.days.split(',').map(Number);
+            if(!days.includes(dayJS)) return;
+            const hr=parseInt(el.dataset.h), m=parseInt(el.dataset.m);
+            const key=card.dataset.id+'-'+hr+'-'+m;
+            if(seen.has(key)) return; seen.add(key);
+            const st=tripSt(hr,m,nowM);
+            const op=st.s==='past'?.28:1;
+            const tip=nm+': '+fmtT(hr,m)+' — '+el.dataset.from+'→'+el.dataset.to;
+            h+=`<div class="bs-tl-dot" style="left:${tlP(hr,m)}%;top:calc(50% + ${off}px);background:${col};opacity:${op};" title="${tip}"></div>`;
+        });
+        bi++;
+    });
+
+    const np=tlP(Math.floor(nowM/60),nowM%60);
+    if(np>=0&&np<=100) h+=`<div class="bs-tl-now" style="left:${np}%"></div>`;
+    cv.innerHTML=h;
+    lg.innerHTML=lgH;
+}
+
+function doFilter(type){
+    document.querySelectorAll('.bs-fb').forEach(b=>b.classList.remove('active'));
+    document.querySelector(`[data-f="${type}"]`).classList.add('active');
+    const bst=nowBST(); const dayJS=bst.getDay(); const nowM=dayMins(bst);
+    document.querySelectorAll('.bus-card').forEach(card=>{
+        let show=true;
+        if(type==='dilruba') show=card.dataset.origin==='dilruba';
+        if(type==='bisik')   show=card.dataset.origin==='bisik';
+        card.style.display=show?'':'none';
+        if(type==='morning'||type==='afternoon'){
+            card.querySelectorAll('.bc-trip').forEach(el=>{
+                const h=parseInt(el.dataset.h);
+                el.style.display=(type==='morning'?h<12:h>=12)?'':'none';
+            });
+        } else {
+            card.querySelectorAll('.bc-trip').forEach(el=>{
+                const days=el.dataset.days.split(',').map(Number);
+                el.style.display=days.includes(dayJS)?'':'none';
+            });
+        }
+    });
+}
+
+function tickClock(){
+    const bst=nowBST();
+    document.getElementById('liveClock').textContent=pad(bst.getHours())+':'+pad(bst.getMinutes())+':'+pad(bst.getSeconds());
+    document.getElementById('liveDate').textContent=DAYS_BN[bst.getDay()]+', '+bst.getDate()+' '+MONTHS_BN[bst.getMonth()]+' '+bst.getFullYear();
+}
+
+function tick(){
+    const bst=nowBST(); const dayJS=bst.getDay(); const nowM=dayMins(bst);
+    tickClock();
+    if(isWknd(dayJS)){
+        document.getElementById('weekendBanner').classList.add('show');
+        document.getElementById('nextPanel').style.display='none';
+        document.getElementById('tlWrap').style.display='none';
+        document.querySelectorAll('.bus-card').forEach(c=>c.classList.add('no-service'));
+        return;
+    }
+    document.getElementById('weekendBanner').classList.remove('show');
+    document.getElementById('nextPanel').style.display='';
+    document.getElementById('tlWrap').style.display='';
+    renderAll(dayJS,nowM);
+    updateNext(dayJS,nowM);
+    buildTL(dayJS,nowM);
+}
+
+tick();
+setInterval(tickClock,1000);
+setInterval(tick,15000);
+</script>
+{% endblock %}

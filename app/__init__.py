@@ -36,6 +36,7 @@ def create_app(config_name: str = None):
     from app.exams.routes            import exams_bp
     from app.teachers.routes         import teachers_bp
     from app.push.routes             import push_bp
+    from app.bus.routes              import bus_bp
 
     app.register_blueprint(auth_bp,             url_prefix='/auth')
     app.register_blueprint(academic_bp,         url_prefix='/academic')
@@ -49,6 +50,7 @@ def create_app(config_name: str = None):
     app.register_blueprint(exams_bp,            url_prefix='/exams')
     app.register_blueprint(teachers_bp,         url_prefix='/teachers')
     app.register_blueprint(push_bp)  # /api/push/* and /api/cron/push-reminders
+    app.register_blueprint(bus_bp,              url_prefix='/bus')
 
     @app.route('/')
     def index():

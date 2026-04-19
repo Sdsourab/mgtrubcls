@@ -1,7 +1,15 @@
 """
-app/academic/routes.py — Fixed
-Handles both old (no program/course_year) and new column structure.
-Uses batch mapping fetch. BST timezone aligned.
+app/academic/routes.py
+══════════════════════
+CRITICAL FIX: Removed the fallback that returned ALL classes when a
+semester has no classes on a given day. Empty = "no classes" now.
+
+Before (wrong):
+    if not rows and program:
+        rows = all_classes_for_day  # ← showed wrong semester's data
+
+After (correct):
+    if not rows: return []  # ← correct "no classes" response
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -36,6 +44,10 @@ def _fmt12h(t: str) -> str:
 
 
 def _apply_filters(q, program: str, year: str, semester: str):
+    """
+    Apply program/year/semester filters strictly.
+    NO fallback — if a semester has no classes, return empty.
+    """
     if program and year and semester:
         try:
             q = q.eq('program', program) \
@@ -80,14 +92,7 @@ def get_routine():
             q = q.eq('day', day)
         q = _apply_filters(q, program, year, semester)
         rows = q.order('time_start').execute().data or []
-
-        # Fallback: if filtered result empty, try without program filter
-        if not rows and program and year and semester:
-            q2 = sb.table('routines').select('*')
-            if day:
-                q2 = q2.eq('day', day)
-            rows = q2.order('time_start').execute().data or []
-
+        # ── NO FALLBACK ── if this semester has no classes, return []
         rows = _with_12h(_enrich(rows, _get_mapping(sb)))
         return jsonify({'success': True, 'data': rows, 'count': len(rows)})
 
@@ -199,6 +204,13 @@ def get_mappings():
 
 @academic_bp.route('/api/dashboard-schedule', methods=['GET'])
 def dashboard_schedule():
+    """
+    Returns classes for today/tomorrow based on BST time window.
+
+    FIXED: If user's semester has no classes on that day,
+    returns classes=[] with no_class_today=True.
+    Does NOT fall back to showing other semesters' classes.
+    """
     try:
         from core.schedule_utils import get_schedule_target, fmt12h, classify_class_status
     except ImportError:
@@ -212,9 +224,12 @@ def dashboard_schedule():
 
     is_hol, hol_name = is_holiday(target['date'])
     if is_hol:
-        return jsonify({'success': True, 'mode': mode, 'day': day_name, 'label': label,
-                        'bst_time': bst_time, 'is_holiday': True,
-                        'holiday_name': hol_name, 'classes': []})
+        return jsonify({
+            'success': True, 'mode': mode, 'day': day_name,
+            'label': label, 'bst_time': bst_time,
+            'is_holiday': True, 'holiday_name': hol_name,
+            'no_class_today': False, 'classes': [],
+        })
 
     program  = request.args.get('program',  '').strip()
     year     = request.args.get('year',     '').strip()
@@ -226,9 +241,12 @@ def dashboard_schedule():
         q = _apply_filters(q, program, year, semester)
         rows = q.order('time_start').execute().data or []
 
-        if not rows and program:
-            rows = sb.table('routines').select('*') \
-                     .eq('day', day_name).order('time_start').execute().data or []
+        # ── CRITICAL FIX ──────────────────────────────────────
+        # Do NOT fall back to all-semester data.
+        # If this semester genuinely has no classes today, return empty.
+        # The dashboard will show "আজ/আগামীকাল কোনো ক্লাস নেই।"
+        no_class_today = (len(rows) == 0)
+        # ──────────────────────────────────────────────────────
 
         rows = _enrich(rows, _get_mapping(sb))
         enriched = []
@@ -246,9 +264,21 @@ def dashboard_schedule():
             cls.update(classify_class_status(ts, te, bst_time, mode))
             enriched.append(cls)
 
-        return jsonify({'success': True, 'mode': mode, 'day': day_name, 'label': label,
-                        'bst_time': bst_time, 'is_holiday': False,
-                        'holiday_name': None, 'classes': enriched})
+        return jsonify({
+            'success': True, 'mode': mode, 'day': day_name,
+            'label': label, 'bst_time': bst_time,
+            'is_holiday': False, 'holiday_name': None,
+            'no_class_today': no_class_today,
+            'classes': enriched,
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ── API: Time search (alias) ───────────────────────────────────
+
+@academic_bp.route('/api/time-search', methods=['GET'])
+def time_search():
+    """Alias for duration-search, kept for backward compatibility."""
+    return duration_search()
