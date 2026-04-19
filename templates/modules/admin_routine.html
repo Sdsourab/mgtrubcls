@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Routine Management — UniSync Admin</title>
+<link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Reset + Variables ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0F0D0B;
+  --bg-card:     #1A1612;
+  --bg-elevated: #231E18;
+  --border:      rgba(188,111,55,0.18);
+  --border-mid:  rgba(188,111,55,0.32);
+  --terra:       #BC6F37;
+  --gold:        #CDA96A;
+  --text:        #F2EAE0;
+  --text-sec:    #B8AA98;
+  --text-muted:  #7A6E62;
+  --green:       #4ADE80;
+  --red:         #F87171;
+  --red-bg:      rgba(248,113,113,0.12);
+  --red-border:  rgba(248,113,113,0.3);
+  --radius:      10px;
+  --radius-sm:   6px;
+  --mono:        'JetBrains Mono', monospace;
+  --font:        'Outfit', sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Layout ────────────────────────────────────────────────── */
+.page { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* ── Header ────────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+  padding-bottom: 20px; border-bottom: 1px solid var(--border);
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo {
+  width: 40px; height: 40px; flex-shrink: 0;
+}
+.header-title { font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em; }
+.header-sub { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.eff-badge {
+  font-size: .68rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; padding: 4px 12px; border-radius: 20px;
+  background: rgba(188,111,55,.12); border: 1px solid var(--border-mid);
+  color: var(--terra);
+}
+.back-link {
+  font-size: .8rem; color: var(--text-muted); text-decoration: none;
+  padding: 6px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); transition: color .15s, border-color .15s;
+}
+.back-link:hover { color: var(--text); border-color: var(--border-mid); }
+
+/* ── Section titles ────────────────────────────────────────── */
+.section-title {
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Semester tabs ─────────────────────────────────────────── */
+.sem-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.sem-btn {
+  font-family: var(--font); font-size: .75rem; font-weight: 600;
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-sec); cursor: pointer; transition: all .18s;
+  white-space: nowrap;
+}
+.sem-btn:hover { border-color: var(--border-mid); color: var(--text); }
+.sem-btn.active {
+  background: linear-gradient(135deg,rgba(188,111,55,.22),rgba(205,169,106,.12));
+  border-color: var(--terra); color: var(--text);
+}
+.sem-btn.all-btn.active {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.2); color: var(--text);
+}
+
+/* ── Routine table container ───────────────────────────────── */
+.table-scroll { overflow-x: auto; border-radius: var(--radius); }
+.routine-table {
+  width: 100%; border-collapse: collapse;
+  border: 1px solid var(--border);
+}
+.routine-table th {
+  background: var(--bg-elevated); padding: 10px 12px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-muted);
+  border: 1px solid var(--border); white-space: nowrap; text-align: center;
+}
+.routine-table td {
+  border: 1px solid var(--border); padding: 0;
+  vertical-align: middle; min-width: 110px;
+}
+.day-cell {
+  background: var(--bg-elevated); text-align: center;
+  font-size: .8rem; font-weight: 700; padding: 10px 12px;
+  color: var(--terra); white-space: nowrap; min-width: 90px;
+}
+.room-cell {
+  background: var(--bg-card); text-align: center; padding: 8px 10px;
+  font-family: var(--mono); font-size: .75rem; font-weight: 600;
+  color: var(--text-sec); white-space: nowrap; min-width: 60px;
+}
+
+/* ── Slot cells ────────────────────────────────────────────── */
+.slot-cell {
+  cursor: pointer; transition: background .15s;
+  min-height: 52px; height: 52px;
+}
+.slot-cell:hover { background: rgba(188,111,55,.07); }
+.slot-inner {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; padding: 6px 8px; min-height: 52px;
+}
+.slot-empty {
+  font-size: 1.1rem; color: rgba(188,111,55,.25);
+  line-height: 1; transition: color .15s;
+}
+.slot-cell:hover .slot-empty { color: rgba(188,111,55,.6); }
+.slot-teacher {
+  font-family: var(--mono); font-size: .68rem; font-weight: 600;
+  color: var(--gold); line-height: 1.2; text-align: center;
+}
+.slot-course {
+  font-size: .7rem; color: var(--text-sec); margin-top: 2px;
+  text-align: center; line-height: 1.2;
+}
+.slot-cell.dimmed { opacity: .28; }
+.slot-cell.dimmed:hover { opacity: .5; }
+
+/* ── Filter info bar ───────────────────────────────────────── */
+.filter-info {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; font-size: .8rem; color: var(--text-muted);
+}
+.filter-count {
+  background: rgba(188,111,55,.12); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 10px;
+  font-size: .7rem; font-weight: 700; color: var(--terra);
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-top: 28px;
+}
+
+/* ── Teacher table ─────────────────────────────────────────── */
+.teacher-table {
+  width: 100%; border-collapse: collapse;
+}
+.teacher-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: .7rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.teacher-table td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(188,111,55,.08);
+  font-size: .85rem; vertical-align: middle;
+}
+.teacher-table tr:last-child td { border-bottom: none; }
+.t-code {
+  font-family: var(--mono); font-size: .78rem; font-weight: 600;
+  color: var(--gold); min-width: 60px;
+}
+.t-name-input {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+  color: var(--text); font-family: var(--font); font-size: .85rem;
+  width: 100%; transition: border-color .15s;
+}
+.t-name-input:focus { outline: none; border-color: var(--terra); }
+.btn-sm {
+  font-family: var(--font); font-size: .75rem; font-weight: 600;
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid); background: rgba(188,111,55,.1);
+  color: var(--terra); cursor: pointer; transition: all .15s;
+  white-space: nowrap;
+}
+.btn-sm:hover { background: rgba(188,111,55,.2); }
+.btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Add teacher form ──────────────────────────────────────── */
+.add-form {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+  align-items: flex-end;
+}
+.add-form-group { display: flex; flex-direction: column; gap: 5px; }
+.add-form-group label {
+  font-size: .7rem; font-weight: 600; color: var(--text-muted);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.add-input {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  color: var(--text); font-family: var(--font); font-size: .88rem;
+  width: 160px; transition: border-color .15s;
+}
+.add-input:focus { outline: none; border-color: var(--terra); }
+.btn-primary {
+  font-family: var(--font); font-size: .85rem; font-weight: 700;
+  padding: 9px 20px; border-radius: var(--radius-sm); border: none;
+  background: linear-gradient(135deg,#BC6F37,#CDA96A);
+  color: #fff; cursor: pointer; transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Danger zone ───────────────────────────────────────────── */
+.danger-card {
+  background: var(--bg-card); border: 1px solid var(--red-border);
+  border-radius: var(--radius); padding: 20px; margin-top: 28px;
+}
+.danger-title {
+  font-size: .8rem; font-weight: 700; color: var(--red);
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px;
+}
+.danger-desc { font-size: .85rem; color: var(--text-muted); margin-bottom: 16px; }
+.btn-danger {
+  font-family: var(--font); font-size: .85rem; font-weight: 700;
+  padding: 10px 22px; border-radius: var(--radius-sm); border: none;
+  background: linear-gradient(135deg,#C53030,#E53E3E);
+  color: #fff; cursor: pointer; transition: opacity .15s;
+}
+.btn-danger:hover { opacity: .88; }
+.btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+.reseed-result {
+  margin-top: 12px; font-size: .82rem; padding: 10px 14px;
+  border-radius: var(--radius-sm); display: none;
+}
+.reseed-result.ok  { background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.3); color: var(--green); }
+.reseed-result.err { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+
+/* ── Toast ─────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-elevated); border: 1px solid var(--border-mid);
+  color: var(--text); padding: 10px 20px; border-radius: 8px;
+  font-size: .85rem; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4); z-index: 9999;
+  transition: opacity .3s; opacity: 0; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+/* ── Modal overlay ─────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border-mid);
+  border-radius: var(--radius); padding: 28px 24px;
+  width: 100%; max-width: 480px;
+  animation: modalIn .2s ease;
+}
+@keyframes modalIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.modal-title {
+  font-size: 1rem; font-weight: 700; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-field { display: flex; flex-direction: column; gap: 5px; }
+.modal-field label {
+  font-size: .7rem; font-weight: 700; color: var(--text-muted);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.modal-input, .modal-select {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+  color: var(--text); font-family: var(--font); font-size: .88rem;
+  width: 100%; transition: border-color .15s;
+}
+.modal-input:focus, .modal-select:focus { outline: none; border-color: var(--terra); }
+.modal-input:disabled { opacity: .55; }
+.modal-input option, .modal-select option { background: var(--bg-elevated); }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.modal-error {
+  background: var(--red-bg); border: 1px solid var(--red-border);
+  color: var(--red); border-radius: var(--radius-sm);
+  padding: 8px 12px; font-size: .8rem; margin-top: 12px; display: none;
+}
+.modal-error.show { display: block; }
+
+/* ── Loading ───────────────────────────────────────────────── */
+.loading {
+  text-align: center; padding: 48px 20px;
+  color: var(--text-muted); font-size: .9rem;
+}
+.spinner {
+  width: 28px; height: 28px; border: 2px solid rgba(188,111,55,.2);
+  border-top-color: var(--terra); border-radius: 50%;
+  animation: spin .7s linear infinite; margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media(max-width: 640px) {
+  .header { flex-direction: column; align-items: flex-start; }
+  .modal-grid { grid-template-columns: 1fr; }
+  .add-form { flex-direction: column; }
+  .add-input { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ══ HEADER ═══════════════════════════════════════════════ -->
+  <div class="header">
+    <div class="header-left">
+      <svg class="header-logo" viewBox="0 0 96 100" fill="none">
+        <defs>
+          <linearGradient id="hg" x1="52" y1="18" x2="68" y2="88" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#DEC07C"/><stop offset="52%" stop-color="#C4A250"/>
+            <stop offset="100%" stop-color="#8C6820"/>
+          </linearGradient>
+          <linearGradient id="hd" x1="70" y1="8" x2="90" y2="28" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#E27848"/><stop offset="100%" stop-color="#B84A1A"/>
+          </linearGradient>
+        </defs>
+        <path fill="#3A1808" fill-rule="evenodd" d="M 8,22 L 8,70 A 32,22 0 0 1 72,70 L 72,22 Z M 26,22 L 26,66 A 14,15 0 0 0 54,66 L 54,22 Z"/>
+        <path fill="#F2E6D2" d="M 52,18 C 76,18 91,35 91,52 C 91,71 77,89 57,89 L 51,89 51,75 57,75 C 70,75 76,64 76,52 C 76,40 69,31 52,31 Z"/>
+        <path fill="url(#hg)" d="M 52,20 C 75,20 89,37 89,52 C 89,70 75,87 57,87 L 53,87 53,73 57,73 C 69,73 74,63 74,52 C 74,41 67,33 52,33 Z"/>
+        <circle cx="80" cy="19" r="14" fill="#F2E6D2"/>
+        <circle cx="80" cy="19" r="11.8" fill="url(#hd)"/>
+      </svg>
+      <div>
+        <div class="header-title">Routine Management</div>
+        <div class="header-sub">UniSync Admin · Dept. of Management</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="eff-badge">📅 15 April 2026 থেকে কার্যকর</span>
+      <a href="/admin/" class="back-link">← Admin Panel</a>
+    </div>
+  </div>
+
+  <!-- ══ SEMESTER SELECTOR ════════════════════════════════════ -->
+  <div class="section-title">Semester Filter</div>
+  <div class="sem-tabs">
+    <button class="sem-btn all-btn active" onclick="selectSem(null)" id="tab-all">
+      All Semesters
+    </button>
+    <button class="sem-btn" onclick="selectSem('BBA',1,2)" id="tab-bba-1-2">
+      BBA 1Y · Sem 2
+    </button>
+    <button class="sem-btn" onclick="selectSem('BBA',2,1)" id="tab-bba-2-1">
+      BBA 2Y · Sem 1
+    </button>
+    <button class="sem-btn" onclick="selectSem('BBA',3,1)" id="tab-bba-3-1">
+      BBA 3Y · Sem 1
+    </button>
+    <button class="sem-btn" onclick="selectSem('BBA',3,2)" id="tab-bba-3-2">
+      BBA 3Y · Sem 2
+    </button>
+    <button class="sem-btn" onclick="selectSem('MBA',1,1)" id="tab-mba-1-1">
+      MBA · Sem 1
+    </button>
+    <button class="sem-btn" onclick="selectSem('MBA',2,1)" id="tab-mba-2-1">
+      MBA · Sem 2
+    </button>
+  </div>
+
+  <!-- ══ ROUTINE TABLE ════════════════════════════════════════ -->
+  <div class="section-title">Class Routine Grid</div>
+  <div class="filter-info">
+    <span id="filterLabel">Showing all classes</span>
+    <span class="filter-count" id="filterCount">—</span>
+  </div>
+
+  <div class="table-scroll">
+    <div id="routineTableWrap">
+      <div class="loading">
+        <div class="spinner"></div>
+        Loading routine data…
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TEACHER MANAGEMENT ════════════════════════════════════ -->
+  <div class="card" id="teacherCard">
+    <div class="section-title" style="margin-bottom:16px;">Teacher Mappings</div>
+
+    <div id="teacherTableWrap">
+      <div class="loading"><div class="spinner"></div>Loading…</div>
+    </div>
+
+    <!-- Add new teacher -->
+    <div class="add-form">
+      <div class="add-form-group">
+        <label>Code</label>
+        <input type="text" id="newTCode" class="add-input" placeholder="e.g. XYZ"
+               style="width:100px; text-transform:uppercase;">
+      </div>
+      <div class="add-form-group">
+        <label>Full Name</label>
+        <input type="text" id="newTName" class="add-input" placeholder="Dr. Full Name" style="width:260px;">
+      </div>
+      <button class="btn-primary" onclick="addTeacher()" id="addTeacherBtn">
+        + যোগ করুন
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ DANGER ZONE ═══════════════════════════════════════════ -->
+  <div class="danger-card">
+    <div class="danger-title">⚠ Danger Zone</div>
+    <div class="danger-desc">
+      নিচের button click করলে <strong>সব routine data মুছে</strong> 15 April 2026 এর
+      official seed data দিয়ে নতুন করে fill হবে। এই action undo করা যাবে না।
+    </div>
+    <button class="btn-danger" onclick="confirmReseed()" id="reseedBtn">
+      🔄 সম্পূর্ণ Reseed করুন
+    </button>
+    <div class="reseed-result" id="reseedResult"></div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ══ SLOT EDIT MODAL ══════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="slotModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">📝 Slot Edit</div>
+    <div class="modal-grid">
+      <div class="modal-field">
+        <label>Day</label>
+        <input type="text" id="m_day" class="modal-input" disabled>
+      </div>
+      <div class="modal-field">
+        <label>Room</label>
+        <select id="m_room" class="modal-select">
+          <option value="101">Room 101</option>
+          <option value="201">Room 201</option>
+          <option value="1001">Room 1001</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Time Slot</label>
+        <select id="m_slot" class="modal-select" onchange="slotChanged()">
+          <option value="09:00|10:10">9:00 – 10:10</option>
+          <option value="10:15|11:25">10:15 – 11:25</option>
+          <option value="11:30|12:40">11:30 – 12:40</option>
+          <option value="13:35|14:45">1:35 – 2:45 PM</option>
+          <option value="14:50|16:00">2:50 – 4:00 PM</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Course Code</label>
+        <input type="text" id="m_course" class="modal-input"
+               list="courseList" placeholder="e.g. MGT-3102"
+               oninput="this.value=this.value.toUpperCase(); autoFillMeta()">
+        <datalist id="courseList"></datalist>
+      </div>
+      <div class="modal-field">
+        <label>Teacher Code</label>
+        <input type="text" id="m_teacher" class="modal-input"
+               list="teacherList" placeholder="e.g. PKP"
+               oninput="this.value=this.value.toUpperCase()">
+        <datalist id="teacherList"></datalist>
+      </div>
+      <div class="modal-field">
+        <label>Program</label>
+        <select id="m_program" class="modal-select">
+          <option value="BBA">BBA</option>
+          <option value="MBA">MBA</option>
+          <option value="ALL">ALL</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Year</label>
+        <select id="m_year" class="modal-select">
+          <option value="1">Year 1</option>
+          <option value="2">Year 2</option>
+          <option value="3">Year 3</option>
+          <option value="4">Year 4</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Semester</label>
+        <select id="m_semester" class="modal-select">
+          <option value="1">Semester 1</option>
+          <option value="2">Semester 2</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-error" id="modalError"></div>
+
+    <div class="modal-actions">
+      <button class="btn-primary" id="saveSlotBtn" onclick="saveSlot()">💾 Save</button>
+      <button class="btn-danger" id="deleteSlotBtn" onclick="deleteSlot()"
+              style="display:none;padding:9px 18px;font-size:.82rem;">
+        🗑 Delete
+      </button>
+      <button class="btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ═══════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const ADMIN_TOKEN_KEY = 'unisync_admin_token';
+let adminToken  = localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+let allData     = [];   // all routine rows from /admin/api/routine-matrix
+let teacherList = [];   // from /admin/api/teachers
+let courseList  = [];   // from /admin/api/courses
+let courseMeta  = {};   // {code: {program, year, semester}}
+let activeFilter = null; // {program, year, semester} or null
+let editingId   = null;  // routine row id being edited (null = new)
+let editingCell = null;  // {day, room, time_start} for new slot
+
+const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday'];
+const ROOMS = ['101','201','1001'];
+const SLOTS = [
+  {label:'9:00–10:10',   ts:'09:00', te:'10:10', val:'09:00|10:10'},
+  {label:'10:15–11:25',  ts:'10:15', te:'11:25', val:'10:15|11:25'},
+  {label:'11:30–12:40',  ts:'11:30', te:'12:40', val:'11:30|12:40'},
+  {label:'1:35–2:45 PM', ts:'13:35', te:'14:45', val:'13:35|14:45'},
+  {label:'2:50–4:00 PM', ts:'14:50', te:'16:00', val:'14:50|16:00'},
+];
+const SLOT_DISPLAY = {
+  '9.00-10.10':  '9:00–10:10',
+  '10.15-11.25': '10:15–11:25',
+  '11.30-12.40': '11:30–12:40',
+  '1.35-2.45':   '1:35–2:45 PM',
+  '2.50-4.00':   '2:50–4:00 PM',
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!adminToken) {
+    window.location.href = '/admin/';
+    return;
+  }
+  await loadAll();
+});
+
+async function loadAll() {
+  try {
+    const [matrixRes, teachRes, courseRes] = await Promise.all([
+      fetch('/admin/api/routine-matrix'),
+      fetch('/admin/api/teachers'),
+      fetch('/admin/api/courses'),
+    ]);
+    const [matrix, teachers, courses] = await Promise.all([
+      matrixRes.json(), teachRes.json(), courseRes.json()
+    ]);
+
+    allData     = matrix.data    || [];
+    teacherList = teachers.data  || [];
+    courseList  = courses.data   || [];
+
+    // Build courseMeta lookup from our knowledge
+    const META = {
+      'MGT-1201':('BBA',1,2),'GED-1202':('BBA',1,2),'MGT-1203':('BBA',1,2),
+      'GED-1204':('BBA',1,2),'GED-1205':('BBA',1,2),'GED-1250':('BBA',1,2),
+      'MGT-2101':('BBA',2,1),'GED-2102':('BBA',2,1),'GED-2103':('BBA',2,1),
+      'GED-2104':('BBA',2,1),'MGT-2105':('BBA',2,1),
+      'MGT-3101':('BBA',3,1),'MGT-3102':('BBA',3,1),'MGT-3103':('BBA',3,1),
+      'MGT-3104':('BBA',3,1),'MGT-3105':('BBA',3,1),
+      'MGT-3201':('BBA',3,2),'MGT-3202':('BBA',3,2),'MGT-3203':('BBA',3,2),
+      'MGT-3204':('BBA',3,2),'MGT-3205':('BBA',3,2),'GED-3203':('BBA',3,2),
+      'HRM-5101':('MBA',1,1),'HRM-5102':('MBA',1,1),'HRM-5103':('MBA',1,1),
+      'HRM-5104':('MBA',1,1),'HRM-5105':('MBA',1,1),
+      'HRM-5201':('MBA',2,1),'HRM-5202':('MBA',2,1),'HRM-5203':('MBA',2,1),
+      'HRM-5204':('MBA',2,1),'HRM-5205':('MBA',2,1),
+    };
+    courseMeta = META;
+
+    // Populate datalists
+    const cl = document.getElementById('courseList');
+    cl.innerHTML = courseList.map(c =>
+      `<option value="${c.code}">${c.code} — ${c.full_name}</option>`
+    ).join('');
+
+    const tl = document.getElementById('teacherList');
+    tl.innerHTML = teacherList.map(t =>
+      `<option value="${t.code}">${t.code} — ${t.full_name}</option>`
+    ).join('');
+
+    renderTable();
+    renderTeachers();
+  } catch(e) {
+    document.getElementById('routineTableWrap').innerHTML =
+      `<div class="loading" style="color:var(--red)">⚠ Failed to load data: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEMESTER FILTER
+// ═══════════════════════════════════════════════════════════════
+function selectSem(program, year, semester) {
+  activeFilter = program ? {program, year, semester} : null;
+
+  // Update tab styles
+  document.querySelectorAll('.sem-btn').forEach(b => b.classList.remove('active'));
+  if (!program) {
+    document.getElementById('tab-all').classList.add('active');
+  } else {
+    const key = `tab-${program.toLowerCase()}-${year}-${semester}`;
+    const el = document.getElementById(key);
+    if (el) el.classList.add('active');
+  }
+
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ROUTINE TABLE
+// ═══════════════════════════════════════════════════════════════
+function renderTable() {
+  // Build lookup: day -> room -> ts -> entry
+  const lookup = {};
+  DAYS.forEach(d => {
+    lookup[d] = {};
+    ROOMS.forEach(r => { lookup[d][r] = {}; });
+  });
+  allData.forEach(e => {
+    if (lookup[e.day] && lookup[e.day][e.room_no]) {
+      lookup[e.day][e.room_no][e.time_start] = e;
+    }
+  });
+
+  // Count visible
+  let visibleCount = 0;
+  allData.forEach(e => {
+    if (!activeFilter ||
+        (e.program === activeFilter.program &&
+         e.course_year === activeFilter.year &&
+         e.course_semester === activeFilter.semester)) {
+      visibleCount++;
+    }
+  });
+
+  // Filter info
+  const filterLabel = document.getElementById('filterLabel');
+  const filterCount = document.getElementById('filterCount');
+  if (!activeFilter) {
+    filterLabel.textContent = 'Showing all classes';
+  } else {
+    const {program, year, semester} = activeFilter;
+    filterLabel.textContent = `Filter: ${program} ${program==='MBA'?'Sem':'Year '+year+' Sem'} ${semester}`;
+  }
+  filterCount.textContent = visibleCount + ' slots';
+
+  // Build table HTML
+  let html = `<table class="routine-table">
+    <thead><tr>
+      <th>Day</th>
+      <th>Room</th>`;
+  SLOTS.forEach(s => { html += `<th>${s.label}</th>`; });
+  html += `</tr></thead><tbody>`;
+
+  DAYS.forEach(day => {
+    ROOMS.forEach((room, ri) => {
+      html += `<tr>`;
+      if (ri === 0) {
+        html += `<td class="day-cell" rowspan="3">${day}</td>`;
+      }
+      html += `<td class="room-cell">${room}</td>`;
+
+      SLOTS.forEach(slot => {
+        const entry = lookup[day][room][slot.ts];
+        if (entry) {
+          // Cell is occupied — check if matches filter
+          const matches = !activeFilter || (
+            entry.program === activeFilter.program &&
+            entry.course_year === activeFilter.year &&
+            entry.course_semester === activeFilter.semester
+          );
+          const dimClass = matches ? '' : 'dimmed';
+          const cn = entry.course_name || entry.course_code;
+          const tn = entry.teacher_code;
+          const shortCN = cn.length > 22 ? cn.substring(0,20)+'…' : cn;
+          html += `<td class="slot-cell ${dimClass}"
+                       onclick="openEdit('${entry.id}','${day}','${room}','${slot.ts}')">
+                     <div class="slot-inner">
+                       <div class="slot-teacher">${tn}</div>
+                       <div class="slot-course" title="${cn}">${shortCN}</div>
+                     </div>
+                   </td>`;
+        } else {
+          // Empty cell — only highlight if no filter or cell could belong to filter
+          html += `<td class="slot-cell"
+                       onclick="openNew('${day}','${room}','${slot.ts}','${slot.te}')">
+                     <div class="slot-inner">
+                       <div class="slot-empty">＋</div>
+                     </div>
+                   </td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('routineTableWrap').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL — OPEN FOR EDIT
+// ═══════════════════════════════════════════════════════════════
+function openEdit(id, day, room, ts) {
+  const entry = allData.find(e => e.id === id);
+  if (!entry) return;
+
+  editingId   = id;
+  editingCell = null;
+
+  document.getElementById('modalTitle').textContent = '✏️ Slot Edit';
+  document.getElementById('m_day').value     = entry.day;
+  document.getElementById('m_room').value    = entry.room_no;
+  document.getElementById('m_course').value  = entry.course_code;
+  document.getElementById('m_teacher').value = entry.teacher_code;
+  document.getElementById('m_program').value = entry.program || 'BBA';
+  document.getElementById('m_year').value    = entry.course_year || 1;
+  document.getElementById('m_semester').value= entry.course_semester || 1;
+
+  // Set time slot select
+  const slotVal = `${entry.time_start}|${entry.time_end}`;
+  const slotSel = document.getElementById('m_slot');
+  for (let i = 0; i < slotSel.options.length; i++) {
+    if (slotSel.options[i].value === slotVal) {
+      slotSel.selectedIndex = i;
+      break;
+    }
+  }
+
+  document.getElementById('deleteSlotBtn').style.display = '';
+  document.getElementById('modalError').classList.remove('show');
+  document.getElementById('slotModal').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL — OPEN FOR NEW SLOT
+// ═══════════════════════════════════════════════════════════════
+function openNew(day, room, ts, te) {
+  editingId   = null;
+  editingCell = {day, room, ts, te};
+
+  document.getElementById('modalTitle').textContent = '➕ New Slot';
+  document.getElementById('m_day').value     = day;
+  document.getElementById('m_room').value    = room;
+  document.getElementById('m_course').value  = '';
+  document.getElementById('m_teacher').value = '';
+  document.getElementById('m_program').value = activeFilter?.program || 'BBA';
+  document.getElementById('m_year').value    = activeFilter?.year    || 1;
+  document.getElementById('m_semester').value= activeFilter?.semester|| 1;
+
+  // Set time slot
+  const slotVal = `${ts}|${te}`;
+  const slotSel = document.getElementById('m_slot');
+  for (let i = 0; i < slotSel.options.length; i++) {
+    if (slotSel.options[i].value === slotVal) {
+      slotSel.selectedIndex = i;
+      break;
+    }
+  }
+
+  document.getElementById('deleteSlotBtn').style.display = 'none';
+  document.getElementById('modalError').classList.remove('show');
+  document.getElementById('slotModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('slotModal').classList.add('hidden');
+  editingId   = null;
+  editingCell = null;
+}
+
+function slotChanged() {}
+
+// Auto-fill program/year/semester from course code
+function autoFillMeta() {
+  const code = document.getElementById('m_course').value.trim().toUpperCase();
+  const m = courseMeta[code];
+  if (m) {
+    document.getElementById('m_program').value  = m[0];
+    document.getElementById('m_year').value     = m[1];
+    document.getElementById('m_semester').value = m[2];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE SLOT
+// ═══════════════════════════════════════════════════════════════
+async function saveSlot() {
+  const btn     = document.getElementById('saveSlotBtn');
+  const errEl   = document.getElementById('modalError');
+  errEl.classList.remove('show');
+
+  const slotParts = document.getElementById('m_slot').value.split('|');
+  const ts        = slotParts[0];
+  const te        = slotParts[1];
+
+  const body = {
+    day:             document.getElementById('m_day').value,
+    room_no:         document.getElementById('m_room').value,
+    time_start:      ts,
+    time_end:        te,
+    course_code:     document.getElementById('m_course').value.trim().toUpperCase(),
+    teacher_code:    document.getElementById('m_teacher').value.trim().toUpperCase(),
+    program:         document.getElementById('m_program').value,
+    course_year:     parseInt(document.getElementById('m_year').value),
+    course_semester: parseInt(document.getElementById('m_semester').value),
+    session:         '2025-26',
+  };
+
+  if (!body.course_code || !body.teacher_code) {
+    errEl.textContent = 'Course Code এবং Teacher Code দিন।';
+    errEl.classList.add('show');
+    return;
+  }
+
+  if (editingId) body.routine_id = editingId;
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const res  = await fetch('/admin/api/routine-slot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('✅ Saved successfully');
+      closeModal();
+      await loadAll();
+    } else {
+      if (res.status === 401) { handleUnauth(); return; }
+      errEl.textContent = data.error || 'Save failed.';
+      errEl.classList.add('show');
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error. Try again.';
+    errEl.classList.add('show');
+  }
+  btn.disabled = false;
+  btn.textContent = '💾 Save';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DELETE SLOT
+// ═══════════════════════════════════════════════════════════════
+async function deleteSlot() {
+  if (!editingId) return;
+  if (!confirm('এই slot টি মুছে ফেলবেন?')) return;
+
+  const btn = document.getElementById('deleteSlotBtn');
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+
+  try {
+    const res = await fetch(`/admin/api/routine-slot/${editingId}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': adminToken },
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('🗑 Slot deleted');
+      closeModal();
+      await loadAll();
+    } else {
+      if (res.status === 401) { handleUnauth(); return; }
+      alert('Delete failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) {
+    alert('Connection error.');
+  }
+  btn.disabled = false;
+  btn.textContent = '🗑 Delete';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER TEACHERS
+// ═══════════════════════════════════════════════════════════════
+function renderTeachers() {
+  if (!teacherList.length) {
+    document.getElementById('teacherTableWrap').innerHTML =
+      '<div style="color:var(--text-muted);font-size:.85rem;padding:12px;">No teachers found.</div>';
+    return;
+  }
+
+  let html = `<table class="teacher-table">
+    <thead><tr>
+      <th style="width:80px;">Code</th>
+      <th>Full Name</th>
+      <th style="width:90px;"></th>
+    </tr></thead><tbody>`;
+
+  teacherList.forEach(t => {
+    html += `<tr>
+      <td class="t-code">${t.code}</td>
+      <td><input type="text" class="t-name-input" id="tname-${t.code}"
+                 value="${escHtml(t.full_name)}"></td>
+      <td>
+        <button class="btn-sm" onclick="saveTeacher('${t.code}')">Save</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('teacherTableWrap').innerHTML = html;
+}
+
+async function saveTeacher(code) {
+  const input    = document.getElementById(`tname-${code}`);
+  const full_name = input.value.trim();
+  if (!full_name) return;
+
+  try {
+    const res = await fetch('/admin/api/teacher', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ code, full_name }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('✅ Teacher updated');
+      await loadAll();
+    } else {
+      if (res.status === 401) { handleUnauth(); return; }
+      toast('❌ ' + (data.error || 'Update failed'), true);
+    }
+  } catch(e) {
+    toast('❌ Connection error', true);
+  }
+}
+
+async function addTeacher() {
+  const code      = document.getElementById('newTCode').value.trim().toUpperCase();
+  const full_name = document.getElementById('newTName').value.trim();
+  if (!code || !full_name) {
+    toast('❌ Code এবং Name দিন', true); return;
+  }
+
+  const btn = document.getElementById('addTeacherBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/admin/api/teacher', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ code, full_name }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast('✅ Teacher added');
+      document.getElementById('newTCode').value = '';
+      document.getElementById('newTName').value = '';
+      await loadAll();
+    } else {
+      if (res.status === 401) { handleUnauth(); return; }
+      toast('❌ ' + (data.error || 'Failed'), true);
+    }
+  } catch(e) {
+    toast('❌ Connection error', true);
+  }
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DANGER ZONE — RESEED
+// ═══════════════════════════════════════════════════════════════
+async function confirmReseed() {
+  const confirmed = confirm(
+    '⚠ WARNING\n\n' +
+    'এই action সব routine data মুছে\n' +
+    '15 April 2026 এর official seed data দিয়ে\n' +
+    'নতুন করে fill করবে।\n\n' +
+    'আপনি কি নিশ্চিত?'
+  );
+  if (!confirmed) return;
+
+  const btn    = document.getElementById('reseedBtn');
+  const result = document.getElementById('reseedResult');
+  btn.disabled = true;
+  btn.textContent = '⏳ Reseeding…';
+  result.style.display = 'none';
+
+  try {
+    const res  = await fetch('/admin/api/routine-reseed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+      body: JSON.stringify({ confirm: true }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.textContent  = `✅ Done! ${data.inserted_routines} routines + ${data.inserted_mappings} mappings reseeded.`;
+      result.className    = 'reseed-result ok';
+      result.style.display = 'block';
+      toast('✅ Reseed complete');
+      await loadAll();
+    } else {
+      if (res.status === 401) { handleUnauth(); return; }
+      result.textContent  = '❌ ' + (data.error || 'Reseed failed');
+      result.className    = 'reseed-result err';
+      result.style.display = 'block';
+    }
+  } catch(e) {
+    result.textContent  = '❌ Connection error';
+    result.className    = 'reseed-result err';
+    result.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = '🔄 সম্পূর্ণ Reseed করুন';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function handleUnauth() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  toast('⚠ Session expired. Redirecting…');
+  setTimeout(() => { window.location.href = '/admin/'; }, 1500);
+}
+
+let toastTimer = null;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = isErr ? 'var(--red-border)' : 'var(--border-mid)';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3000);
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on overlay click
+document.getElementById('slotModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
