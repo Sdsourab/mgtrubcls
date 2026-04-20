@@ -5,422 +5,432 @@
 {% block extra_css %}
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   UniSync Transit — Smart Bus Schedule
-   Fonts  : Playfair Display · Outfit · JetBrains Mono (UniSync system)
-   Theme  : Warm cream luxury, terra/gold accents — matches main app
+   UniSync Smart Bus Schedule
+   Uses exact UniSync CSS variables — no external fonts needed.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Page header ─────────────────────────────────────────────── */
-.tr-header {
+.bs-header {
     display: flex; align-items: flex-start;
     justify-content: space-between; gap: 20px;
-    margin-bottom: 28px; flex-wrap: wrap;
+    margin-bottom: 24px; flex-wrap: wrap;
 }
-.tr-header-left {}
-.tr-eyebrow {
+.bs-eyebrow {
     font-family: var(--font-body);
     font-size: .65rem; font-weight: 700; letter-spacing: .14em;
     text-transform: uppercase; color: var(--terra);
-    display: flex; align-items: center; gap: 7px; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
 }
-.tr-live-dot {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--terra);
-    animation: liveDot 1.6s ease-in-out infinite;
+.bs-live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--terra);
+    animation: liveDot 1.8s ease-in-out infinite;
 }
 @keyframes liveDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.5)} }
-.tr-page-title {
+.bs-title {
     font-family: var(--font-display);
-    font-size: 2rem; font-weight: 700;
-    color: var(--text-primary); letter-spacing: -.02em;
-    line-height: 1.1; margin-bottom: 4px;
+    font-size: 1.9rem; font-weight: 700; color: var(--text-primary);
+    letter-spacing: -.025em; line-height: 1.1; margin-bottom: 4px;
 }
-.tr-page-sub {
+.bs-subtitle {
     font-family: var(--font-body);
-    font-size: .82rem; color: var(--text-muted);
+    font-size: .82rem; color: var(--text-muted); margin-bottom: 4px;
 }
-.tr-eff-note {
+.bs-eff {
     font-family: var(--font-body);
-    font-size: .7rem; color: var(--terra);
-    margin-top: 5px; font-weight: 500;
+    font-size: .68rem; color: var(--terra); font-weight: 500;
 }
-
-/* Live clock block */
-.tr-clock-block {
-    text-align: right; flex-shrink: 0;
-}
-.tr-clock {
+.bs-clock-wrap { text-align: right; flex-shrink: 0; }
+.bs-clock {
     font-family: var(--font-mono);
-    font-size: 2rem; font-weight: 600;
-    color: var(--text-primary); letter-spacing: -.03em; line-height: 1;
+    font-size: 2rem; font-weight: 600; color: var(--text-primary);
+    letter-spacing: -.03em; line-height: 1;
 }
-.tr-clock-date {
+.bs-date {
     font-family: var(--font-body);
     font-size: .72rem; color: var(--text-muted); margin-top: 3px;
 }
-.tr-clock-tz {
+.bs-tz {
     font-family: var(--font-body);
-    font-size: .62rem; color: var(--terra);
-    font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    font-size: .58rem; color: var(--terra); font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
 }
 
 /* ── Weekend notice ──────────────────────────────────────────── */
-.tr-weekend {
+.bs-weekend {
     display: none;
-    background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: var(--radius-lg);
-    padding: 36px 24px; text-align: center; margin-bottom: 24px;
+    background: linear-gradient(135deg,rgba(188,111,55,.07),rgba(205,169,106,.04));
+    border: 1px solid var(--border-card); border-radius: var(--radius-lg);
+    padding: 40px 24px; text-align: center; margin-bottom: 24px;
 }
-.tr-weekend.show { display: block; }
-.tr-weekend-emoji { font-size: 2.4rem; margin-bottom: 12px; }
-.tr-weekend-title {
+.bs-weekend.show { display: block; }
+.bs-wknd-icon  { font-size: 2.8rem; display: block; margin-bottom: 12px; }
+.bs-wknd-title {
     font-family: var(--font-display);
-    font-size: 1.2rem; font-weight: 700;
-    color: var(--text-primary); margin-bottom: 6px;
+    font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;
 }
-.tr-weekend-sub {
+.bs-wknd-sub {
     font-family: var(--font-body);
-    font-size: .85rem; color: var(--text-muted); line-height: 1.6;
+    font-size: .85rem; color: var(--text-muted); line-height: 1.65;
 }
 
-/* ── HERO: Next departure + countdown ring ───────────────────── */
-.tr-hero {
-    background: linear-gradient(135deg, var(--sidebar-bg) 0%, #2C1E0A 100%);
-    border: 1px solid rgba(205,169,106,.18);
+/* ── NEXT BUS HERO ───────────────────────────────────────────── */
+.bs-hero {
+    background: linear-gradient(135deg, #1E1408 0%, #2E2010 60%, #1A180C 100%);
+    border: 1px solid rgba(205,169,106,.22);
     border-radius: var(--radius-lg);
-    padding: 24px 28px; margin-bottom: 24px;
-    display: flex; align-items: center; gap: 28px;
-    flex-wrap: wrap; position: relative; overflow: hidden;
+    padding: 0; margin-bottom: 24px; overflow: hidden;
+    position: relative;
 }
-.tr-hero::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 75% 50%, rgba(188,111,55,.09) 0%, transparent 60%);
-    pointer-events: none;
+/* Glowing top accent strip */
+.bs-hero-strip {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--terra), var(--golden), var(--terra), transparent);
+    background-size: 200% 100%;
+    animation: stripMove 3s linear infinite;
 }
-/* SVG countdown ring */
-.tr-ring-wrap {
-    position: relative; flex-shrink: 0;
-    width: 96px; height: 96px;
+@keyframes stripMove { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+.bs-hero-body {
+    padding: 22px 26px 24px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    position: relative;
 }
-.tr-ring-svg { width: 96px; height: 96px; transform: rotate(-90deg); }
-.tr-ring-track { fill: none; stroke: rgba(205,169,106,.12); stroke-width: 5; }
-.tr-ring-fill  { fill: none; stroke: var(--terra); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset .9s var(--ease-smooth); }
-.tr-ring-inner {
+/* Subtle bus silhouette bg */
+.bs-hero-body::after {
+    content: '🚌';
+    position: absolute; right: 24px; bottom: -4px;
+    font-size: 5.5rem; opacity: .05; pointer-events: none;
+    line-height: 1;
+}
+
+/* Countdown ring */
+.bs-ring-wrap {
+    flex-shrink: 0; position: relative;
+    width: 88px; height: 88px;
+}
+.bs-ring-svg { width: 88px; height: 88px; transform: rotate(-90deg); }
+.bs-ring-track { fill: none; stroke: rgba(205,169,106,.12); stroke-width: 5; }
+.bs-ring-arc {
+    fill: none; stroke: var(--terra); stroke-width: 5;
+    stroke-linecap: round;
+    stroke-dasharray: 251.3;   /* 2π × 40 */
+    stroke-dashoffset: 251.3;
+    transition: stroke-dashoffset .8s ease;
+}
+.bs-ring-center {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
 }
-.tr-ring-num {
+.bs-ring-num  {
     font-family: var(--font-mono);
-    font-size: .95rem; font-weight: 600; color: var(--golden-lt); line-height: 1;
+    font-size: 1rem; font-weight: 600; color: #DFC087; line-height: 1;
 }
-.tr-ring-unit {
+.bs-ring-lbl  {
     font-family: var(--font-body);
-    font-size: .54rem; color: rgba(205,169,106,.5);
+    font-size: .5rem; color: rgba(205,169,106,.5);
     text-transform: uppercase; letter-spacing: .08em; margin-top: 1px;
 }
 
-.tr-hero-info { flex: 1; min-width: 0; }
-.tr-hero-lbl {
+/* Info block */
+.bs-hero-info { flex: 1; min-width: 0; }
+.bs-hero-tag {
     font-family: var(--font-body);
-    font-size: .62rem; font-weight: 700; letter-spacing: .13em;
-    text-transform: uppercase; color: rgba(205,169,106,.5); margin-bottom: 4px;
+    font-size: .6rem; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: rgba(205,169,106,.5); margin-bottom: 5px;
 }
-.tr-hero-bus {
+.bs-hero-busname {
     font-family: var(--font-display);
-    font-size: 1.3rem; font-weight: 700; color: var(--golden-lt);
-    margin-bottom: 3px;
+    font-size: 1.35rem; font-weight: 700; color: #DFC087; margin-bottom: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tr-hero-route {
+.bs-hero-route {
     font-family: var(--font-body);
-    font-size: .78rem; color: rgba(245,234,210,.45); margin-bottom: 8px;
+    font-size: .78rem; color: rgba(245,234,210,.45);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 10px;
 }
-.tr-hero-chips { display: flex; gap: 7px; flex-wrap: wrap; }
-.tr-chip {
+.bs-hero-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.hs-chip {
     font-family: var(--font-body);
-    font-size: .65rem; font-weight: 600; padding: 3px 10px; border-radius: 12px;
+    font-size: .63rem; font-weight: 600; padding: 3px 10px; border-radius: 12px;
 }
-.chip-time {
-    background: rgba(188,111,55,.18); border: 1px solid rgba(188,111,55,.32);
-    color: var(--terra-lt); font-family: var(--font-mono);
-}
-.chip-dur  { background: rgba(205,169,106,.10); border: 1px solid rgba(205,169,106,.2); color: var(--golden-lt); }
-.chip-type { background: rgba(74,140,74,.14);   border: 1px solid rgba(74,140,74,.25);  color: #68D391; }
+.hc-time { background: rgba(188,111,55,.2); border: 1px solid rgba(188,111,55,.35); color: #D4884A; font-family: var(--font-mono); }
+.hc-dur  { background: rgba(205,169,106,.12); border: 1px solid rgba(205,169,106,.22); color: #CDA96A; }
+.hc-ac   { background: rgba(42,106,154,.18); border: 1px solid rgba(42,106,154,.3); color: #7BB8E8; }
 
-.tr-hero-right { flex-shrink: 0; text-align: right; }
-.tr-departs-in {
+/* Right: countdown value */
+.bs-hero-right { flex-shrink: 0; text-align: right; }
+.bs-dep-lbl {
     font-family: var(--font-body);
-    font-size: .65rem; font-weight: 700; letter-spacing: .1em;
+    font-size: .6rem; font-weight: 700; letter-spacing: .1em;
     text-transform: uppercase; color: rgba(205,169,106,.4); margin-bottom: 4px;
 }
-.tr-departs-val {
+.bs-dep-val {
     font-family: var(--font-mono);
-    font-size: 1.75rem; font-weight: 600; color: var(--golden-lt); line-height: 1;
+    font-size: 1.8rem; font-weight: 600; color: #DFC087; line-height: 1;
 }
-.tr-boarding-pill {
-    display: inline-block; margin-top: 6px;
+.bs-dep-pill {
+    display: inline-block; margin-top: 7px;
     font-family: var(--font-body);
-    font-size: .62rem; font-weight: 800; padding: 4px 12px; border-radius: 20px;
-    background: rgba(188,111,55,.18); border: 1px solid rgba(188,111,55,.3);
-    color: var(--terra-lt);
+    font-size: .62rem; font-weight: 800; padding: 4px 13px; border-radius: 20px;
+    background: rgba(188,111,55,.2); border: 1px solid rgba(188,111,55,.35);
+    color: #D4884A;
     animation: pillPulse 2.2s ease-in-out infinite;
 }
-@keyframes pillPulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(188,111,55,0); }
-    50%      { box-shadow: 0 0 18px rgba(188,111,55,.3); }
-}
-#heroNoService {
-    display: none; font-family: var(--font-body);
-    font-size: .85rem; color: rgba(205,169,106,.4);
-    width: 100%; text-align: center;
+@keyframes pillPulse { 0%,100%{box-shadow:0 0 0 0 rgba(188,111,55,0)} 50%{box-shadow:0 0 20px rgba(188,111,55,.3)} }
+#heroNoSvc {
+    display:none; width:100%; text-align:center;
+    font-family: var(--font-body); font-size:.88rem; color:rgba(205,169,106,.4);
 }
 
-/* ── "Will I Make It?" tool ──────────────────────────────────── */
-.tr-wiim {
+/* ── Smart Tools Row ─────────────────────────────────────────── */
+.bs-tools {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;
+}
+
+/* Tool card base */
+.bs-tool {
     background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 24px;
+    border-radius: var(--radius-lg); padding: 18px 20px;
 }
-.tr-wiim-title {
+.bs-tool-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.bs-tool-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; flex-shrink: 0;
+    background: linear-gradient(135deg,rgba(188,111,55,.15),rgba(205,169,106,.08));
+    border: 1px solid rgba(188,111,55,.2);
+}
+.bs-tool-title {
     font-family: var(--font-display);
-    font-size: 1rem; font-weight: 700;
-    color: var(--text-primary); margin-bottom: 4px;
-    display: flex; align-items: center; gap: 8px;
+    font-size: .9rem; font-weight: 700; color: var(--text-primary);
 }
-.tr-wiim-sub {
+.bs-tool-sub {
     font-family: var(--font-body);
-    font-size: .78rem; color: var(--text-muted); margin-bottom: 16px;
+    font-size: .72rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;
 }
-.tr-wiim-row {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-}
-.tr-wiim-slider-wrap { flex: 1; min-width: 180px; }
-.tr-wiim-slider {
+
+/* Will I Make It — slider */
+.wiim-slider-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.wiim-slider {
     -webkit-appearance: none; appearance: none;
-    width: 100%; height: 4px; border-radius: 4px; outline: none; cursor: pointer;
-    background: linear-gradient(90deg, var(--terra) 0%, var(--border) 0%);
+    flex: 1; height: 4px; border-radius: 4px; outline: none; cursor: pointer;
+    background: var(--border);
 }
-.tr-wiim-slider::-webkit-slider-thumb {
+.wiim-slider::-webkit-slider-thumb {
     -webkit-appearance: none; width: 18px; height: 18px;
     border-radius: 50%; background: var(--terra);
-    border: 2px solid var(--cream); cursor: pointer;
-    box-shadow: 0 2px 8px rgba(188,111,55,.3);
+    border: 2px solid var(--bg-base); cursor: pointer;
+    box-shadow: 0 2px 6px rgba(188,111,55,.35);
 }
-.tr-wiim-val {
+.wiim-walk-lbl {
     font-family: var(--font-mono);
-    font-size: .88rem; font-weight: 600; color: var(--terra);
-    min-width: 44px; text-align: center;
+    font-size: .82rem; font-weight: 600; color: var(--terra); min-width: 44px; text-align: right;
 }
-.tr-wiim-result {
+.wiim-result {
     font-family: var(--font-body);
-    font-size: .82rem; font-weight: 600; padding: 8px 14px;
-    border-radius: var(--radius-sm); min-width: 160px; text-align: center;
+    font-size: .8rem; font-weight: 600; padding: 8px 12px;
+    border-radius: var(--radius-sm); text-align: center;
     transition: all .3s;
 }
-.wiim-yes { background: var(--success-bg); border: 1px solid rgba(74,140,74,.25); color: var(--success); }
-.wiim-no  { background: var(--danger-bg);  border: 1px solid rgba(176,58,42,.25);  color: var(--danger); }
-.wiim-na  { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted); }
+.wr-ok  { background: var(--success-bg); border: 1px solid rgba(74,140,74,.25); color: var(--success); }
+.wr-no  { background: var(--danger-bg);  border: 1px solid rgba(176,58,42,.25);  color: var(--danger); }
+.wr-na  { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted); }
 
-/* ── Reminder banner (set alert) ─────────────────────────────── */
-.tr-reminder {
-    background: linear-gradient(135deg,rgba(188,111,55,.08),rgba(205,169,106,.04));
-    border: 1px solid var(--border); border-radius: var(--radius-lg);
-    padding: 14px 20px; margin-bottom: 24px;
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-}
-.tr-reminder-text {
+/* Reminder */
+.reminder-btns { display: flex; gap: 7px; margin-bottom: 10px; flex-wrap: wrap; }
+.rem-btn {
     font-family: var(--font-body);
-    font-size: .82rem; color: var(--text-secondary); flex: 1;
+    flex: 1; font-size: .72rem; font-weight: 600;
+    padding: 8px 6px; border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-secondary); transition: all .2s; text-align: center;
+    min-width: 54px;
 }
-.tr-reminder-text strong { color: var(--text-primary); }
-.tr-reminder-btns { display: flex; gap: 8px; }
-.tr-alert-btn {
-    font-family: var(--font-body);
-    font-size: .73rem; font-weight: 600; padding: 7px 14px;
-    border-radius: var(--radius-sm); cursor: pointer; transition: all .18s;
-    border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary);
-}
-.tr-alert-btn.active {
-    background: linear-gradient(135deg,var(--terra),var(--terra-lt));
+.rem-btn:hover { border-color: var(--terra); color: var(--terra); }
+.rem-btn.rem-on {
+    background: linear-gradient(135deg, var(--terra), var(--terra-lt));
     border-color: var(--terra); color: #fff;
+    box-shadow: 0 2px 8px rgba(188,111,55,.3);
 }
-.tr-alert-btn:hover { border-color: var(--terra); color: var(--terra); }
-
-/* ── Section heading ─────────────────────────────────────────── */
-.tr-section-head {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px; gap: 12px; flex-wrap: wrap;
-}
-.tr-section-title {
+.rem-status {
     font-family: var(--font-body);
-    font-size: .65rem; font-weight: 800; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--text-muted);
-    display: flex; align-items: center; gap: 8px;
+    font-size: .75rem; color: var(--text-muted); min-height: 18px;
 }
-.tr-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); min-width: 30px; }
-.tr-filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.tr-filter {
+
+/* My Stop */
+.mystop-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.stop-btn {
+    font-family: var(--font-body);
+    font-size: .72rem; font-weight: 600; padding: 6px 12px;
+    border-radius: 20px; cursor: pointer; transition: all .18s;
+    border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-secondary);
+}
+.stop-btn:hover { border-color: var(--border-mid); color: var(--text-primary); }
+.stop-btn.stop-on {
+    background: linear-gradient(135deg,rgba(188,111,55,.14),rgba(205,169,106,.07));
+    border-color: var(--terra); color: var(--terra); font-weight: 700;
+}
+.mystop-result {
+    display: none; margin-top: 10px;
+    font-family: var(--font-body); font-size: .78rem;
+    color: var(--text-secondary); line-height: 1.6;
+    padding: 10px 12px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.mystop-result.show { display: block; }
+
+/* ── Section heading + filter ────────────────────────────────── */
+.bs-sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+.bs-sec-title {
+    font-family: var(--font-body);
+    font-size: .65rem; font-weight: 800; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 10px;
+}
+.bs-sec-title::after { content: ''; flex: 0 0 32px; height: 1px; background: var(--border); }
+.bs-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.bs-ft {
     font-family: var(--font-body);
     font-size: .7rem; font-weight: 600; padding: 5px 13px; border-radius: 20px;
     border: 1px solid var(--border); background: var(--bg-card);
     color: var(--text-muted); cursor: pointer; transition: all .18s;
 }
-.tr-filter:hover { border-color: var(--border-mid); color: var(--text-primary); }
-.tr-filter.on {
-    background: linear-gradient(135deg,rgba(188,111,55,.12),rgba(205,169,106,.07));
+.bs-ft:hover { border-color: var(--border-mid); color: var(--text-primary); }
+.bs-ft.f-on {
+    background: linear-gradient(135deg,rgba(188,111,55,.13),rgba(205,169,106,.07));
     border-color: var(--terra); color: var(--terra); font-weight: 700;
 }
 
-/* ── Bus cards ───────────────────────────────────────────────── */
-.tr-grid {
+/* ── Bus cards grid ──────────────────────────────────────────── */
+.bs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
     gap: 16px; margin-bottom: 28px;
 }
 
 .bus-card {
     background: var(--bg-card); border: 1px solid var(--border-card);
     border-radius: var(--radius-lg); overflow: hidden;
-    transition: box-shadow .22s, border-color .22s, transform .22s;
-    position: relative;
+    transition: box-shadow .2s, border-color .2s, transform .2s;
 }
-.bus-card:hover {
-    box-shadow: var(--shadow); border-color: var(--border-mid);
-    transform: translateY(-2px);
+.bus-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.bus-card.card-next { border-color: var(--terra); box-shadow: 0 0 0 2px rgba(188,111,55,.13), var(--shadow-sm); }
+.bus-card.card-inactive { opacity: .36; pointer-events: none; }
+
+/* Top color strip — this is the accent bar per bus */
+.card-strip {
+    height: 3px; width: 100%;
 }
-.bus-card.card-next {
-    border-color: var(--terra);
-    box-shadow: 0 0 0 1px rgba(188,111,55,.15), var(--shadow-sm);
-}
-.bus-card.card-next::before {
-    content: 'Next';
-    position: absolute; top: 10px; right: 10px;
-    font-family: var(--font-body); font-size: .58rem; font-weight: 800;
-    letter-spacing: .1em; text-transform: uppercase;
-    background: var(--terra); color: #fff;
-    padding: 2px 8px; border-radius: 10px;
-}
-.bus-card.card-inactive { opacity: .38; pointer-events: none; }
+.strip-terra  { background: linear-gradient(90deg, var(--terra), var(--terra-lt), var(--terra)); }
+.strip-golden { background: linear-gradient(90deg, var(--golden), var(--golden-lt), var(--golden)); }
+.strip-green  { background: linear-gradient(90deg, #4A8C4A, #68C568, #4A8C4A); }
+.strip-olive  { background: linear-gradient(90deg, var(--olive), var(--olive-lt), var(--olive)); }
 
 /* Card header */
-.bc-head {
-    padding: 16px 18px 12px; display: flex; align-items: center; gap: 12px;
+.card-head {
+    padding: 14px 18px 12px;
+    display: flex; align-items: flex-start; gap: 12px;
     border-bottom: 1px solid var(--border);
 }
-.bc-accent {
-    width: 4px; height: 44px; border-radius: 4px; flex-shrink: 0;
+.card-circle {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; border: 2px solid;
 }
-.bc-c-terra  { background: linear-gradient(180deg, var(--terra), var(--terra-dk)); }
-.bc-c-golden { background: linear-gradient(180deg, var(--golden), var(--golden-dk)); }
-.bc-c-green  { background: linear-gradient(180deg, #4A8C4A, #2E6B2E); }
-.bc-c-olive  { background: linear-gradient(180deg, var(--olive), var(--olive-dk)); }
+.cc-terra  { background: rgba(188,111,55,.12); border-color: rgba(188,111,55,.3); }
+.cc-golden { background: rgba(205,169,106,.14); border-color: rgba(205,169,106,.32); }
+.cc-green  { background: rgba(74,140,74,.12);  border-color: rgba(74,140,74,.28); }
+.cc-olive  { background: rgba(142,137,70,.12); border-color: rgba(142,137,70,.28); }
 
-.bc-head-text { flex: 1; min-width: 0; }
-.bc-name {
+.card-head-info { flex: 1; min-width: 0; }
+.card-name {
     font-family: var(--font-display);
-    font-size: 1rem; font-weight: 700; color: var(--text-primary);
-    margin-bottom: 1px;
+    font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;
 }
-.bc-reg {
+.card-reg {
     font-family: var(--font-mono);
-    font-size: .6rem; color: var(--text-muted); letter-spacing: .02em;
+    font-size: .58rem; color: var(--text-muted); letter-spacing: .02em;
 }
-.bc-meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
-.bc-tag {
+.card-tags { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+.ctag {
     font-family: var(--font-body);
     font-size: .58rem; font-weight: 700; letter-spacing: .07em;
-    text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 9px;
 }
-.tag-days-lim { background: rgba(188,111,55,.1); border: 1px solid rgba(188,111,55,.2); color: var(--terra); }
-.tag-days-all { background: var(--success-bg); border: 1px solid rgba(74,140,74,.22); color: var(--success); }
-.tag-ac       { background: rgba(42,106,154,.1); border: 1px solid rgba(42,106,154,.2); color: var(--info); }
+.ctag-lim { background: rgba(188,111,55,.1); border: 1px solid rgba(188,111,55,.2); color: var(--terra); }
+.ctag-all { background: var(--success-bg); border: 1px solid rgba(74,140,74,.22); color: var(--success); }
+.ctag-ac  { background: var(--info-bg); border: 1px solid rgba(42,106,154,.2); color: var(--info); }
 
-/* Route visual strip */
-.bc-route {
+/* Route strip */
+.card-route {
     padding: 10px 18px;
-    display: flex; align-items: center; gap: 0;
-    background: rgba(188,111,55,.03); border-bottom: 1px solid var(--border);
-    overflow: hidden;
+    display: flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg,rgba(188,111,55,.03),transparent);
+    border-bottom: 1px solid var(--border);
 }
-.bc-stop {
+.rt-stop {
     font-family: var(--font-body);
     font-size: .74rem; font-weight: 600; color: var(--text-primary);
-    flex-shrink: 0; max-width: 100px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 95px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex-shrink: 0;
 }
-.bc-route-line {
-    flex: 1; display: flex; align-items: center; gap: 0;
-    margin: 0 8px; position: relative; height: 18px;
+.rt-mid {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 3px;
+    font-family: var(--font-body); font-size: .68rem; color: var(--text-muted); min-width: 0;
 }
-.bc-route-line::before {
-    content: '';
-    position: absolute; left: 0; right: 0; top: 50%;
-    height: 1px; background: linear-gradient(90deg, var(--border-mid), var(--border), var(--border-mid));
-    transform: translateY(-50%);
-}
-.bc-bus-icon {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    font-size: .75rem; background: var(--bg-card);
-    padding: 0 3px; z-index: 1;
-    animation: routeBusFloat 3s ease-in-out infinite;
-}
-@keyframes routeBusFloat { 0%,100%{left:30%} 50%{left:70%} }
-.bc-dur {
+.rt-dur {
     font-family: var(--font-body);
     font-size: .6rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
 }
 
-/* Trips table */
-.bc-trips { padding: 12px 18px 14px; }
-.bc-no-service {
+/* Trips */
+.card-trips { padding: 11px 18px 13px; }
+.trip-no-svc {
+    display: none;
     font-family: var(--font-body);
-    font-size: .78rem; color: var(--text-muted);
-    text-align: center; padding: 12px 0; display: none;
+    font-size: .78rem; color: var(--text-muted); text-align: center; padding: 12px 0;
 }
 
-/* Trip row */
-.trip-row {
-    display: grid; grid-template-columns: 56px 1fr auto;
-    align-items: center; gap: 10px; padding: 9px 12px;
-    border-radius: var(--radius-sm); margin-bottom: 5px;
-    border: 1px solid transparent; transition: all .18s;
-    position: relative; overflow: hidden;
+.trip {
+    display: grid; grid-template-columns: 64px 1fr 62px;
+    align-items: center; gap: 8px;
+    padding: 9px 12px; border-radius: var(--radius-sm); margin-bottom: 5px;
+    border: 1px solid transparent; transition: all .18s; position: relative; overflow: hidden;
 }
-.trip-row:last-of-type { margin-bottom: 0; }
+.trip:last-of-type { margin-bottom: 0; }
 
-.trip-row.st-past { background: rgba(0,0,0,.015); opacity: .42; }
-.trip-row.st-boarding {
-    background: linear-gradient(135deg,rgba(188,111,55,.09),rgba(205,169,106,.04));
-    border-color: rgba(188,111,55,.28);
-    animation: boardingAnim 2s ease-in-out infinite;
+.trip.s-past     { opacity: .35; background: rgba(0,0,0,.018); }
+.trip.s-boarding {
+    background: linear-gradient(135deg,rgba(188,111,55,.1),rgba(205,169,106,.05));
+    border-color: rgba(188,111,55,.3);
+    animation: boardAnim 2s ease-in-out infinite;
 }
-@keyframes boardingAnim {
-    0%,100% { border-color: rgba(188,111,55,.28); }
-    50%      { border-color: rgba(188,111,55,.55); }
+@keyframes boardAnim { 0%,100%{border-color:rgba(188,111,55,.3)} 50%{border-color:rgba(188,111,55,.6)} }
+.trip.s-boarding::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg,var(--terra),var(--golden),var(--terra));
+    background-size:200% 100%; animation:shimmer 1.5s linear infinite;
 }
-.trip-row.st-soon {
-    background: rgba(142,137,70,.05); border-color: rgba(142,137,70,.2);
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.trip.s-soon {
+    background: rgba(142,137,70,.055); border-color: rgba(142,137,70,.2);
 }
-.trip-row.st-upcoming {
-    background: rgba(188,111,55,.025); border-color: var(--border);
-}
-
-/* Progress bar on boarding */
-.trip-row.st-boarding::after {
-    content: '';
-    position: absolute; bottom: 0; left: 0;
-    height: 2px; background: linear-gradient(90deg, var(--terra), var(--golden));
-    animation: progressBar 12s linear infinite;
-    border-radius: 2px;
-}
-@keyframes progressBar { 0%{width:0} 100%{width:100%} }
+.trip.s-upcoming { background: rgba(188,111,55,.025); border-color: var(--border); }
 
 .trip-time {
     font-family: var(--font-mono);
-    font-size: .84rem; font-weight: 600; color: var(--text-primary);
+    font-size: .83rem; font-weight: 600; color: var(--text-primary);
 }
-.trip-row.st-past .trip-time { color: var(--text-muted); text-decoration: line-through; }
-.trip-row.st-boarding .trip-time { color: var(--terra); }
+.trip.s-past .trip-time       { color: var(--text-muted); text-decoration: line-through; }
+.trip.s-boarding .trip-time   { color: var(--terra); }
 
 .trip-dir {}
 .trip-from {
@@ -433,117 +443,77 @@
     font-size: .76rem; font-weight: 600; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.trip-row.st-past .trip-to { color: var(--text-muted); font-weight: 400; }
+.trip.s-past .trip-to { color: var(--text-muted); font-weight: 400; }
 
 .trip-badge {
     font-family: var(--font-body);
-    font-size: .59rem; font-weight: 800; letter-spacing: .06em;
+    font-size: .58rem; font-weight: 800; letter-spacing: .06em;
     text-transform: uppercase; padding: 3px 8px; border-radius: 10px;
-    white-space: nowrap;
+    text-align: center; white-space: nowrap;
 }
-.bd-past     { background: rgba(0,0,0,.04); color: var(--text-muted); }
-.bd-boarding { background: rgba(188,111,55,.14); color: var(--terra); }
-.bd-soon     { background: rgba(142,137,70,.1); color: var(--olive); }
-.bd-upcoming { background: var(--info-bg); color: var(--info); }
+.tb-past     { background: rgba(0,0,0,.04); color: var(--text-muted); }
+.tb-boarding { background: rgba(188,111,55,.14); color: var(--terra); }
+.tb-soon     { background: rgba(142,137,70,.1); color: var(--olive); }
+.tb-upcoming { background: var(--info-bg); color: var(--info); }
 
-/* ── Weekly heatmap strip ─────────────────────────────────────── */
-.bc-weekly {
-    padding: 10px 18px 12px;
+/* Weekly day dots */
+.card-days {
+    padding: 8px 18px 12px;
+    display: flex; align-items: center; gap: 5px;
     border-top: 1px solid var(--border);
-    display: flex; align-items: center; gap: 6px;
 }
-.bc-weekly-lbl {
+.card-days-lbl {
     font-family: var(--font-body);
-    font-size: .6rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--text-muted); margin-right: 4px;
+    font-size: .58rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-right: 4px;
 }
-.bc-day-dot {
-    width: 22px; height: 22px; border-radius: 5px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-body); font-size: .58rem; font-weight: 700;
-    cursor: default; transition: transform .15s;
+.day-pill {
+    font-family: var(--font-body);
+    font-size: .6rem; font-weight: 700; width: 22px; height: 22px;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    transition: transform .15s;
 }
-.bc-day-dot:hover { transform: scale(1.12); }
-.bc-day-dot.day-on  {
+.day-pill:hover { transform: scale(1.15); }
+.dp-on  {
     background: linear-gradient(135deg,rgba(188,111,55,.18),rgba(205,169,106,.1));
     border: 1px solid rgba(188,111,55,.3); color: var(--terra);
 }
-.bc-day-dot.day-off { background: rgba(0,0,0,.03); border: 1px solid var(--border); color: var(--text-muted); opacity: .5; }
-.bc-day-dot.day-today {
-    background: linear-gradient(135deg,var(--terra),var(--terra-lt));
+.dp-off { background: rgba(0,0,0,.03); border: 1px solid var(--border); color: var(--text-muted); opacity: .45; }
+.dp-today {
+    background: linear-gradient(135deg, var(--terra), var(--terra-lt));
     border: 1px solid var(--terra); color: #fff;
-    box-shadow: 0 2px 8px rgba(188,111,55,.28);
+    box-shadow: 0 2px 8px rgba(188,111,55,.3);
 }
 
-/* ── "My Stop" personalization ───────────────────────────────── */
-.tr-mystop {
+/* ── Info grid ───────────────────────────────────────────────── */
+.bs-info {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.info-card {
     background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 24px;
+    border-radius: var(--radius-md); padding: 14px 17px;
 }
-.tr-mystop-head {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-}
-.tr-mystop-title {
-    font-family: var(--font-display);
-    font-size: .95rem; font-weight: 700; color: var(--text-primary);
-}
-.tr-mystop-sub {
-    font-family: var(--font-body);
-    font-size: .75rem; color: var(--text-muted); margin-left: auto;
-}
-.tr-stop-opts { display: flex; gap: 8px; flex-wrap: wrap; }
-.tr-stop-btn {
-    font-family: var(--font-body);
-    font-size: .75rem; font-weight: 600; padding: 8px 16px;
-    border-radius: var(--radius-sm); cursor: pointer; transition: all .18s;
-    border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-secondary);
-}
-.tr-stop-btn:hover { border-color: var(--border-mid); color: var(--text-primary); }
-.tr-stop-btn.chosen {
-    background: linear-gradient(135deg,rgba(188,111,55,.12),rgba(205,169,106,.06));
-    border-color: var(--terra); color: var(--terra); font-weight: 700;
-}
-.tr-mystop-result {
-    margin-top: 12px; padding: 12px 14px;
-    background: var(--bg-elevated); border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-body); font-size: .82rem; color: var(--text-secondary);
-    line-height: 1.6; display: none;
-}
-.tr-mystop-result.show { display: block; }
-
-/* ── Info footer ─────────────────────────────────────────────── */
-.tr-info-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-    margin-bottom: 8px;
-}
-.tr-info-card {
-    background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: var(--radius-md); padding: 15px 17px;
-}
-.tr-info-card h4 {
+.info-card h4 {
     font-family: var(--font-body);
     font-size: .65rem; font-weight: 800; letter-spacing: .1em;
     text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
 }
-.tr-info-card p {
+.info-card p {
     font-family: var(--font-body);
     font-size: .8rem; color: var(--text-secondary); line-height: 1.65;
 }
 
 /* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 640px) {
-    .tr-page-title    { font-size: 1.5rem; }
-    .tr-clock         { font-size: 1.5rem; }
-    .tr-hero          { flex-direction: column; gap: 16px; }
-    .tr-hero-right    { text-align: left; width: 100%; }
-    .tr-grid          { grid-template-columns: 1fr; }
-    .tr-info-grid     { grid-template-columns: 1fr; }
-    .tr-wiim-row      { flex-direction: column; align-items: flex-start; }
-    .tr-wiim-result   { width: 100%; }
-    .tr-ring-wrap     { width: 72px; height: 72px; }
-    .tr-ring-svg      { width: 72px; height: 72px; }
-    .tr-ring-num      { font-size: .78rem; }
+@media (max-width: 680px) {
+    .bs-title { font-size: 1.5rem; }
+    .bs-clock { font-size: 1.6rem; }
+    .bs-hero-body { flex-direction: column; gap: 14px; }
+    .bs-hero-right { text-align: left; }
+    .bs-tools { grid-template-columns: 1fr; }
+    .bs-grid { grid-template-columns: 1fr; }
+    .bs-info { grid-template-columns: 1fr; }
+    .rt-stop { max-width: 72px; }
 }
 </style>
 {% endblock %}
@@ -552,153 +522,152 @@
 {% block content %}
 <div class="page-wrapper">
 
-  <!-- ═══════════════════════════════════════════
+  <!-- ════════════════════════════════════════════
        PAGE HEADER
-       ═══════════════════════════════════════════ -->
-  <div class="tr-header">
-    <div class="tr-header-left">
-      <div class="tr-eyebrow">
-        <span class="tr-live-dot"></span>
+       ════════════════════════════════════════════ -->
+  <div class="bs-header">
+    <div>
+      <div class="bs-eyebrow">
+        <span class="bs-live-dot"></span>
         Rabindra University Transport
       </div>
-      <h1 class="tr-page-title">Bus Schedule</h1>
-      <div class="tr-page-sub">Shahzadpur, Sirajganj · Smart Transit Dashboard</div>
-      <div class="tr-eff-note">Effective {{ effective_date }} &nbsp;·&nbsp; Ref: {{ memo_ref }}</div>
+      <h1 class="bs-title">Bus Schedule</h1>
+      <div class="bs-subtitle">Shahzadpur, Sirajganj · Smart Transit Dashboard</div>
+      <div class="bs-eff">Effective {{ effective_date }} &nbsp;·&nbsp; Ref: {{ memo_ref }}</div>
     </div>
-    <div class="tr-clock-block">
-      <div class="tr-clock"      id="liveClock">--:--:--</div>
-      <div class="tr-clock-date" id="liveDate">—</div>
-      <div class="tr-clock-tz">BST · UTC+6</div>
+    <div class="bs-clock-wrap">
+      <div class="bs-clock" id="bsClock">--:--:--</div>
+      <div class="bs-date"  id="bsDate">—</div>
+      <div class="bs-tz">BST · UTC+6</div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
+  <!-- ════════════════════════════════════════════
        WEEKEND NOTICE
-       ═══════════════════════════════════════════ -->
-  <div class="tr-weekend" id="weekendBanner">
-    <div class="tr-weekend-emoji">🌙</div>
-    <div class="tr-weekend-title">No Service Today</div>
-    <div class="tr-weekend-sub">
-      University bus service does not operate on Fridays &amp; Saturdays.<br>
-      Next service begins Sunday at <strong>6:00 AM</strong>.
+       ════════════════════════════════════════════ -->
+  <div class="bs-weekend" id="bsWeekend">
+    <span class="bs-wknd-icon">🌙</span>
+    <div class="bs-wknd-title">No Service Today</div>
+    <div class="bs-wknd-sub">
+      Bus service is suspended on Fridays &amp; Saturdays.<br>
+      Next departure: <strong>Sunday, 6:00 AM</strong> from Dilruba &amp; BISIK Bus Stands.
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       HERO — NEXT DEPARTURE + LIVE RING
-       ═══════════════════════════════════════════ -->
-  <div class="tr-hero" id="heroPanel">
+  <!-- ════════════════════════════════════════════
+       NEXT BUS HERO
+       ════════════════════════════════════════════ -->
+  <div class="bs-hero" id="bsHero">
+    <div class="bs-hero-strip"></div>
+    <div class="bs-hero-body">
 
-    <!-- Countdown ring -->
-    <div class="tr-ring-wrap">
-      <svg class="tr-ring-svg" viewBox="0 0 96 96">
-        <circle class="tr-ring-track" cx="48" cy="48" r="42"/>
-        <circle class="tr-ring-fill" cx="48" cy="48" r="42"
-                id="ringCircle"
-                stroke-dasharray="263.9"
-                stroke-dashoffset="263.9"/>
-      </svg>
-      <div class="tr-ring-inner">
-        <div class="tr-ring-num"  id="ringNum">--</div>
-        <div class="tr-ring-unit" id="ringUnit">min</div>
+      <!-- Countdown ring -->
+      <div class="bs-ring-wrap">
+        <svg class="bs-ring-svg" viewBox="0 0 88 88">
+          <circle class="bs-ring-track" cx="44" cy="44" r="38"/>
+          <circle class="bs-ring-arc"   cx="44" cy="44" r="38" id="ringArc"/>
+        </svg>
+        <div class="bs-ring-center">
+          <div class="bs-ring-num" id="ringNum">--</div>
+          <div class="bs-ring-lbl" id="ringLbl">min</div>
+        </div>
       </div>
-    </div>
 
-    <!-- Bus info -->
-    <div class="tr-hero-info">
-      <div class="tr-hero-lbl">Next Departure</div>
-      <div class="tr-hero-bus"   id="heroBusName">—</div>
-      <div class="tr-hero-route" id="heroBusRoute">—</div>
-      <div class="tr-hero-chips">
-        <span class="tr-chip chip-time" id="heroDepTime">—</span>
-        <span class="tr-chip chip-dur"  id="heroEst">—</span>
-        <span class="tr-chip chip-type" id="heroBusType" style="display:none;">AC</span>
+      <!-- Bus info -->
+      <div class="bs-hero-info">
+        <div class="bs-hero-tag">Next Departure</div>
+        <div class="bs-hero-busname" id="heroBus">—</div>
+        <div class="bs-hero-route"   id="heroRoute">—</div>
+        <div class="bs-hero-chips">
+          <span class="hs-chip hc-time" id="heroTime">—</span>
+          <span class="hs-chip hc-dur"  id="heroEst">—</span>
+          <span class="hs-chip hc-ac"   id="heroAC" style="display:none;">❄ AC</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Countdown value -->
-    <div class="tr-hero-right">
-      <div class="tr-departs-in">Departs in</div>
-      <div class="tr-departs-val" id="heroCountdown">—</div>
-      <div class="tr-boarding-pill" id="heroPill">Tracking…</div>
-    </div>
-
-    <!-- No service today -->
-    <div id="heroNoService">All buses have departed for today. See you tomorrow!</div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════
-       "WILL I MAKE IT?" INTERACTIVE TOOL
-       ═══════════════════════════════════════════ -->
-  <div class="tr-wiim" id="wiimTool">
-    <div class="tr-wiim-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-        <circle cx="12" cy="12" r="10"/>
-        <polyline points="12 6 12 12 16 14"/>
-      </svg>
-      Will I Make It?
-    </div>
-    <div class="tr-wiim-sub">Drag to set how many minutes you need to reach the bus stop.</div>
-    <div class="tr-wiim-row">
-      <div class="tr-wiim-slider-wrap">
-        <input type="range" class="tr-wiim-slider" id="wiimSlider" min="1" max="60" value="10" oninput="updateWiim()">
+      <!-- Countdown number -->
+      <div class="bs-hero-right">
+        <div class="bs-dep-lbl">Departs in</div>
+        <div class="bs-dep-val"  id="heroCd">—</div>
+        <div class="bs-dep-pill" id="heroPill">Tracking…</div>
       </div>
-      <div class="tr-wiim-val" id="wiimVal">10 min</div>
-      <div class="tr-wiim-result wiim-na" id="wiimResult">Select your walk time →</div>
+
+      <div id="heroNoSvc">All buses have departed for today. See you tomorrow! 👋</div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       DEPARTURE REMINDER
-       ═══════════════════════════════════════════ -->
-  <div class="tr-reminder" id="reminderBar">
-    <div class="tr-reminder-text">
-      <strong>🔔 Departure Alert</strong> — Get a browser notification before your bus leaves.
+  <!-- ════════════════════════════════════════════
+       SMART TOOLS ROW
+       ════════════════════════════════════════════ -->
+  <div class="bs-tools" id="bsTools">
+
+    <!-- Will I Make It? -->
+    <div class="bs-tool">
+      <div class="bs-tool-head">
+        <div class="bs-tool-icon">⏱</div>
+        <div class="bs-tool-title">Will I Make It?</div>
+      </div>
+      <div class="bs-tool-sub">How many minutes to walk to the bus stop?</div>
+      <div class="wiim-slider-wrap">
+        <input type="range" class="wiim-slider" id="wiimSlider"
+               min="1" max="60" value="10" oninput="calcWiim()">
+        <div class="wiim-walk-lbl" id="wiimLbl">10 min</div>
+      </div>
+      <div class="wiim-result wr-na" id="wiimResult">Slide to check →</div>
     </div>
-    <div class="tr-reminder-btns">
-      <button class="tr-alert-btn" onclick="setReminder(10)" id="rem10">10 min</button>
-      <button class="tr-alert-btn" onclick="setReminder(20)" id="rem20">20 min</button>
-      <button class="tr-alert-btn" onclick="setReminder(30)" id="rem30">30 min</button>
+
+    <!-- Departure Reminder -->
+    <div class="bs-tool">
+      <div class="bs-tool-head">
+        <div class="bs-tool-icon">🔔</div>
+        <div class="bs-tool-title">Departure Reminder</div>
+      </div>
+      <div class="bs-tool-sub">Notify me this many minutes before the next bus.</div>
+      <div class="reminder-btns">
+        <button class="rem-btn" onclick="setReminder(10)" id="rem10">10 min</button>
+        <button class="rem-btn" onclick="setReminder(20)" id="rem20">20 min</button>
+        <button class="rem-btn" onclick="setReminder(30)" id="rem30">30 min</button>
+      </div>
+      <div class="rem-status" id="remStatus">No reminder set.</div>
     </div>
+
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       MY STOP — PERSONALIZATION
-       ═══════════════════════════════════════════ -->
-  <div class="tr-mystop">
-    <div class="tr-mystop-head">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="color:var(--terra)">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-      </svg>
-      <div class="tr-mystop-title">My Departure Point</div>
-      <div class="tr-mystop-sub">Saved to your device</div>
+  <!-- ════════════════════════════════════════════
+       MY DEPARTURE POINT
+       ════════════════════════════════════════════ -->
+  <div class="bs-tool" style="margin-bottom:24px;" id="bsMyStop">
+    <div class="bs-tool-head">
+      <div class="bs-tool-icon">📍</div>
+      <div class="bs-tool-title">My Departure Point</div>
     </div>
-    <div class="tr-stop-opts">
-      <button class="tr-stop-btn" onclick="setMyStop('dilruba')"   id="myStop-dilruba">📍 Dilruba Bus Stand</button>
-      <button class="tr-stop-btn" onclick="setMyStop('bisik')"     id="myStop-bisik">📍 BISIK Bus Stand</button>
-      <button class="tr-stop-btn" onclick="setMyStop('chandaikona')" id="myStop-chandaikona">📍 Chandaikona</button>
-      <button class="tr-stop-btn" onclick="setMyStop('sirajganj')" id="myStop-sirajganj">📍 Sirajganj</button>
-      <button class="tr-stop-btn" onclick="setMyStop('ataikula')"  id="myStop-ataikula">📍 Ataikula</button>
-      <button class="tr-stop-btn" onclick="setMyStop('belkuchi')"  id="myStop-belkuchi">📍 Belkuchi</button>
+    <div class="bs-tool-sub">Pin your stop and see all upcoming departures from there.</div>
+    <div class="mystop-opts">
+      <button class="stop-btn" onclick="setMyStop('dilruba')"     id="sp-dilruba">📍 Dilruba Bus Stand</button>
+      <button class="stop-btn" onclick="setMyStop('bisik')"       id="sp-bisik">📍 BISIK Bus Stand</button>
+      <button class="stop-btn" onclick="setMyStop('chandaikona')" id="sp-chandaikona">📍 Chandaikona</button>
+      <button class="stop-btn" onclick="setMyStop('sirajganj')"   id="sp-sirajganj">📍 Sirajganj</button>
+      <button class="stop-btn" onclick="setMyStop('ataikula')"    id="sp-ataikula">📍 Ataikula</button>
+      <button class="stop-btn" onclick="setMyStop('belkuchi')"    id="sp-belkuchi">📍 Belkuchi</button>
     </div>
-    <div class="tr-mystop-result" id="myStopResult"></div>
+    <div class="mystop-result" id="myStopResult"></div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
+  <!-- ════════════════════════════════════════════
        BUS CARDS
-       ═══════════════════════════════════════════ -->
-  <div class="tr-section-head">
-    <div class="tr-section-title" style="gap:8px;flex:1;">All Routes</div>
-    <div class="tr-filter-row">
-      <button class="tr-filter on"  onclick="filterCards('all')"       data-f="all">All</button>
-      <button class="tr-filter"     onclick="filterCards('dilruba')"   data-f="dilruba">Dilruba</button>
-      <button class="tr-filter"     onclick="filterCards('bisik')"     data-f="bisik">BISIK</button>
-      <button class="tr-filter"     onclick="filterCards('morning')"   data-f="morning">Morning</button>
-      <button class="tr-filter"     onclick="filterCards('afternoon')" data-f="afternoon">Afternoon</button>
+       ════════════════════════════════════════════ -->
+  <div class="bs-sec-head">
+    <div class="bs-sec-title">All Routes</div>
+    <div class="bs-filters">
+      <button class="bs-ft f-on" onclick="filterBus('all')"       data-f="all">All</button>
+      <button class="bs-ft"      onclick="filterBus('dilruba')"   data-f="dilruba">Dilruba</button>
+      <button class="bs-ft"      onclick="filterBus('bisik')"     data-f="bisik">BISIK</button>
+      <button class="bs-ft"      onclick="filterBus('morning')"   data-f="morning">Morning</button>
+      <button class="bs-ft"      onclick="filterBus('afternoon')" data-f="afternoon">Afternoon</button>
     </div>
   </div>
 
-  <div class="tr-grid" id="busGrid">
+  <div class="bs-grid">
   {%- for b in buses %}
     <div class="bus-card"
          id="card-{{ b.id }}"
@@ -706,33 +675,43 @@
          data-origin="{{ b.origin_stop }}"
          data-active="{{ b.active_days | join(',') }}"
          data-est="{{ b.est_duration }}"
-         data-type="{{ b.type }}">
+         data-type="{{ b.type }}"
+         data-color="{{ b.color_key }}">
+
+      <!-- Color strip -->
+      <div class="card-strip strip-{{ b.color_key }}"></div>
 
       <!-- Header -->
-      <div class="bc-head">
-        <div class="bc-accent bc-c-{{ b.color_key }}"></div>
-        <div class="bc-head-text">
-          <div class="bc-name">{{ b.name }}</div>
-          <div class="bc-reg">{{ b.reg }}</div>
-          <div class="bc-meta">
-            <span class="bc-tag {{ 'tag-days-lim' if b.active_days|length < 5 else 'tag-days-all' }}">{{ b.day_label }}</span>
-            {%- if b.type == 'AC' %}<span class="bc-tag tag-ac">❄ AC</span>{%- endif %}
+      <div class="card-head">
+        <div class="card-circle cc-{{ b.color_key }}">🚌</div>
+        <div class="card-head-info">
+          <div class="card-name">{{ b.name }}</div>
+          <div class="card-reg">{{ b.reg }}</div>
+          <div class="card-tags">
+            <span class="ctag {{ 'ctag-lim' if b.active_days|length < 5 else 'ctag-all' }}">
+              {{ b.day_label }}
+            </span>
+            {%- if b.type == 'AC' %}<span class="ctag ctag-ac">❄ AC</span>{%- endif %}
           </div>
         </div>
       </div>
 
       <!-- Route strip -->
       {%- set t0 = b.trips[0] %}
-      <div class="bc-route">
-        <span class="bc-stop">{{ t0.from }}</span>
-        <div class="bc-route-line"><span class="bc-bus-icon">🚌</span></div>
-        <span class="bc-stop" style="text-align:right;">{{ t0.to }}</span>
+      <div class="card-route">
+        <span class="rt-stop">{{ t0.from }}</span>
+        <div class="rt-mid">
+          <span>——</span><span>🚌</span><span>——</span>
+        </div>
+        <span class="rt-stop" style="text-align:right">{{ t0.to }}</span>
+        <span class="rt-dur">~{{ b.est_duration }}min</span>
       </div>
 
-      <!-- Trips -->
-      <div class="bc-trips" id="trips-{{ b.id }}">
+      <!-- Trip rows -->
+      <div class="card-trips">
+        <div class="trip-no-svc">Not running today</div>
         {%- for t in b.trips %}
-        <div class="trip-row st-upcoming"
+        <div class="trip s-upcoming"
              data-h="{{ t.h }}" data-m="{{ t.m }}"
              data-from="{{ t.from }}" data-to="{{ t.to }}"
              data-days="{{ t.days | join(',') }}"
@@ -742,37 +721,36 @@
             <div class="trip-from">{{ t.from }}</div>
             <div class="trip-to">{{ t.to }}</div>
           </div>
-          <div class="trip-badge bd-upcoming">—</div>
+          <div class="trip-badge tb-upcoming">—</div>
         </div>
         {%- endfor %}
-        <div class="bc-no-svc">Not running today</div>
       </div>
 
-      <!-- Weekly heatmap -->
-      <div class="bc-weekly">
-        <span class="bc-weekly-lbl">Week</span>
-        {%- for label, day_idx in [('S',0),('M',1),('T',2),('W',3),('T',4),('F',5),('S',6)] %}
-        {%- if day_idx in b.active_days %}
-        <div class="bc-day-dot day-on"  data-d="{{ day_idx }}">{{ label }}</div>
-        {%- else %}
-        <div class="bc-day-dot day-off" data-d="{{ day_idx }}">{{ label }}</div>
-        {%- endif %}
+      <!-- Weekly day pills -->
+      <div class="card-days">
+        <span class="card-days-lbl">Week</span>
+        {%- for lbl, idx in [('S',0),('M',1),('T',2),('W',3),('T',4),('F',5),('S',6)] %}
+          {%- if idx in b.active_days %}
+            <div class="day-pill dp-on"  data-d="{{ idx }}" title="{{ ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx] }}">{{ lbl }}</div>
+          {%- else %}
+            <div class="day-pill dp-off" data-d="{{ idx }}" title="{{ ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][idx] }}">{{ lbl }}</div>
+          {%- endif %}
         {%- endfor %}
       </div>
     </div>
   {%- endfor %}
   </div>
 
-  <!-- ═══════════════════════════════════════════
+  <!-- ════════════════════════════════════════════
        INFO FOOTER
-       ═══════════════════════════════════════════ -->
-  <div class="tr-info-grid">
-    <div class="tr-info-card">
+       ════════════════════════════════════════════ -->
+  <div class="bs-info">
+    <div class="info-card">
       <h4>📅 Weekly Schedule</h4>
-      <p>Service operates <strong>Sunday–Thursday</strong>. No service on Friday &amp; Saturday.<br>
-         <strong>Chitra</strong> runs only on the week's first (Sunday) and last (Thursday) days.</p>
+      <p>Service runs <strong>Sunday – Thursday</strong>. No service on Friday &amp; Saturday.<br>
+         <strong>Chitra</strong> only runs on Sunday (week-start) &amp; Thursday (week-end).</p>
     </div>
-    <div class="tr-info-card">
+    <div class="info-card">
       <h4>📞 Contact</h4>
       <p>Rabindra University, Bangladesh<br>
          Shahzadpur, Sirajganj — 6770<br>
@@ -787,122 +765,127 @@
 
 {% block extra_js %}
 <script>
-// ═══════════════════════════════════════════════════════════════
-// UniSync Transit Pulse Engine v2.0
-// All logic client-side. BST = UTC+6. 12-hour format throughout.
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   UniSync Transit Pulse Engine v3.0 — FIXED
+   • 12-hour display format throughout
+   • Correct 24h internal hours (h=16 for 4PM, h=17 for 5PM)
+   • All interactive tools work: wiim, reminder, myStop
+   ═══════════════════════════════════════════════════════════════ */
 
-const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const CIRCUMFERENCE = 2 * Math.PI * 42; // 263.9px for r=42
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const RING_C = 2 * Math.PI * 38;  /* circumference for r=38 → 238.8px */
 
-// ── BST helpers ───────────────────────────────────────────────
+/* ── Time helpers ────────────────────────────────────────────── */
 function nowBST() {
     const d = new Date();
-    d.setTime(d.getTime() + (6 * 3600000) + d.getTimezoneOffset() * 60000);
+    d.setTime(d.getTime() + 6 * 3600000 + d.getTimezoneOffset() * 60000);
     return d;
 }
 function dayMins(bst) { return bst.getHours() * 60 + bst.getMinutes(); }
-function isWeekend(d) { return d === 5 || d === 6; }
-function pad(n) { return String(n).padStart(2, '0'); }
+function isWknd(d)    { return d === 5 || d === 6; }
+function pad(n)       { return String(n).padStart(2,'0'); }
 
-// 12-hour format: 6,0 → "6:00 AM", 16,15 → "4:15 PM"
+/* 24h → 12h string: (16, 15) → "4:15 PM", (6, 0) → "6:00 AM" */
 function fmt12(h, m) {
-    const period = h < 12 ? 'AM' : 'PM';
-    const h12    = h % 12 || 12;
-    return `${h12}:${pad(m)} ${period}`;
+    const p  = h < 12 ? 'AM' : 'PM';
+    const h2 = h % 12 || 12;
+    return h2 + ':' + pad(m) + ' ' + p;
 }
 
-// ── Trip status ───────────────────────────────────────────────
+/* ── Trip status calculation ─────────────────────────────────── */
 function getStatus(h, m, nowM) {
-    const tripM = h * 60 + m;
-    const diff  = tripM - nowM;
+    const tm   = h * 60 + m;
+    const diff = tm - nowM;
     if (diff < -10)  return { s: 'past',     diff };
     if (diff <= 0)   return { s: 'boarding', diff };
     if (diff <= 30)  return { s: 'soon',     diff };
     return { s: 'upcoming', diff };
 }
 
-function statusLabel(st) {
+function badgeText(st) {
     if (st.s === 'past')     return 'Departed';
     if (st.s === 'boarding') return 'Boarding!';
-    if (st.s === 'soon') {
-        const m = st.diff;
-        return m < 2 ? '1 min' : `${m} min`;
-    }
-    const d = st.diff, h = Math.floor(d / 60), m = d % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+    if (st.s === 'soon')     return st.diff <= 1 ? '< 1 min' : st.diff + ' min';
+    const h = Math.floor(st.diff / 60), m = st.diff % 60;
+    return h > 0 ? h + 'h ' + m + 'm' : m + ' min';
 }
 
-function statusCss(s) {
-    return { past: 'st-past bd-past', boarding: 'st-boarding bd-boarding',
-             soon: 'st-soon bd-soon', upcoming: 'st-upcoming bd-upcoming' }[s] || '';
-}
-
-// ── Render all trip rows ──────────────────────────────────────
+/* ── Render all trip rows for current time ───────────────────── */
 function renderAll(dayJS, nowM) {
-    document.querySelectorAll('.bus-card').forEach(card => {
-        const tripEls = card.querySelectorAll('.trip-row');
-        const noSvc   = card.querySelector('.bc-no-svc');
-        let anyToday = false, hasNext = false;
+    let nextCard = null;
+    let nextDiff = Infinity;
 
-        tripEls.forEach(el => {
-            const days = el.dataset.days.split(',').map(Number);
+    document.querySelectorAll('.bus-card').forEach(card => {
+        const tripRows = card.querySelectorAll('.trip');
+        const noSvc    = card.querySelector('.trip-no-svc');
+        let anyToday = false, hasUpcoming = false;
+
+        tripRows.forEach(row => {
+            const days = row.dataset.days.split(',').map(Number);
             const runs = days.includes(dayJS);
-            el.style.display = runs ? '' : 'none';
+            row.style.display = runs ? '' : 'none';
             if (!runs) return;
             anyToday = true;
 
-            const h = parseInt(el.dataset.h), m = parseInt(el.dataset.m);
+            const h = parseInt(row.dataset.h), m = parseInt(row.dataset.m);
             const st = getStatus(h, m, nowM);
 
-            // Update time to 12h
-            el.querySelector('.trip-time').textContent = fmt12(h, m);
+            /* update 12h time display */
+            row.querySelector('.trip-time').textContent = fmt12(h, m);
 
-            // Update row state
-            const cssArr = statusCss(st.s).split(' ');
-            el.className = 'trip-row ' + cssArr[0];
-            const badge = el.querySelector('.trip-badge');
-            badge.className = 'trip-badge ' + cssArr[1];
-            badge.textContent = statusLabel(st);
+            /* update row styling */
+            row.className = 'trip s-' + st.s;
 
-            if (st.s !== 'past') hasNext = true;
+            /* update badge */
+            const badge = row.querySelector('.trip-badge');
+            badge.className = 'trip-badge tb-' + st.s;
+            badge.textContent = badgeText(st);
+
+            if (st.s !== 'past') {
+                hasUpcoming = true;
+                if (st.diff < nextDiff) {
+                    nextDiff = st.diff;
+                    nextCard = card;
+                }
+            }
         });
 
-        noSvc.style.display = anyToday ? 'none' : 'block';
-        card.classList.toggle('card-inactive', !anyToday);
-        if (!anyToday) { card.classList.remove('card-next'); return; }
-        // Mark "next" only on first upcoming/boarding card (handled below)
+        /* show/hide "Not running today" */
+        if (noSvc) noSvc.style.display = anyToday ? 'none' : 'block';
+
+        /* dim cards with no service today */
+        if (!anyToday) {
+            card.classList.add('card-inactive');
+            card.classList.remove('card-next');
+        } else {
+            card.classList.remove('card-inactive');
+        }
     });
 
-    // Mark the single "next" card
+    /* Mark single "next" card */
     document.querySelectorAll('.bus-card').forEach(c => c.classList.remove('card-next'));
-    const next = findNext(dayJS, nowM);
-    if (next) {
-        const c = document.getElementById('card-' + next.busId);
-        if (c) c.classList.add('card-next');
-    }
+    if (nextCard) nextCard.classList.add('card-next');
 }
 
-// ── Find next departure globally ──────────────────────────────
+/* ── Find the globally next departure ───────────────────────── */
 function findNext(dayJS, nowM) {
     let best = null, bd = Infinity;
     document.querySelectorAll('.bus-card').forEach(card => {
-        if (card.classList.contains('card-inactive')) return;
-        card.querySelectorAll('.trip-row').forEach(el => {
-            if (el.style.display === 'none') return;
-            const h = parseInt(el.dataset.h), m = parseInt(el.dataset.m);
+        card.querySelectorAll('.trip').forEach(row => {
+            if (row.style.display === 'none') return;
+            const h = parseInt(row.dataset.h), m = parseInt(row.dataset.m);
             const diff = (h * 60 + m) - nowM;
             if (diff >= -5 && diff < bd) {
                 bd = diff;
                 best = {
-                    busId: card.dataset.id,
-                    busName: card.querySelector('.bc-name').textContent,
-                    from:  el.dataset.from,
-                    to:    el.dataset.to,
+                    id:   card.dataset.id,
+                    name: card.querySelector('.card-name').textContent,
+                    from: row.dataset.from,
+                    to:   row.dataset.to,
                     h, m, diff,
-                    est:   parseInt(card.dataset.est) || 0,
-                    type:  card.dataset.type,
+                    est:  parseInt(card.dataset.est) || 0,
+                    type: card.dataset.type,
                 };
             }
         });
@@ -910,304 +893,344 @@ function findNext(dayJS, nowM) {
     return best;
 }
 
-// ── Update hero panel ─────────────────────────────────────────
+/* ── Update hero panel ───────────────────────────────────────── */
 function updateHero(dayJS, nowM) {
     const next  = findNext(dayJS, nowM);
-    const noSvc = document.getElementById('heroNoService');
+    const noSvc = document.getElementById('heroNoSvc');
 
     if (!next) {
-        document.getElementById('heroBusName').textContent  = '—';
-        document.getElementById('heroBusRoute').textContent = '—';
-        document.getElementById('heroDepTime').textContent  = '—';
-        document.getElementById('heroEst').textContent      = '—';
-        document.getElementById('heroCountdown').textContent= '—';
-        document.getElementById('heroPill').textContent     = 'Done for today';
-        document.getElementById('ringNum').textContent      = '0';
-        document.getElementById('ringUnit').textContent     = 'min';
-        document.getElementById('ringCircle').style.strokeDashoffset = CIRCUMFERENCE;
-        document.getElementById('heroBusType').style.display = 'none';
+        ['heroBus','heroRoute','heroTime','heroCd'].forEach(id =>
+            document.getElementById(id).textContent = '—');
+        document.getElementById('heroEst').textContent  = '';
+        document.getElementById('heroAC').style.display = 'none';
+        document.getElementById('heroPill').textContent = 'Done for today';
+        document.getElementById('ringNum').textContent  = '—';
+        document.getElementById('ringArc').style.strokeDashoffset = RING_C;
         noSvc.style.display = 'block';
+
+        /* also disable wiim */
+        document.getElementById('wiimResult').className = 'wiim-result wr-na';
+        document.getElementById('wiimResult').textContent = 'No upcoming buses today';
         return;
     }
 
     noSvc.style.display = 'none';
-    document.getElementById('heroBusName').textContent  = next.busName;
-    document.getElementById('heroBusRoute').textContent = next.from + ' → ' + next.to;
-    document.getElementById('heroDepTime').textContent  = fmt12(next.h, next.m);
-    document.getElementById('heroEst').textContent      = next.est ? `~${next.est} min ride` : '';
-    const typeEl = document.getElementById('heroBusType');
-    typeEl.style.display = next.type === 'AC' ? 'inline-block' : 'none';
+    document.getElementById('heroBus').textContent   = next.name;
+    document.getElementById('heroRoute').textContent = next.from + ' → ' + next.to;
+    document.getElementById('heroTime').textContent  = fmt12(next.h, next.m);
+    document.getElementById('heroEst').textContent   = next.est ? '~' + next.est + ' min ride' : '';
+    document.getElementById('heroAC').style.display  = next.type === 'AC' ? 'inline-block' : 'none';
 
     if (next.diff <= 0) {
-        document.getElementById('heroCountdown').textContent = 'Boarding!';
-        document.getElementById('heroPill').textContent = '🚨 Boarding now';
-        document.getElementById('ringNum').textContent  = '0';
-        document.getElementById('ringUnit').textContent = 'min';
-        document.getElementById('ringCircle').style.strokeDashoffset = '0';
+        document.getElementById('heroCd').textContent    = 'Boarding!';
+        document.getElementById('heroPill').textContent  = '🚨 Boarding now';
+        document.getElementById('ringNum').textContent   = '0';
+        document.getElementById('ringLbl').textContent   = 'min';
+        document.getElementById('ringArc').style.strokeDashoffset = '0';
     } else {
         const h = Math.floor(next.diff / 60), m = next.diff % 60;
-        document.getElementById('heroCountdown').textContent = h > 0 ? `${h}h ${m}m` : `${m} min`;
+        document.getElementById('heroCd').textContent   = h > 0 ? h + 'h ' + m + 'm' : m + ' min';
         document.getElementById('heroPill').textContent = next.diff <= 15 ? '⚡ Departing soon' : '⏱ On schedule';
-        document.getElementById('ringNum').textContent  = h > 0 ? `${h}h` : `${m}`;
-        document.getElementById('ringUnit').textContent = h > 0 ? 'hr' : 'min';
-        // Ring: max window 60 min
-        const pct    = Math.max(0, Math.min(1, 1 - next.diff / 60));
-        const offset = CIRCUMFERENCE * (1 - pct);
-        document.getElementById('ringCircle').style.strokeDashoffset = offset;
+
+        /* ring: fill based on how close — max window 60min */
+        const frac   = Math.min(1, Math.max(0, 1 - next.diff / 60));
+        const offset = RING_C * (1 - frac);
+        document.getElementById('ringArc').style.strokeDashoffset = offset;
+
+        if (h > 0) {
+            document.getElementById('ringNum').textContent = h + 'h';
+            document.getElementById('ringLbl').textContent = '';
+        } else {
+            document.getElementById('ringNum').textContent = m;
+            document.getElementById('ringLbl').textContent = 'min';
+        }
     }
 
-    // Update wiim too
-    updateWiim(next);
+    /* refresh wiim */
+    calcWiim();
 }
 
-// ── "Will I Make It?" ─────────────────────────────────────────
-let _lastNext = null;
-function updateWiim(next) {
-    if (next !== undefined) _lastNext = next;
-    const bst  = nowBST(), dayJS = bst.getDay(), nowM = dayMins(bst);
-    const cur  = _lastNext || findNext(dayJS, nowM);
-    const walk = parseInt(document.getElementById('wiimSlider').value);
-    const val  = document.getElementById('wiimVal');
-    const res  = document.getElementById('wiimResult');
-    const sl   = document.getElementById('wiimSlider');
+/* ── Will I Make It ──────────────────────────────────────────── */
+function calcWiim() {
+    const bst   = nowBST();
+    const dayJS = bst.getDay();
+    const nowM  = dayMins(bst);
+    const walk  = parseInt(document.getElementById('wiimSlider').value);
+    const lbl   = document.getElementById('wiimLbl');
+    const res   = document.getElementById('wiimResult');
+    const sl    = document.getElementById('wiimSlider');
 
-    val.textContent = `${walk} min`;
+    lbl.textContent = walk + ' min';
 
-    // Update slider gradient
-    const pct = (walk - 1) / 59 * 100;
-    sl.style.background = `linear-gradient(90deg, var(--terra) ${pct}%, var(--border) ${pct}%)`;
+    /* gradient fill on slider */
+    const pct = ((walk - 1) / 59 * 100).toFixed(1);
+    sl.style.background =
+        'linear-gradient(90deg, var(--terra) ' + pct + '%, var(--border) ' + pct + '%)';
 
-    if (!cur || isWeekend(dayJS)) {
-        res.className = 'tr-wiim-result wiim-na';
-        res.textContent = 'No service right now';
+    if (isWknd(dayJS)) {
+        res.className = 'wiim-result wr-na';
+        res.textContent = 'No service today (weekend)';
         return;
     }
 
-    const arrivalAtStop = nowM + walk;
-    const depTime       = cur.h * 60 + cur.m;
-    const margin        = depTime - arrivalAtStop;
+    const next = findNext(dayJS, nowM);
+    if (!next) {
+        res.className = 'wiim-result wr-na';
+        res.textContent = 'No upcoming buses today';
+        return;
+    }
+
+    const arriveAtStop = nowM + walk;
+    const depTime      = next.h * 60 + next.m;
+    const margin       = depTime - arriveAtStop;
 
     if (margin >= 5) {
-        res.className = 'tr-wiim-result wiim-yes';
-        res.textContent = `✅ Yes! You'll arrive ${margin} min early`;
+        res.className = 'wiim-result wr-ok';
+        res.textContent = '✅ Yes! You\'ll arrive ' + margin + ' min early';
     } else if (margin >= 0) {
-        res.className = 'tr-wiim-result wiim-yes';
-        res.textContent = `⚡ Just in time — hurry!`;
+        res.className = 'wiim-result wr-ok';
+        res.textContent = '⚡ Just barely — run!';
     } else {
-        res.className = 'tr-wiim-result wiim-no';
-        res.textContent = `❌ You'll miss it by ${Math.abs(margin)} min`;
+        res.className = 'wiim-result wr-no';
+        res.textContent = '❌ You\'ll miss it by ' + Math.abs(margin) + ' min';
     }
 }
 
-// ── Reminder / Notification ───────────────────────────────────
-let _reminderTimer = null;
-let _activeReminderMin = null;
+/* ── Departure Reminder ──────────────────────────────────────── */
+let _remTimer  = null;
+let _remActive = null;
 
 function setReminder(minutes) {
-    // Toggle off if same button
-    if (_activeReminderMin === minutes) {
-        clearTimeout(_reminderTimer);
-        _activeReminderMin = null;
-        document.querySelectorAll('.tr-alert-btn').forEach(b => b.classList.remove('active'));
-        if (window.UniSync?.toast) UniSync.toast('Reminder cancelled.', 'info');
+    /* Toggle off */
+    if (_remActive === minutes) {
+        clearTimeout(_remTimer);
+        _remActive = null;
+        document.querySelectorAll('.rem-btn').forEach(b => b.classList.remove('rem-on'));
+        document.getElementById('remStatus').textContent = 'Reminder cancelled.';
         return;
     }
 
+    /* Request notification permission */
     if (!('Notification' in window)) {
-        if (window.UniSync?.toast) UniSync.toast('Notifications not supported in this browser.', 'error');
+        document.getElementById('remStatus').textContent = 'Notifications not supported here.';
         return;
     }
 
-    Notification.requestPermission().then(perm => {
+    Notification.requestPermission().then(function(perm) {
         if (perm !== 'granted') {
-            if (window.UniSync?.toast) UniSync.toast('Please allow notifications to set reminders.', 'error');
+            document.getElementById('remStatus').textContent =
+                '⚠ Please allow notifications in your browser settings.';
             return;
         }
 
         const bst   = nowBST();
         const dayJS = bst.getDay();
         const nowM  = dayMins(bst);
-        const next  = findNext(dayJS, nowM);
 
+        if (isWknd(dayJS)) {
+            document.getElementById('remStatus').textContent = 'No service today — cannot set reminder.';
+            return;
+        }
+
+        const next = findNext(dayJS, nowM);
         if (!next) {
-            if (window.UniSync?.toast) UniSync.toast('No upcoming bus to set a reminder for.', 'error');
+            document.getElementById('remStatus').textContent = 'No upcoming buses to remind you about.';
             return;
         }
 
         const msUntilAlert = ((next.h * 60 + next.m) - nowM - minutes) * 60000;
         if (msUntilAlert <= 0) {
-            if (window.UniSync?.toast) UniSync.toast('Bus is too close — not enough time for this reminder.', 'info');
+            document.getElementById('remStatus').textContent =
+                'Bus departs in less than ' + minutes + ' min — too late for this reminder.';
             return;
         }
 
-        clearTimeout(_reminderTimer);
-        _activeReminderMin = minutes;
-        document.querySelectorAll('.tr-alert-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('rem' + minutes).classList.add('active');
+        clearTimeout(_remTimer);
+        _remActive = minutes;
+        document.querySelectorAll('.rem-btn').forEach(b => b.classList.remove('rem-on'));
+        document.getElementById('rem' + minutes).classList.add('rem-on');
+        document.getElementById('remStatus').textContent =
+            '🔔 Reminder set — alerting ' + minutes + ' min before ' + next.name;
 
-        _reminderTimer = setTimeout(() => {
-            new Notification('🚌 UniSync — Bus Alert', {
-                body: `${next.busName} departs in ${minutes} minutes!\n${next.from} → ${next.to} at ${fmt12(next.h, next.m)}`,
-                icon: '/static/icons/icon-192x192.png',
+        _remTimer = setTimeout(function() {
+            new Notification('🚌 UniSync — Bus Alert!', {
+                body:  next.name + ' departs in ' + minutes + ' min!\n' +
+                       next.from + ' → ' + next.to + ' at ' + fmt12(next.h, next.m),
+                icon:  '/static/icons/icon-192x192.png',
                 badge: '/static/icons/badge-72x72.png',
+                tag:   'bus-reminder',
             });
-            _activeReminderMin = null;
-            document.querySelectorAll('.tr-alert-btn').forEach(b => b.classList.remove('active'));
+            _remActive = null;
+            document.querySelectorAll('.rem-btn').forEach(b => b.classList.remove('rem-on'));
+            document.getElementById('remStatus').textContent = 'Reminder fired! 🔔';
         }, msUntilAlert);
-
-        if (window.UniSync?.toast)
-            UniSync.toast(`✅ Reminder set — ${minutes} min before ${next.busName}`, 'success');
     });
 }
 
-// ── My Stop personalization ───────────────────────────────────
-const STOP_BUSES = {
-    dilruba:     ['Chitra', 'Khyanika'],
-    bisik:       ['Balaka', 'AC Coaster'],
-    chandaikona: ['Chitra'],
-    sirajganj:   ['Khyanika'],
-    ataikula:    ['Balaka'],
-    belkuchi:    ['AC Coaster'],
+/* ── My Stop ─────────────────────────────────────────────────── */
+/* Map: stop keyword → partial string to match against trip from/to */
+const STOP_KEY = {
+    dilruba:     'dilruba',
+    bisik:       'bisik',
+    chandaikona: 'chandaikona',
+    sirajganj:   'sirajganj',
+    ataikula:    'ataikula',
+    belkuchi:    'belkuchi',
 };
 
 function setMyStop(stop) {
-    localStorage.setItem('bus_my_stop', stop);
-    document.querySelectorAll('.tr-stop-btn').forEach(b => b.classList.remove('chosen'));
-    const btn = document.getElementById('myStop-' + stop);
-    if (btn) btn.classList.add('chosen');
-    renderMyStop(stop);
+    localStorage.setItem('bus_mystop', stop);
+    document.querySelectorAll('.stop-btn').forEach(b => b.classList.remove('stop-on'));
+    const btn = document.getElementById('sp-' + stop);
+    if (btn) btn.classList.add('stop-on');
+    showMyStopTrips(stop);
 }
 
-function renderMyStop(stop) {
-    const res = document.getElementById('myStopResult');
-    const bst    = nowBST();
-    const dayJS  = bst.getDay();
-    const nowM   = dayMins(bst);
-
-    if (!stop) { res.classList.remove('show'); return; }
-    const buses = STOP_BUSES[stop] || [];
-    if (!buses.length) { res.classList.remove('show'); return; }
-
-    if (isWeekend(dayJS)) {
-        res.innerHTML = `<strong>${stop.charAt(0).toUpperCase()+stop.slice(1)}</strong>: No service today (weekend).`;
-        res.classList.add('show'); return;
-    }
-
-    // Find next trips from this stop
-    let upcoming = [];
-    document.querySelectorAll('.bus-card').forEach(card => {
-        card.querySelectorAll('.trip-row').forEach(el => {
-            if (el.style.display === 'none') return;
-            const from = el.dataset.from.toLowerCase();
-            if (!from.toLowerCase().includes(stop.toLowerCase()) &&
-                !stop.toLowerCase().includes(from.split(' ')[0].toLowerCase())) return;
-            const h = parseInt(el.dataset.h), m = parseInt(el.dataset.m);
-            const diff = (h * 60 + m) - nowM;
-            if (diff >= -5)
-                upcoming.push({
-                    name: card.querySelector('.bc-name').textContent,
-                    h, m, diff, to: el.dataset.to,
-                });
-        });
-    });
-
-    upcoming.sort((a, b) => a.diff - b.diff);
-
-    if (!upcoming.length) {
-        res.innerHTML = `No more departures from <strong>${stop}</strong> today.`;
-    } else {
-        const lines = upcoming.slice(0, 3).map(u => {
-            const lbl = u.diff <= 0 ? '<strong>Boarding now</strong>' :
-                        u.diff <= 30 ? `<strong>${u.diff} min</strong>` :
-                        fmt12(u.h, u.m);
-            return `${u.name} → ${u.to} &nbsp;<span style="color:var(--terra)">${lbl}</span>`;
-        });
-        res.innerHTML = `<strong>From ${stop}:</strong><br>${lines.join('<br>')}`;
-    }
-    res.classList.add('show');
-}
-
-// ── Today highlight on weekly dots ───────────────────────────
-function markToday() {
-    const dayJS = nowBST().getDay();
-    document.querySelectorAll('.bc-day-dot').forEach(dot => {
-        const d = parseInt(dot.dataset.d);
-        if (d === dayJS) {
-            dot.classList.remove('day-on', 'day-off');
-            dot.classList.add('day-today');
-        }
-    });
-}
-
-// ── Filter cards ──────────────────────────────────────────────
-function filterCards(type) {
-    document.querySelectorAll('.tr-filter').forEach(b => b.classList.remove('on'));
-    document.querySelector(`[data-f="${type}"]`).classList.add('on');
-
-    const bst = nowBST(); const dayJS = bst.getDay(); const nowM = dayMins(bst);
-
-    document.querySelectorAll('.bus-card').forEach(card => {
-        let show = true;
-        if (type === 'dilruba')   show = card.dataset.origin === 'dilruba';
-        if (type === 'bisik')     show = card.dataset.origin === 'bisik';
-        card.style.display = show ? '' : 'none';
-
-        card.querySelectorAll('.trip-row').forEach(el => {
-            const days = el.dataset.days.split(',').map(Number);
-            const dayOk = days.includes(dayJS);
-            if (type === 'morning')   el.style.display = (parseInt(el.dataset.h) < 12 && dayOk) ? '' : 'none';
-            else if (type === 'afternoon') el.style.display = (parseInt(el.dataset.h) >= 12 && dayOk) ? '' : 'none';
-            else el.style.display = dayOk ? '' : 'none';
-        });
-    });
-}
-
-// ── Live clock ─────────────────────────────────────────────── 
-function tickClock() {
-    const bst = nowBST();
-    document.getElementById('liveClock').textContent =
-        fmt12(bst.getHours(), bst.getMinutes()) + ':' + pad(bst.getSeconds());
-    document.getElementById('liveDate').textContent =
-        DAYS_SHORT[bst.getDay()] + ', ' + bst.getDate() + ' ' +
-        MONTHS[bst.getMonth()] + ' ' + bst.getFullYear();
-}
-
-// ── Main update tick ──────────────────────────────────────────
-function tick() {
+function showMyStopTrips(stop) {
+    const res   = document.getElementById('myStopResult');
     const bst   = nowBST();
     const dayJS = bst.getDay();
     const nowM  = dayMins(bst);
 
+    if (!stop) { res.classList.remove('show'); return; }
+
+    if (isWknd(dayJS)) {
+        res.innerHTML = '<strong>No service today</strong> (weekend). Next service: Sunday 6:00 AM.';
+        res.classList.add('show'); return;
+    }
+
+    const key = STOP_KEY[stop] || stop;
+    let upcoming = [];
+
+    document.querySelectorAll('.bus-card').forEach(card => {
+        card.querySelectorAll('.trip').forEach(row => {
+            const days = row.dataset.days.split(',').map(Number);
+            if (!days.includes(dayJS)) return;
+
+            const from = row.dataset.from.toLowerCase();
+            const to   = row.dataset.to.toLowerCase();
+            if (!from.includes(key) && !to.includes(key)) return;
+
+            const h    = parseInt(row.dataset.h), m = parseInt(row.dataset.m);
+            const diff = (h * 60 + m) - nowM;
+            if (diff < -5) return; /* skip very recently departed */
+
+            upcoming.push({
+                busName: card.querySelector('.card-name').textContent,
+                from:    row.dataset.from,
+                to:      row.dataset.to,
+                h, m, diff,
+            });
+        });
+    });
+
+    upcoming.sort((a,b) => a.diff - b.diff);
+
+    if (!upcoming.length) {
+        res.innerHTML = 'No more departures from <strong>' + stop + '</strong> today.';
+    } else {
+        const label = stop.charAt(0).toUpperCase() + stop.slice(1);
+        let lines = upcoming.slice(0, 4).map(function(u) {
+            const timeStr = fmt12(u.h, u.m);
+            const diffStr = u.diff <= 0 ? '<strong style="color:var(--terra)">Boarding now</strong>'
+                          : u.diff <= 10 ? '<strong style="color:var(--olive)">' + u.diff + ' min</strong>'
+                          : '<span style="color:var(--terra)">' + timeStr + '</span>';
+            return '🚌 ' + u.busName + ' → ' + u.to + ' &nbsp; ' + diffStr;
+        });
+        res.innerHTML = '<strong>Departures from ' + label + ':</strong><br>' + lines.join('<br>');
+    }
+    res.classList.add('show');
+}
+
+/* ── Highlight today on day pills ────────────────────────────── */
+function highlightToday() {
+    const dayJS = nowBST().getDay();
+    document.querySelectorAll('.day-pill').forEach(el => {
+        const d = parseInt(el.dataset.d);
+        if (d === dayJS) {
+            el.classList.remove('dp-on','dp-off');
+            el.classList.add('dp-today');
+        }
+    });
+}
+
+/* ── Filter bus cards ────────────────────────────────────────── */
+function filterBus(type) {
+    document.querySelectorAll('.bs-ft').forEach(b => b.classList.remove('f-on'));
+    document.querySelector('[data-f="' + type + '"]').classList.add('f-on');
+
+    const bst   = nowBST();
+    const dayJS = bst.getDay();
+
+    document.querySelectorAll('.bus-card').forEach(card => {
+        let showCard = true;
+        if (type === 'dilruba')   showCard = card.dataset.origin === 'dilruba';
+        if (type === 'bisik')     showCard = card.dataset.origin === 'bisik';
+        card.style.display = showCard ? '' : 'none';
+
+        /* For morning/afternoon, hide individual trip rows */
+        card.querySelectorAll('.trip').forEach(row => {
+            const days    = row.dataset.days.split(',').map(Number);
+            const dayOk   = days.includes(dayJS);
+            const h       = parseInt(row.dataset.h);
+            let showTrip  = dayOk;
+            if (type === 'morning')   showTrip = dayOk && (h < 12);
+            if (type === 'afternoon') showTrip = dayOk && (h >= 12);
+            row.style.display = showTrip ? '' : 'none';
+        });
+    });
+}
+
+/* ── Clock tick ──────────────────────────────────────────────── */
+function tickClock() {
+    const bst = nowBST();
+    document.getElementById('bsClock').textContent =
+        fmt12(bst.getHours(), bst.getMinutes()) + ':' + pad(bst.getSeconds());
+    document.getElementById('bsDate').textContent =
+        DAYS[bst.getDay()] + ', ' + bst.getDate() + ' ' +
+        MONTHS[bst.getMonth()] + ' ' + bst.getFullYear();
+}
+
+/* ── Main update loop ────────────────────────────────────────── */
+function tick() {
+    const bst   = nowBST();
+    const dayJS = bst.getDay();
+    const nowM  = dayMins(bst);
+    const wknd  = isWknd(dayJS);
+
     tickClock();
 
-    const weekend = isWeekend(dayJS);
-    document.getElementById('weekendBanner').classList.toggle('show', weekend);
-    document.getElementById('heroPanel').style.display   = weekend ? 'none' : '';
-    document.getElementById('wiimTool').style.display    = weekend ? 'none' : '';
-    document.getElementById('reminderBar').style.display = weekend ? 'none' : '';
+    document.getElementById('bsWeekend').classList.toggle('show', wknd);
+    document.getElementById('bsHero').style.display    = wknd ? 'none' : '';
+    document.getElementById('bsTools').style.display   = wknd ? 'none' : '';
+    document.getElementById('bsMyStop').style.display  = wknd ? 'none' : '';
 
-    if (!weekend) {
+    if (!wknd) {
         renderAll(dayJS, nowM);
         updateHero(dayJS, nowM);
-        updateWiim();
-        renderMyStop(localStorage.getItem('bus_my_stop'));
+        /* refresh myStop if pinned */
+        const savedStop = localStorage.getItem('bus_mystop');
+        if (savedStop) showMyStopTrips(savedStop);
     } else {
         document.querySelectorAll('.bus-card').forEach(c => c.classList.add('card-inactive'));
     }
 }
 
-// ── Boot ──────────────────────────────────────────────────────
-markToday();
+/* ── Boot ────────────────────────────────────────────────────── */
+highlightToday();
 
-// Restore saved stop
-const savedStop = localStorage.getItem('bus_my_stop');
-if (savedStop) {
-    const btn = document.getElementById('myStop-' + savedStop);
-    if (btn) btn.classList.add('chosen');
+/* restore saved stop */
+const _saved = localStorage.getItem('bus_mystop');
+if (_saved) {
+    const b = document.getElementById('sp-' + _saved);
+    if (b) b.classList.add('stop-on');
 }
 
+/* initial render */
 tick();
+
+/* intervals */
 setInterval(tickClock, 1000);
-setInterval(tick, 15000);
+setInterval(tick, 15000);  /* full re-render every 15s */
 </script>
 {% endblock %}
