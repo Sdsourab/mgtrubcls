@@ -4,112 +4,110 @@ app/bus/routes.py
 UniSync Transport Module — Bus Schedule
 URL prefix: /bus
 
-Routes:
-  GET /bus/                → bus schedule page
-  GET /bus/api/schedule    → JSON schedule data (for future admin editing)
-
-Bus data is hardcoded here for zero-DB-dependency.
-To update schedules, edit BUS_DATA below and redeploy.
-
-Effective: ০৬ এপ্রিল ২০২৬ (স্মারক: রবিবা/প্রশা/পরিবহণপুল/২৯২/২০১৯)
+Edit BUS_DATA to update schedules. Zero DB dependency.
+Effective: 06 April 2026 | Ref: রবিবা/প্রশা/পরিবহণপুল/২৯২/২০১৯
 """
 
 from flask import Blueprint, jsonify, render_template
 
 bus_bp = Blueprint('bus', __name__)
 
-# ══════════════════════════════════════════════════════════════
-# BUS DATA — Edit this to update schedules
-# activeDays: 0=রবিবার, 1=সোমবার, 2=মঙ্গলবার, 3=বুধবার, 4=বৃহস্পতিবার
-# Weekend (শুক্র=5, শনি=6) never runs.
-# ══════════════════════════════════════════════════════════════
-
+# ─────────────────────────────────────────────────────────────
+# BUS DATA — Edit here to update the schedule
+# days: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu  (Fri=5, Sat=6 = weekend, no service)
+# ─────────────────────────────────────────────────────────────
 BUS_DATA = [
     {
-        "id":          "chitra",
-        "name":        "চিত্রা",
-        "reg":         "ঢাকা মেট্রো স ১১ ০৫০৪",
-        "origin":      "dilruba",
-        "color_key":   "terra",
-        # সপ্তাহের ১ম দিন = রবিবার (0), শেষ দিন = বৃহস্পতিবার (4)
-        "activeDays":  [0, 4],
-        "day_label":   "রবি ও বৃহঃ",
+        "id":           "chitra",
+        "name":         "Chitra",
+        "name_bn":      "চিত্রা",
+        "reg":          "Dhaka Metro Sa 11-0504",
+        "type":         "Standard",
+        "origin_stop":  "dilruba",
+        "color_key":    "terra",
+        "active_days":  [0, 4],           # Sunday & Thursday only
+        "day_label":    "Sun & Thu only",
+        "est_duration": 45,               # minutes
         "trips": [
-            # সপ্তাহের ১ম দিন (রবিবার)
-            {"h": 6,  "m": 0,  "from": "দিলরুবা বাসস্ট্যান্ড",  "to": "চান্দাইকোনা, বগুড়া",   "session": "morning",   "days": [0]},
-            {"h": 7,  "m": 30, "from": "চান্দাইকোনা, বগুড়া",    "to": "দিলরুবা বাসস্ট্যান্ড", "session": "morning",   "days": [0]},
-            # সপ্তাহের শেষের দিন (বৃহস্পতিবার)
-            {"h": 16, "m": 15, "from": "দিলরুবা বাসস্ট্যান্ড",  "to": "চান্দাইকোনা, বগুড়া",   "session": "afternoon", "days": [4]},
-            {"h": 17, "m": 45, "from": "চান্দাইকোনা, বগুড়া",    "to": "দিলরুবা বাসস্ট্যান্ড", "session": "afternoon", "days": [4]},
+            # Sunday — week-start trips
+            {"h": 6,  "m": 0,  "from": "Dilruba Bus Stand",     "to": "Chandaikona, Bogura",  "session": "morning",   "days": [0]},
+            {"h": 7,  "m": 30, "from": "Chandaikona, Bogura",   "to": "Dilruba Bus Stand",    "session": "morning",   "days": [0]},
+            # Thursday — week-end trips
+            {"h": 4,  "m": 15, "from": "Dilruba Bus Stand",     "to": "Chandaikona, Bogura",  "session": "afternoon", "days": [4]},
+            {"h": 5,  "m": 45, "from": "Chandaikona, Bogura",   "to": "Dilruba Bus Stand",    "session": "afternoon", "days": [4]},
         ],
     },
     {
-        "id":          "khyanika",
-        "name":        "ক্ষণিকা",
-        "reg":         "ঢাকা মেট্রো স ১১ ০৬০৪",
-        "origin":      "dilruba",
-        "color_key":   "golden",
-        "activeDays":  [0, 1, 2, 3, 4],
-        "day_label":   "রবি–বৃহঃ (প্রতিদিন)",
+        "id":           "khyanika",
+        "name":         "Khyanika",
+        "name_bn":      "ক্ষণিকা",
+        "reg":          "Dhaka Metro Sa 11-0604",
+        "type":         "Standard",
+        "origin_stop":  "dilruba",
+        "color_key":    "golden",
+        "active_days":  [0, 1, 2, 3, 4],
+        "day_label":    "Sun – Thu (Daily)",
+        "est_duration": 30,
         "trips": [
-            {"h": 6,  "m": 0,  "from": "দিলরুবা বাসস্ট্যান্ড",  "to": "সিরাজগঞ্জ",            "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 7,  "m": 30, "from": "সিরাজগঞ্জ",              "to": "দিলরুবা বাসস্ট্যান্ড", "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 16, "m": 15, "from": "দিলরুবা বাসস্ট্যান্ড",  "to": "সিরাজগঞ্জ",            "session": "afternoon", "days": [0,1,2,3,4]},
-            {"h": 17, "m": 45, "from": "সিরাজগঞ্জ",              "to": "দিলরুবা বাসস্ট্যান্ড", "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 6,  "m": 0,  "from": "Dilruba Bus Stand",   "to": "Sirajganj",            "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 7,  "m": 30, "from": "Sirajganj",            "to": "Dilruba Bus Stand",   "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 4,  "m": 15, "from": "Dilruba Bus Stand",   "to": "Sirajganj",            "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 5,  "m": 45, "from": "Sirajganj",            "to": "Dilruba Bus Stand",   "session": "afternoon", "days": [0,1,2,3,4]},
         ],
     },
     {
-        "id":          "balaka",
-        "name":        "বলাকা",
-        "reg":         "ঢাকা মেট্রো স ১১ ০৫০৫",
-        "origin":      "bisik",
-        "color_key":   "green",
-        "activeDays":  [0, 1, 2, 3, 4],
-        "day_label":   "রবি–বৃহঃ (প্রতিদিন)",
+        "id":           "balaka",
+        "name":         "Balaka",
+        "name_bn":      "বলাকা",
+        "reg":          "Dhaka Metro Sa 11-0505",
+        "type":         "Standard",
+        "origin_stop":  "bisik",
+        "color_key":    "green",
+        "active_days":  [0, 1, 2, 3, 4],
+        "day_label":    "Sun – Thu (Daily)",
+        "est_duration": 35,
         "trips": [
-            {"h": 6,  "m": 0,  "from": "বিসিক বাসস্ট্যান্ড",    "to": "আতাইকুলা",              "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 7,  "m": 30, "from": "আতাইকুলা",               "to": "বিসিক বাসস্ট্যান্ড",   "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 16, "m": 15, "from": "বিসিক বাসস্ট্যান্ড",    "to": "আতাইকুলা",              "session": "afternoon", "days": [0,1,2,3,4]},
-            {"h": 17, "m": 45, "from": "আতাইকুলা",               "to": "বিসিক বাসস্ট্যান্ড",   "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 6,  "m": 0,  "from": "BISIK Bus Stand",     "to": "Ataikula",             "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 7,  "m": 30, "from": "Ataikula",             "to": "BISIK Bus Stand",     "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 4,  "m": 15, "from": "BISIK Bus Stand",     "to": "Ataikula",             "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 5,  "m": 45, "from": "Ataikula",             "to": "BISIK Bus Stand",     "session": "afternoon", "days": [0,1,2,3,4]},
         ],
     },
     {
-        "id":          "ac_coaster",
-        "name":        "এসি কোস্টার",
-        "reg":         "ঢাকা মেট্রো ঝ ১১ ১৩৯০ / সিরাজগঞ্জ ঝ ১১ ০০০৩",
-        "origin":      "bisik",
-        "color_key":   "olive",
-        "activeDays":  [0, 1, 2, 3, 4],
-        "day_label":   "রবি–বৃহঃ (প্রতিদিন)",
+        "id":           "ac_coaster",
+        "name":         "AC Coaster",
+        "name_bn":      "এসি কোস্টার",
+        "reg":          "Dhaka Metro Jha 11-1390 / Sirajganj Jha 11-0003",
+        "type":         "AC",
+        "origin_stop":  "bisik",
+        "color_key":    "olive",
+        "active_days":  [0, 1, 2, 3, 4],
+        "day_label":    "Sun – Thu (Daily)",
+        "est_duration": 40,
         "trips": [
-            {"h": 6,  "m": 0,  "from": "বিসিক বাসস্ট্যান্ড",    "to": "বেলকুচি, সিরাজগঞ্জ",   "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 7,  "m": 30, "from": "বেলকুচি, সিরাজগঞ্জ",    "to": "বিসিক বাসস্ট্যান্ড",   "session": "morning",   "days": [0,1,2,3,4]},
-            {"h": 16, "m": 15, "from": "বিসিক বাসস্ট্যান্ড",    "to": "বেলকুচি, সিরাজগঞ্জ",   "session": "afternoon", "days": [0,1,2,3,4]},
-            {"h": 17, "m": 45, "from": "বেলকুচি, সিরাজগঞ্জ",    "to": "বিসিক বাসস্ট্যান্ড",   "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 6,  "m": 0,  "from": "BISIK Bus Stand",     "to": "Belkuchi, Sirajganj",  "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 7,  "m": 30, "from": "Belkuchi, Sirajganj", "to": "BISIK Bus Stand",      "session": "morning",   "days": [0,1,2,3,4]},
+            {"h": 4,  "m": 15, "from": "BISIK Bus Stand",     "to": "Belkuchi, Sirajganj",  "session": "afternoon", "days": [0,1,2,3,4]},
+            {"h": 5,  "m": 45, "from": "Belkuchi, Sirajganj", "to": "BISIK Bus Stand",      "session": "afternoon", "days": [0,1,2,3,4]},
         ],
     },
 ]
 
-EFFECTIVE_DATE = "০৬ এপ্রিল ২০২৬"
-MEMO_REF       = "রবিবা/প্রশা/পরিবহণপুল/২৯২/২০১৯"
+EFFECTIVE_DATE = "06 April 2026"
+MEMO_REF = "রবিবা/প্রশা/পরিবহণপুল/২৯২/২০১৯"
 
-
-# ── Routes ────────────────────────────────────────────────────
 
 @bus_bp.route('/')
 def bus_page():
-    return render_template('modules/bus_schedule.html',
-                           buses=BUS_DATA,
-                           effective_date=EFFECTIVE_DATE,
-                           memo_ref=MEMO_REF)
+    return render_template(
+        'modules/bus_schedule.html',
+        buses=BUS_DATA,
+        effective_date=EFFECTIVE_DATE,
+        memo_ref=MEMO_REF,
+    )
 
 
-@bus_bp.route('/api/schedule', methods=['GET'])
+@bus_bp.route('/api/schedule')
 def get_schedule():
-    """Return schedule as JSON — useful for future admin editing."""
-    return jsonify({
-        'success':        True,
-        'effective_date': EFFECTIVE_DATE,
-        'memo_ref':       MEMO_REF,
-        'buses':          BUS_DATA,
-    })
+    return jsonify({'success': True, 'buses': BUS_DATA,
+                    'effective_date': EFFECTIVE_DATE})
