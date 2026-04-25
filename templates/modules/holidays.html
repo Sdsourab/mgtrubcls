@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+{% block title %}Holiday Plan{% endblock %}
+{% block nav_holidays %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   UniSync Holiday Plan — 2026 Academic Calendar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Hero banner ─────────────────────────────────────────────── */
+.hol-hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg,
+        rgba(188,111,55,.12) 0%,
+        rgba(205,169,106,.08) 50%,
+        rgba(142,137,70,.06) 100%);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 24px 26px 20px; margin-bottom: 24px;
+}
+.hol-hero::after {
+    content: '🌴'; position: absolute; right: 20px; top: 50%;
+    transform: translateY(-50%); font-size: 4.5rem; opacity: .06;
+    pointer-events: none;
+}
+.hol-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+.hol-eyebrow {
+    font-family: var(--font-body);
+    font-size: .63rem; font-weight: 800; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--terra); margin-bottom: 6px;
+}
+.hol-title {
+    font-family: var(--font-display);
+    font-size: 1.7rem; font-weight: 700; color: var(--text-primary);
+    letter-spacing: -.025em; line-height: 1.1; margin-bottom: 4px;
+}
+.hol-sub {
+    font-family: var(--font-body);
+    font-size: .8rem; color: var(--text-muted);
+}
+.hol-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+.hol-stat {
+    background: rgba(255,255,255,.35);
+    border: 1px solid rgba(188,111,55,.18);
+    border-radius: var(--radius-md); padding: 10px 16px; text-align: center;
+}
+.hol-stat-num {
+    font-family: var(--font-display);
+    font-size: 1.6rem; font-weight: 700; color: var(--terra); line-height: 1;
+}
+.hol-stat-lbl {
+    font-family: var(--font-body);
+    font-size: .62rem; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted); margin-top: 2px;
+}
+
+/* ── Countdown cards ─────────────────────────────────────────── */
+.hol-countdown-section { margin-bottom: 26px; }
+.hol-sec-title {
+    font-family: var(--font-body);
+    font-size: .65rem; font-weight: 800; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.hol-sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.countdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+}
+.countdown-card {
+    position: relative; overflow: hidden;
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+    transition: box-shadow .2s, transform .2s;
+}
+.countdown-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.cc-strip {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.strip-religious { background: linear-gradient(90deg, var(--terra), #e8844a); }
+.strip-national  { background: linear-gradient(90deg, #2a6a9a, #4a9aca); }
+.strip-academic  { background: linear-gradient(90deg, var(--olive), #aaaa50); }
+.strip-cultural  { background: linear-gradient(90deg, var(--golden), #e8c87a); }
+
+.cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.cc-category {
+    font-family: var(--font-body);
+    font-size: .58rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 8px;
+}
+.cat-religious { background: rgba(188,111,55,.1); border: 1px solid rgba(188,111,55,.2); color: var(--terra); }
+.cat-national  { background: rgba(42,106,154,.1); border: 1px solid rgba(42,106,154,.2); color: var(--info); }
+.cat-academic  { background: rgba(142,137,70,.1); border: 1px solid rgba(142,137,70,.2); color: var(--olive); }
+.cat-cultural  { background: rgba(205,169,106,.12); border: 1px solid rgba(205,169,106,.25); color: var(--golden); }
+
+.cc-moon {
+    font-size: .7rem; color: var(--text-muted); flex-shrink: 0;
+    title: "Date depends on moon sighting";
+}
+.cc-name {
+    font-family: var(--font-display);
+    font-size: .98rem; font-weight: 700; color: var(--text-primary);
+    line-height: 1.3; margin-bottom: 6px;
+}
+.cc-name-bn {
+    font-family: var(--font-body);
+    font-size: .72rem; color: var(--text-muted); margin-bottom: 10px;
+}
+.cc-date-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-family: var(--font-body); font-size: .75rem;
+    color: var(--text-secondary); margin-bottom: 12px;
+}
+.cc-date-icon { color: var(--terra); font-size: .8rem; }
+
+.cc-countdown-num {
+    font-family: var(--font-display);
+    font-size: 2.2rem; font-weight: 700; color: var(--terra); line-height: 1;
+}
+.cc-countdown-lbl {
+    font-family: var(--font-body);
+    font-size: .65rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+}
+.cc-progress-wrap { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.cc-progress-bar {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--terra), var(--golden));
+    transition: width 1s ease;
+}
+
+/* Ongoing pill */
+.cc-ongoing {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-body); font-size: .68rem; font-weight: 700;
+    color: var(--success); background: var(--success-bg);
+    border: 1px solid rgba(74,140,74,.2); border-radius: 12px; padding: 3px 10px;
+}
+.cc-ongoing-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); animation: pulseDot 1.4s infinite; }
+@keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* Days badge */
+.cc-days-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-body); font-size: .65rem; font-weight: 700;
+    color: var(--terra); background: rgba(188,111,55,.08);
+    border: 1px solid rgba(188,111,55,.18); border-radius: 10px; padding: 2px 8px;
+}
+
+/* ── Month filter tabs ────────────────────────────────────────── */
+.month-tabs {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+    overflow-x: auto; padding-bottom: 4px;
+}
+.month-tab {
+    font-family: var(--font-body);
+    font-size: .7rem; font-weight: 600; padding: 5px 13px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-muted); cursor: pointer; transition: all .18s;
+    white-space: nowrap; flex-shrink: 0;
+}
+.month-tab:hover { border-color: var(--border-mid); color: var(--text-primary); }
+.month-tab.m-on {
+    background: linear-gradient(135deg,rgba(188,111,55,.13),rgba(205,169,106,.07));
+    border-color: var(--terra); color: var(--terra); font-weight: 700;
+}
+
+/* Category filter */
+.cat-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.cat-f {
+    font-family: var(--font-body);
+    font-size: .68rem; font-weight: 600; padding: 4px 12px; border-radius: 16px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-muted); cursor: pointer; transition: all .18s;
+}
+.cat-f.c-on { border-color: var(--terra); color: var(--terra); font-weight: 700;
+    background: rgba(188,111,55,.08); }
+
+/* ── Holiday list / table ────────────────────────────────────── */
+.hol-list { display: flex; flex-direction: column; gap: 10px; }
+
+.hol-row {
+    display: grid;
+    grid-template-columns: 3px 1fr auto;
+    gap: 0 14px;
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: var(--radius-md); overflow: hidden;
+    transition: box-shadow .18s, border-color .18s;
+}
+.hol-row:hover { box-shadow: var(--shadow-sm); border-color: var(--border-mid); }
+.hol-row.hr-past { opacity: .46; }
+.hol-row.hr-ongoing { border-color: rgba(74,140,74,.3); }
+.hol-row.hr-ongoing .hr-accent { background: var(--success); }
+
+.hr-accent { width: 3px; flex-shrink: 0; }
+.hr-accent-religious { background: var(--terra); }
+.hr-accent-national  { background: #2a6a9a; }
+.hr-accent-academic  { background: var(--olive); }
+.hr-accent-cultural  { background: var(--golden); }
+
+.hr-body { padding: 12px 0 12px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.hr-icon { font-size: 1.2rem; flex-shrink: 0; }
+.hr-info { flex: 1; min-width: 0; }
+.hr-name {
+    font-family: var(--font-display);
+    font-size: .9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;
+}
+.hr-name-bn {
+    font-family: var(--font-body);
+    font-size: .7rem; color: var(--text-muted);
+}
+.hr-date-str {
+    font-family: var(--font-body);
+    font-size: .72rem; color: var(--text-secondary); margin-top: 3px;
+}
+
+.hr-right { padding: 12px 16px 12px 0; text-align: right; flex-shrink: 0; }
+.hr-days {
+    font-family: var(--font-mono);
+    font-size: .88rem; font-weight: 600; color: var(--terra);
+}
+.hr-days-lbl {
+    font-family: var(--font-body);
+    font-size: .58rem; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.hr-status-badge {
+    display: inline-block; font-family: var(--font-body);
+    font-size: .6rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; margin-top: 4px;
+}
+.hsb-ongoing  { background: var(--success-bg); color: var(--success); }
+.hsb-past     { background: rgba(0,0,0,.04); color: var(--text-muted); }
+.hsb-soon     { background: rgba(188,111,55,.1); color: var(--terra); }
+.hsb-upcoming { background: var(--info-bg); color: var(--info); }
+
+/* Empty state */
+.hol-empty {
+    text-align: center; padding: 36px 20px;
+    font-family: var(--font-body); font-size: .85rem; color: var(--text-muted);
+}
+
+/* Sticky month heading */
+.month-heading {
+    font-family: var(--font-display);
+    font-size: 1rem; font-weight: 700; color: var(--text-primary);
+    padding: 14px 0 8px; display: flex; align-items: center; gap: 8px;
+}
+.month-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* Info note */
+.hol-moon-note {
+    font-family: var(--font-body);
+    font-size: .72rem; color: var(--text-muted); margin-top: 20px; line-height: 1.6;
+    padding: 10px 14px; background: rgba(188,111,55,.05);
+    border: 1px solid rgba(188,111,55,.12); border-radius: var(--radius-sm);
+}
+
+@media (max-width: 640px) {
+    .hol-title { font-size: 1.4rem; }
+    .countdown-grid { grid-template-columns: 1fr; }
+    .hr-body { gap: 10px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+
+  <!-- ════════════════════════
+       HERO
+       ════════════════════════ -->
+  <div class="hol-hero">
+    <div class="hol-hero-top">
+      <div>
+        <div class="hol-eyebrow">Rabindra University Bangladesh</div>
+        <h1 class="hol-title">Holiday Plan 2026</h1>
+        <div class="hol-sub">Academic Calendar · Department of Management</div>
+      </div>
+    </div>
+    <div class="hol-stats" id="heroStats">
+      <div class="hol-stat">
+        <div class="hol-stat-num" id="statTotal">—</div>
+        <div class="hol-stat-lbl">Total Holidays</div>
+      </div>
+      <div class="hol-stat">
+        <div class="hol-stat-num" id="statClassDays">—</div>
+        <div class="hol-stat-lbl">Class Off Days</div>
+      </div>
+      <div class="hol-stat">
+        <div class="hol-stat-num" id="statRemaining">—</div>
+        <div class="hol-stat-lbl">Remaining</div>
+      </div>
+      <div class="hol-stat">
+        <div class="hol-stat-num" id="statNextIn">—</div>
+        <div class="hol-stat-lbl">Next Holiday In</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       VACATION COUNTDOWN
+       ════════════════════════ -->
+  <div class="hol-countdown-section" id="countdownSection">
+    <div class="hol-sec-title">Vacation Countdown</div>
+    <div class="countdown-grid" id="countdownGrid">
+      <div style="color:var(--text-muted);font-size:.82rem;padding:12px;">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════
+       FULL LIST
+       ════════════════════════ -->
+  <div class="hol-sec-title" style="margin-bottom:14px;">All Holidays</div>
+
+  <!-- Month filter -->
+  <div class="month-tabs" id="monthTabs">
+    <button class="month-tab m-on" onclick="filterMonth('all')" data-m="all">All Year</button>
+    <button class="month-tab" onclick="filterMonth(1)"  data-m="1">January</button>
+    <button class="month-tab" onclick="filterMonth(2)"  data-m="2">February</button>
+    <button class="month-tab" onclick="filterMonth(3)"  data-m="3">March</button>
+    <button class="month-tab" onclick="filterMonth(4)"  data-m="4">April</button>
+    <button class="month-tab" onclick="filterMonth(5)"  data-m="5">May</button>
+    <button class="month-tab" onclick="filterMonth(6)"  data-m="6">June</button>
+    <button class="month-tab" onclick="filterMonth(7)"  data-m="7">July</button>
+    <button class="month-tab" onclick="filterMonth(8)"  data-m="8">August</button>
+    <button class="month-tab" onclick="filterMonth(9)"  data-m="9">September</button>
+    <button class="month-tab" onclick="filterMonth(10)" data-m="10">October</button>
+    <button class="month-tab" onclick="filterMonth(11)" data-m="11">November</button>
+    <button class="month-tab" onclick="filterMonth(12)" data-m="12">December</button>
+  </div>
+
+  <!-- Category filter -->
+  <div class="cat-filters">
+    <button class="cat-f c-on" onclick="filterCat('all')"       data-c="all">All</button>
+    <button class="cat-f"      onclick="filterCat('religious')" data-c="religious">🕌 Religious</button>
+    <button class="cat-f"      onclick="filterCat('national')"  data-c="national">🇧🇩 National</button>
+    <button class="cat-f"      onclick="filterCat('academic')"  data-c="academic">📚 Academic</button>
+    <button class="cat-f"      onclick="filterCat('cultural')"  data-c="cultural">🎨 Cultural</button>
+  </div>
+
+  <div id="holidayList" class="hol-list">
+    <div class="hol-empty">Loading holidays…</div>
+  </div>
+
+  <div class="hol-moon-note">
+    ⭐ Dates marked with <strong>🌙</strong> are dependent on moon sighting and may vary by ±1 day.
+    · Source: Rabindra University Bangladesh Academic Calendar 2026.
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ════════════════════════════════════════════════════════════════
+   UniSync Holiday Plan Engine
+   ════════════════════════════════════════════════════════════════ */
+
+const MONTHS = ['','January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const MONTH_SHORT = ['','Jan','Feb','Mar','Apr','May','Jun',
+                     'Jul','Aug','Sep','Oct','Nov','Dec'];
+const CAT_ICONS = { religious:'🕌', national:'🇧🇩', academic:'📚', cultural:'🎭' };
+const CAT_CLASS = { religious:'cat-religious', national:'cat-national',
+                    academic:'cat-academic', cultural:'cat-cultural' };
+const ACCENT_CLASS = { religious:'hr-accent-religious', national:'hr-accent-national',
+                       academic:'hr-accent-academic', cultural:'hr-accent-cultural' };
+const STRIP_CLASS = { religious:'strip-religious', national:'strip-national',
+                      academic:'strip-academic', cultural:'strip-cultural' };
+
+let _allHolidays = [];
+let _activeMonth = 'all';
+let _activeCat   = 'all';
+
+/* ── Load data ───────────────────────────────────────────────── */
+async function loadHolidays() {
+    try {
+        const res  = await fetch('/holidays/api/holidays');
+        const data = await res.json();
+        _allHolidays = data.data || [];
+        renderStats();
+        renderCountdowns();
+        renderList();
+        highlightCurrentMonth();
+    } catch(e) {
+        document.getElementById('holidayList').innerHTML =
+            '<div class="hol-empty">Failed to load holidays.</div>';
+    }
+}
+
+/* ── Stats ───────────────────────────────────────────────────── */
+function renderStats() {
+    const total      = _allHolidays.length;
+    const classDays  = _allHolidays.reduce((s,h) => s + h.days_class, 0);
+    const remaining  = _allHolidays.filter(h => h.status !== 'past').length;
+    const nextH      = _allHolidays.find(h => h.status === 'upcoming' || h.status === 'ongoing');
+    const nextIn     = nextH
+        ? (nextH.status === 'ongoing' ? 'Today' : nextH.days_until + 'd')
+        : '—';
+
+    document.getElementById('statTotal').textContent     = total;
+    document.getElementById('statClassDays').textContent = classDays;
+    document.getElementById('statRemaining').textContent = remaining;
+    document.getElementById('statNextIn').textContent    = nextIn;
+}
+
+/* ── Countdown cards ─────────────────────────────────────────── */
+function renderCountdowns() {
+    const cards = _allHolidays.filter(h =>
+        (h.status === 'upcoming' && h.show_countdown) ||
+        h.status === 'ongoing'
+    );
+
+    const grid = document.getElementById('countdownGrid');
+    if (!cards.length) {
+        document.getElementById('countdownSection').style.display = 'none';
+        return;
+    }
+    document.getElementById('countdownSection').style.display = '';
+
+    grid.innerHTML = cards.slice(0, 6).map(h => {
+        const stripCls  = STRIP_CLASS[h.category] || 'strip-religious';
+        const catCls    = CAT_CLASS[h.category] || 'cat-religious';
+        const moon      = h.moon_dep ? '🌙' : '';
+        const dateStr   = formatDateRange(h.start, h.end);
+
+        let bottomHtml;
+        if (h.status === 'ongoing') {
+            bottomHtml = `
+                <div class="cc-ongoing">
+                    <span class="cc-ongoing-dot"></span>
+                    Ongoing — ${h.days_left} day${h.days_left !== 1 ? 's' : ''} left
+                </div>`;
+        } else {
+            /* Progress bar: 0% = countdown_threshold days before, 100% = 0 days before */
+            const pct = Math.max(0, Math.min(100,
+                (1 - h.days_until / h.countdown_threshold) * 100
+            ));
+            bottomHtml = `
+                <div class="cc-countdown-num">${h.days_until}</div>
+                <div class="cc-countdown-lbl">day${h.days_until !== 1 ? 's' : ''} away</div>
+                <div class="cc-progress-wrap">
+                    <div class="cc-progress-bar" style="width:${pct}%"></div>
+                </div>`;
+        }
+
+        return `
+        <div class="countdown-card">
+            <div class="cc-strip ${stripCls}"></div>
+            <div class="cc-top">
+                <span class="cc-category ${catCls}">${h.category}</span>
+                <span class="cc-moon" title="Moon-sighting dependent">${moon}</span>
+            </div>
+            <div class="cc-name">${h.name_en}</div>
+            <div class="cc-name-bn">${h.name_bn}</div>
+            <div class="cc-date-row">
+                <span class="cc-date-icon">📅</span>
+                ${dateStr}
+                &nbsp;·&nbsp;
+                <span class="cc-days-badge">${h.total_days} day${h.total_days !== 1 ? 's' : ''}</span>
+            </div>
+            ${bottomHtml}
+        </div>`;
+    }).join('');
+}
+
+/* ── Full list ───────────────────────────────────────────────── */
+function renderList() {
+    let filtered = _allHolidays;
+
+    if (_activeCat !== 'all')
+        filtered = filtered.filter(h => h.category === _activeCat);
+
+    if (_activeMonth !== 'all')
+        filtered = filtered.filter(h => {
+            const m = parseInt(h.start.split('-')[1]);
+            const me = parseInt(h.end.split('-')[1]);
+            return m === _activeMonth || me === _activeMonth;
+        });
+
+    const listEl = document.getElementById('holidayList');
+    if (!filtered.length) {
+        listEl.innerHTML = '<div class="hol-empty">No holidays found for this filter.</div>';
+        return;
+    }
+
+    /* Group by month if showing all */
+    let html = '';
+    if (_activeMonth === 'all') {
+        const byMonth = {};
+        filtered.forEach(h => {
+            const m = parseInt(h.start.split('-')[1]);
+            (byMonth[m] = byMonth[m] || []).push(h);
+        });
+        Object.keys(byMonth).sort((a,b) => a-b).forEach(m => {
+            html += `<div class="month-heading">${MONTHS[m]} 2026</div>`;
+            html += byMonth[m].map(h => holidayRowHtml(h)).join('');
+        });
+    } else {
+        html = filtered.map(h => holidayRowHtml(h)).join('');
+    }
+
+    listEl.innerHTML = html;
+}
+
+function holidayRowHtml(h) {
+    const accent  = ACCENT_CLASS[h.category] || 'hr-accent-religious';
+    const catIcon = CAT_ICONS[h.category] || '📌';
+    const moon    = h.moon_dep ? ' 🌙' : '';
+    const dateStr = formatDateRange(h.start, h.end);
+
+    let statusBadge;
+    if (h.status === 'ongoing') {
+        statusBadge = '<span class="hr-status-badge hsb-ongoing">● Ongoing</span>';
+    } else if (h.status === 'past') {
+        statusBadge = '<span class="hr-status-badge hsb-past">Completed</span>';
+    } else if (h.days_until <= 7) {
+        statusBadge = `<span class="hr-status-badge hsb-soon">${h.days_until}d away</span>`;
+    } else {
+        statusBadge = `<span class="hr-status-badge hsb-upcoming">${h.days_until}d</span>`;
+    }
+
+    const rowClass = h.status === 'past' ? 'hr-past' : h.status === 'ongoing' ? 'hr-ongoing' : '';
+
+    return `
+    <div class="hol-row ${rowClass}">
+        <div class="hr-accent ${accent}"></div>
+        <div class="hr-body">
+            <div class="hr-icon">${catIcon}</div>
+            <div class="hr-info">
+                <div class="hr-name">${h.name_en}${moon}</div>
+                <div class="hr-name-bn">${h.name_bn}</div>
+                <div class="hr-date-str">📅 ${dateStr}</div>
+            </div>
+        </div>
+        <div class="hr-right">
+            <div class="hr-days">${h.days_class || '—'}</div>
+            <div class="hr-days-lbl">class days</div>
+            ${statusBadge}
+        </div>
+    </div>`;
+}
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+function formatDateRange(start, end) {
+    const s = new Date(start + 'T00:00:00');
+    const e = new Date(end   + 'T00:00:00');
+    const sm = MONTH_SHORT[s.getMonth()+1];
+    if (start === end) return `${s.getDate()} ${sm} 2026`;
+    const em = MONTH_SHORT[e.getMonth()+1];
+    return `${s.getDate()} ${sm} – ${e.getDate()} ${em} 2026`;
+}
+
+function highlightCurrentMonth() {
+    const m = new Date().getMonth() + 1;
+    /* Auto-scroll to current month tab but don't filter */
+    const tab = document.querySelector(`[data-m="${m}"]`);
+    if (tab) tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+/* ── Filters ─────────────────────────────────────────────────── */
+function filterMonth(m) {
+    _activeMonth = m;
+    document.querySelectorAll('.month-tab').forEach(b => b.classList.remove('m-on'));
+    document.querySelector(`[data-m="${m}"]`).classList.add('m-on');
+    renderList();
+}
+
+function filterCat(c) {
+    _activeCat = c;
+    document.querySelectorAll('.cat-f').forEach(b => b.classList.remove('c-on'));
+    document.querySelector(`[data-c="${c}"]`).classList.add('c-on');
+    renderList();
+}
+
+/* ── Boot ────────────────────────────────────────────────────── */
+loadHolidays();
+</script>
+{% endblock %}

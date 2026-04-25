@@ -170,7 +170,18 @@
           <path d="M6 17v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1"/>
           <path d="M15 17v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1"/>
         </svg>
-        <span>Bus schedule</span>
+        <span>বাস শিডিউল</span>
+      </a>
+
+      <a href="/holidays/" class="nav-item {% block nav_holidays %}{% endblock %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8"  y1="2" x2="8"  y2="6"/>
+          <line x1="3"  y1="10" x2="21" y2="10"/>
+          <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+        </svg>
+        <span>Holiday Plan</span>
       </a>
 
       <a href="/campus/resources" class="nav-item {% block nav_resources %}{% endblock %}">
@@ -398,6 +409,7 @@
 <script src="{{ url_for('static', filename='js/bg-animation.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ai-preloader.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/push-client.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/notification-popup.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
 
 <!-- SCROLL REVEAL -->
