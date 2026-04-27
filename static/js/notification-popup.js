@@ -1,442 +1,384 @@
 /**
- * UniSync Notification Popup Engine
- * ===================================
- * Glassmorphism popup that fires when:
- *   - A new notice is created
- *   - A class schedule update happens
- *   - A new resource is uploaded
+ * UniSync — In-App Notification Popup v3.0
+ * ══════════════════════════════════════════
  *
- * Polls /notices/api/notices every 30s and shows popup for new items.
- * Supports full markdown-ish text formatting.
+ * WHAT THIS DOES (app is OPEN):
+ *   Polls /notices/api/notices every 30s for new content.
+ *   Shows one glassmorphism popup at a time (serial queue).
+ *   "OK" dismisses current → next popup slides in immediately.
+ *   Notices stay in their respective tabs unchanged.
  *
- * Usage: auto-starts once DOM is ready. No manual call needed.
- * Depends on: UniSync global (localStorage: us_user, us_token)
+ * WHAT THE SERVICE WORKER DOES (app CLOSED / screen OFF):
+ *   sw.js + Web Push handles background delivery automatically.
+ *   Server triggers this in core/push.py after notice is saved.
+ *   This file does NOT touch background push.
+ *
+ * BATCH RULES:
+ *   notice.target_year = null  →  central, every user sees it
+ *   notice.target_sem  = null  →  central, every user sees it
+ *   otherwise: must match user.program + course_year + course_semester
+ *
+ * MANUAL TRIGGER (e.g. WebSocket):
+ *   UniSyncNotif.push({ id, title, content, type, created_at })
  */
 
 (function () {
     'use strict';
 
-    /* ── Config ─────────────────────────────────────────────── */
-    const POLL_MS        = 30_000;   // poll every 30s
-    const MAX_STACK      = 3;        // max visible popups at once
-    const AUTO_CLOSE_MS  = 12_000;   // auto-dismiss after 12s
-    const STORAGE_KEY    = 'us_seen_notices';
+    /* ── Constants ───────────────────────────────────────── */
+    const POLL_INTERVAL = 30_000;      // 30 seconds
+    const SEEN_KEY      = 'us_notif_seen_v3';
+    const MAX_SEEN      = 500;
 
-    /* ── State ───────────────────────────────────────────────── */
-    let _pollTimer   = null;
-    let _activeCount = 0;
-    let _seenIds     = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+    /* ── State ───────────────────────────────────────────── */
+    let _queue   = [];       // pending notices
+    let _showing = false;    // is a popup visible?
+    let _seen    = _loadSeen();
 
-    /* ── Container ───────────────────────────────────────────── */
-    function ensureContainer() {
-        let c = document.getElementById('notif-popup-container');
-        if (!c) {
-            c = document.createElement('div');
-            c.id = 'notif-popup-container';
-            c.setAttribute('role', 'region');
-            c.setAttribute('aria-label', 'Notifications');
-            c.setAttribute('aria-live', 'polite');
-            Object.assign(c.style, {
-                position:  'fixed',
-                bottom:    '20px',
-                right:     '20px',
-                zIndex:    '99990',
-                display:   'flex',
-                flexDirection: 'column-reverse',
-                gap:       '10px',
-                maxWidth:  'min(420px, calc(100vw - 32px))',
-                width:     '100%',
-            });
-            document.body.appendChild(c);
-        }
-        return c;
+    /* ── Seen-IDs persistence ────────────────────────────── */
+    function _loadSeen() {
+        try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); }
+        catch (e) { return new Set(); }
+    }
+    function _saveSeen() {
+        const arr = [..._seen];
+        if (arr.length > MAX_SEEN) arr.splice(0, arr.length - MAX_SEEN);
+        try { localStorage.setItem(SEEN_KEY, JSON.stringify(arr)); } catch (e) {}
+    }
+    function _markSeen(id) {
+        _seen.add(String(id));
+        _saveSeen();
     }
 
-    /* ── Markdown-ish formatter ──────────────────────────────── */
-    function formatText(raw) {
+    /* ── Current user ────────────────────────────────────── */
+    function _user() {
+        try { return JSON.parse(localStorage.getItem('us_user') || 'null'); }
+        catch (e) { return null; }
+    }
+
+    /* ── Batch match ─────────────────────────────────────── */
+    function _matchesBatch(notice, user) {
+        if (!notice.target_year && !notice.target_sem) return true; // central
+        if (!user) return false;
+        const pOk = !notice.program    || notice.program    === (user.program || '');
+        const yOk = !notice.target_year|| notice.target_year === (user.course_year || user.year || 0);
+        const sOk = !notice.target_sem || notice.target_sem  === (user.course_semester || user.semester || 0);
+        return pOk && yOk && sOk;
+    }
+
+    /* ── Type styling ────────────────────────────────────── */
+    function _meta(type) {
+        return ({
+            general:  { icon:'📢', label:'Notice',           color:'#BC6F37' },
+            exam:     { icon:'📝', label:'Exam Update',       color:'#7B4FAB' },
+            class:    { icon:'📅', label:'Class Update',      color:'#2563EB' },
+            resource: { icon:'📁', label:'New Resource',      color:'#16A34A' },
+            urgent:   { icon:'🚨', label:'Urgent Notice',     color:'#DC2626' },
+            result:   { icon:'🏆', label:'Result Published',  color:'#D97706' },
+        })[type] || { icon:'📢', label:'Notice', color:'#BC6F37' };
+    }
+
+    /* ── Markdown → HTML ─────────────────────────────────── */
+    function _md(raw) {
         if (!raw) return '';
-        let t = raw
-            /* code blocks */
+        return raw
             .replace(/```([\s\S]*?)```/g,
-                '<pre style="background:rgba(0,0,0,.08);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;">$1</pre>')
-            /* inline code */
+                '<pre style="background:rgba(0,0,0,.07);border-radius:6px;padding:9px 11px;font-size:.73rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,monospace;margin:.4em 0">$1</pre>')
             .replace(/`([^`]+)`/g,
-                '<code style="background:rgba(0,0,0,.08);border-radius:4px;padding:1px 5px;font-family:monospace;font-size:.83em;">$1</code>')
-            /* bold */
+                '<code style="background:rgba(0,0,0,.07);border-radius:3px;padding:1px 5px;font-size:.82em;font-family:ui-monospace,monospace">$1</code>')
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            /* italic */
-            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-            /* headings */
-            .replace(/^### (.+)$/gm,
-                '<div style="font-weight:700;font-size:.9rem;margin:.5em 0 .25em;color:var(--text-primary,#1a1a1a)">$1</div>')
-            .replace(/^## (.+)$/gm,
-                '<div style="font-weight:700;font-size:.95rem;margin:.5em 0 .25em;color:var(--text-primary,#1a1a1a)">$1</div>')
-            .replace(/^# (.+)$/gm,
-                '<div style="font-weight:800;font-size:1rem;margin:.5em 0 .25em;color:var(--text-primary,#1a1a1a)">$1</div>')
-            /* bullet lists */
+            .replace(/\*([^*]+)\*/g,     '<em>$1</em>')
+            .replace(/^### (.+)$/gm, '<div style="font-weight:700;font-size:.88rem;color:#111;margin:.5em 0 .2em">$1</div>')
+            .replace(/^## (.+)$/gm,  '<div style="font-weight:700;font-size:.92rem;color:#111;margin:.5em 0 .2em">$1</div>')
+            .replace(/^# (.+)$/gm,   '<div style="font-weight:800;font-size:.96rem;color:#111;margin:.5em 0 .2em">$1</div>')
             .replace(/^[-•] (.+)$/gm,
-                '<div style="display:flex;gap:6px;margin:.15em 0"><span style="color:var(--terra,#BC6F37);flex-shrink:0">•</span><span>$1</span></div>')
-            /* numbered lists */
+                '<div style="display:flex;gap:7px;margin:.15em 0;align-items:flex-start"><span style="color:#BC6F37;flex-shrink:0;margin-top:.1em">•</span><span>$1</span></div>')
             .replace(/^\d+\. (.+)$/gm,
-                '<div style="display:flex;gap:6px;margin:.15em 0"><span style="color:var(--terra,#BC6F37);flex-shrink:0;font-weight:600">—</span><span>$1</span></div>')
-            /* blockquote */
+                '<div style="display:flex;gap:7px;margin:.15em 0;align-items:flex-start"><span style="color:#BC6F37;flex-shrink:0;font-weight:600">—</span><span>$1</span></div>')
             .replace(/^> (.+)$/gm,
-                '<div style="border-left:3px solid var(--terra,#BC6F37);padding-left:10px;margin:.3em 0;color:var(--text-secondary,#555);font-style:italic">$1</div>')
-            /* double newline → paragraph break */
+                '<div style="border-left:3px solid #BC6F37;padding-left:10px;margin:.3em 0;color:#555;font-style:italic">$1</div>')
             .replace(/\n\n/g, '<br><br>')
-            /* single newline */
-            .replace(/\n/g, '<br>');
-        return t;
+            .replace(/\n/g,   '<br>');
     }
 
-    /* ── Notice type metadata ────────────────────────────────── */
-    function typeInfo(type) {
-        const MAP = {
-            notice:   { icon: '📢', label: 'Notice',          color: '#BC6F37' },
-            class:    { icon: '📅', label: 'Class Update',    color: '#2a6a9a' },
-            resource: { icon: '📁', label: 'New Resource',    color: '#4a8c4a' },
-            exam:     { icon: '📝', label: 'Exam Update',     color: '#8e4a9a' },
-            urgent:   { icon: '🚨', label: 'Urgent Notice',   color: '#c0392b' },
-            result:   { icon: '🏆', label: 'Result Published', color: '#c0872b' },
-        };
-        return MAP[type] || MAP['notice'];
+    function _ago(iso) {
+        if (!iso) return '';
+        const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+        if (s < 60)    return 'just now';
+        if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+        if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+        return Math.floor(s / 86400) + 'd ago';
     }
 
-    /* ── Time ago ────────────────────────────────────────────── */
-    function timeAgo(isoStr) {
-        if (!isoStr) return 'just now';
-        const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
-        if (diff < 60)   return 'just now';
-        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-        if (diff < 86400)return Math.floor(diff/3600) + 'h ago';
-        return Math.floor(diff/86400) + 'd ago';
-    }
+    /* ── One-time CSS injection ──────────────────────────── */
+    function _css() {
+        if (document.getElementById('_unp_css')) return;
+        const el = document.createElement('style');
+        el.id = '_unp_css';
+        el.textContent = `
+        #_unp_host {
+            position:fixed;
+            bottom:72px; right:14px;
+            z-index:99995;
+            width:min(400px,calc(100vw - 24px));
+            pointer-events:none;
+        }
+        @media(min-width:768px){ #_unp_host{bottom:22px;right:22px;} }
 
-    /* ── Build popup DOM ─────────────────────────────────────── */
-    function buildPopup(notice) {
-        const info = typeInfo(notice.notice_type || notice.type || 'notice');
-        const id   = notice.id || notice.notice_id || Math.random().toString(36).slice(2);
-        const wrap = document.createElement('div');
-        wrap.id = 'notif-' + id;
-        wrap.setAttribute('role', 'alert');
-
-        /* Outer glow ring */
-        wrap.style.cssText = `
-            position: relative;
-            border-radius: 18px;
+        ._unp {
+            pointer-events:all;
+            position:relative;
+            background:rgba(255,255,255,.80);
+            backdrop-filter:blur(32px) saturate(200%);
+            -webkit-backdrop-filter:blur(32px) saturate(200%);
+            border:1px solid rgba(255,255,255,.9);
+            border-radius:20px;
+            overflow:hidden;
             box-shadow:
-                0 0 0 1px rgba(255,255,255,.55),
-                0 4px 32px rgba(0,0,0,.18),
-                0 1px 4px rgba(0,0,0,.12),
-                0 0 0 3px ${info.color}22;
-            animation: notifSlideIn .4s cubic-bezier(.34,1.56,.64,1);
-            transform-origin: bottom right;
-            overflow: visible;
-        `;
+                inset 0 1px 0 rgba(255,255,255,.75),
+                0 10px 44px rgba(0,0,0,.20),
+                0 2px 10px rgba(0,0,0,.10);
+            font-family:'Outfit',-apple-system,BlinkMacSystemFont,sans-serif;
+            animation:_unpIn .36s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        ._unp.out {
+            animation:_unpOut .26s ease both;
+            pointer-events:none;
+        }
+        @keyframes _unpIn  { from{opacity:0;transform:scale(.85) translateY(18px)} to{opacity:1;transform:none} }
+        @keyframes _unpOut { from{opacity:1;transform:none} to{opacity:0;transform:scale(.9) translateY(12px)} }
 
-        /* Card itself */
-        const card = document.createElement('div');
-        card.style.cssText = `
-            background: rgba(255,255,255,.72);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border: 1px solid rgba(255,255,255,.78);
-            border-radius: 18px;
-            overflow: hidden;
-            font-family: 'Outfit', -apple-system, sans-serif;
-            max-height: 480px;
-            display: flex;
-            flex-direction: column;
-        `;
+        ._unp_scroll {
+            max-height:220px;
+            overflow-y:auto;
+            padding:8px 16px 0;
+            font-size:.78rem;
+            color:rgba(0,0,0,.62);
+            line-height:1.68;
+        }
+        ._unp_scroll::-webkit-scrollbar{width:3px}
+        ._unp_scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.14);border-radius:4px}
 
-        /* Top color accent strip */
-        const strip = document.createElement('div');
-        strip.style.cssText = `
-            height: 3px;
-            background: linear-gradient(90deg, ${info.color}, ${info.color}88);
-        `;
-
-        /* Header row */
-        const header = document.createElement('div');
-        header.style.cssText = `
-            display: flex; align-items: center; gap: 10px;
-            padding: 13px 16px 10px;
-            border-bottom: 1px solid rgba(0,0,0,.06);
-            flex-shrink: 0;
-        `;
-
-        /* Icon badge */
-        const iconBadge = document.createElement('div');
-        iconBadge.style.cssText = `
-            width: 34px; height: 34px; border-radius: 9px;
-            background: ${info.color}18;
-            border: 1px solid ${info.color}30;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1rem; flex-shrink: 0;
-        `;
-        iconBadge.textContent = info.icon;
-
-        const headerMeta = document.createElement('div');
-        headerMeta.style.cssText = 'flex:1;min-width:0;';
-        const typeLbl = document.createElement('div');
-        typeLbl.style.cssText = `
-            font-size: .6rem; font-weight: 800; letter-spacing: .12em;
-            text-transform: uppercase; color: ${info.color}; margin-bottom: 1px;
-        `;
-        typeLbl.textContent = info.label;
-        const timeStr = document.createElement('div');
-        timeStr.style.cssText = `
-            font-size: .65rem; color: rgba(0,0,0,.4); font-weight: 500;
-        `;
-        timeStr.textContent = timeAgo(notice.created_at);
-        headerMeta.append(typeLbl, timeStr);
-
-        /* Close button */
-        const closeBtn = document.createElement('button');
-        closeBtn.style.cssText = `
-            width: 26px; height: 26px; border-radius: 50%;
-            background: rgba(0,0,0,.06); border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: .75rem; color: rgba(0,0,0,.5); flex-shrink: 0;
-            transition: background .15s;
-        `;
-        closeBtn.innerHTML = '✕';
-        closeBtn.setAttribute('aria-label', 'Dismiss notification');
-        closeBtn.onmouseenter = () => closeBtn.style.background = 'rgba(0,0,0,.12)';
-        closeBtn.onmouseleave = () => closeBtn.style.background = 'rgba(0,0,0,.06)';
-        closeBtn.onclick = () => dismissPopup(wrap.id);
-
-        header.append(iconBadge, headerMeta, closeBtn);
-
-        /* Title */
-        const titleEl = document.createElement('div');
-        titleEl.style.cssText = `
-            font-weight: 700; font-size: .9rem; color: rgba(0,0,0,.85);
-            padding: 10px 16px 0; line-height: 1.35; flex-shrink: 0;
-            letter-spacing: -.01em;
-        `;
-        titleEl.textContent = notice.title || 'New Notification';
-
-        /* Body — scrollable */
-        const bodyEl = document.createElement('div');
-        bodyEl.style.cssText = `
-            font-size: .78rem; color: rgba(0,0,0,.62); line-height: 1.65;
-            padding: 7px 16px 0; overflow-y: auto; flex: 1;
-            max-height: 200px;
-        `;
-        const fullContent = formatText(notice.content || notice.message || '');
-        /* Show first 280 chars summary, full in expand */
-        const rawFull  = (notice.content || notice.message || '').trim();
-        const isLong   = rawFull.length > 280;
-        const preview  = isLong ? rawFull.slice(0, 280) + '…' : rawFull;
-        bodyEl.innerHTML = formatText(preview);
-
-        /* Expand link if long */
-        let expandEl = null;
-        if (isLong) {
-            expandEl = document.createElement('div');
-            expandEl.style.cssText = `
-                padding: 4px 16px 0;
-                font-size: .72rem; font-weight: 600; color: ${info.color};
-                cursor: pointer; flex-shrink: 0;
-            `;
-            expandEl.textContent = 'Read more →';
-            let expanded = false;
-            expandEl.onclick = () => {
-                expanded = !expanded;
-                bodyEl.innerHTML = formatText(expanded ? rawFull : preview);
-                expandEl.textContent = expanded ? '← Show less' : 'Read more →';
-            };
+        ._unp_q {
+            position:absolute;top:-8px;right:-8px;
+            min-width:20px;height:20px;
+            background:#BC6F37;color:#fff;
+            font-size:.6rem;font-weight:800;
+            border-radius:10px;padding:0 5px;
+            display:flex;align-items:center;justify-content:center;
+            border:2.5px solid rgba(255,255,255,.95);
+            z-index:2;
         }
 
-        /* Action buttons */
-        const actions = document.createElement('div');
-        actions.style.cssText = `
-            display: flex; gap: 7px; padding: 11px 16px 14px; flex-shrink: 0;
+        ._unp_ok {
+            flex:1;padding:9px 0;border-radius:12px;border:none;
+            font-family:inherit;font-size:.78rem;font-weight:700;
+            cursor:pointer;color:#fff;letter-spacing:.01em;
+            transition:opacity .18s,transform .14s;
+        }
+        ._unp_ok:hover{opacity:.86} ._unp_ok:active{transform:scale(.97)}
+
+        ._unp_view {
+            padding:9px 14px;border-radius:12px;
+            background:rgba(0,0,0,.055);border:1px solid rgba(0,0,0,.08);
+            font-family:inherit;font-size:.76rem;font-weight:600;
+            color:rgba(0,0,0,.52);cursor:pointer;
+            transition:background .14s,transform .14s;
+        }
+        ._unp_view:hover{background:rgba(0,0,0,.09)} ._unp_view:active{transform:scale(.97)}
+
+        ._unp_more {
+            padding:5px 16px 0;
+            font-size:.7rem;font-weight:700;cursor:pointer;user-select:none;
+        }
+        ._unp_more:hover{opacity:.7}
         `;
-
-        const viewBtn = document.createElement('button');
-        viewBtn.style.cssText = `
-            flex: 1; padding: 8px 0; border-radius: 10px; border: none;
-            background: ${info.color}; color: #fff;
-            font-family: inherit; font-size: .76rem; font-weight: 700;
-            cursor: pointer; transition: opacity .18s; letter-spacing: -.005em;
-        `;
-        viewBtn.textContent = 'View Notice';
-        viewBtn.onmouseenter = () => viewBtn.style.opacity = '.85';
-        viewBtn.onmouseleave = () => viewBtn.style.opacity = '1';
-        viewBtn.onclick = () => {
-            window.location.href = '/notices/';
-            dismissPopup(wrap.id);
-        };
-
-        const dimBtn = document.createElement('button');
-        dimBtn.style.cssText = `
-            padding: 8px 14px; border-radius: 10px;
-            background: rgba(0,0,0,.06); border: 1px solid rgba(0,0,0,.08);
-            font-family: inherit; font-size: .76rem; font-weight: 600;
-            cursor: pointer; color: rgba(0,0,0,.5); transition: background .15s;
-        `;
-        dimBtn.textContent = 'Dismiss';
-        dimBtn.onmouseenter = () => dimBtn.style.background = 'rgba(0,0,0,.1)';
-        dimBtn.onmouseleave = () => dimBtn.style.background = 'rgba(0,0,0,.06)';
-        dimBtn.onclick = () => dismissPopup(wrap.id);
-
-        actions.append(viewBtn, dimBtn);
-
-        /* Auto-close progress bar */
-        const progBar = document.createElement('div');
-        progBar.style.cssText = `
-            height: 2px; background: rgba(0,0,0,.06); flex-shrink: 0;
-        `;
-        const progInner = document.createElement('div');
-        progInner.style.cssText = `
-            height: 100%;
-            background: ${info.color}66;
-            transition: width linear ${AUTO_CLOSE_MS}ms;
-            width: 100%;
-        `;
-        progBar.appendChild(progInner);
-
-        /* Assemble */
-        card.append(strip, header, titleEl, bodyEl);
-        if (expandEl) card.appendChild(expandEl);
-        card.append(actions, progBar);
-        wrap.appendChild(card);
-
-        /* Trigger progress */
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                progInner.style.width = '0%';
-            });
-        });
-
-        return wrap;
+        document.head.appendChild(el);
     }
 
-    /* ── Dismiss ─────────────────────────────────────────────── */
-    function dismissPopup(elemId) {
-        const el = document.getElementById(elemId);
-        if (!el) return;
-        el.style.animation = 'notifSlideOut .3s ease forwards';
-        el.addEventListener('animationend', () => {
-            el.remove();
-            _activeCount = Math.max(0, _activeCount - 1);
+    /* ── Host container ──────────────────────────────────── */
+    function _host() {
+        let h = document.getElementById('_unp_host');
+        if (!h) {
+            h = document.createElement('div');
+            h.id = '_unp_host';
+            h.setAttribute('aria-live', 'polite');
+            h.setAttribute('role', 'region');
+            h.setAttribute('aria-label', 'Notifications');
+            document.body.appendChild(h);
+        }
+        return h;
+    }
+
+    /* ── Dismiss ─────────────────────────────────────────── */
+    function _close(card, onDone) {
+        card.classList.add('out');
+        card.addEventListener('animationend', () => {
+            card.remove();
+            _showing = false;
+            if (typeof onDone === 'function') onDone();
+            else setTimeout(_next, 60);
         }, { once: true });
     }
 
-    /* ── Show popup ──────────────────────────────────────────── */
-    function showPopup(notice) {
-        if (_activeCount >= MAX_STACK) return;
-        const container = ensureContainer();
-        const popup = buildPopup(notice);
-        container.appendChild(popup);
-        _activeCount++;
-
-        /* Auto-dismiss */
-        const timer = setTimeout(() => dismissPopup(popup.id), AUTO_CLOSE_MS);
-
-        /* Pause auto-dismiss on hover */
-        popup.addEventListener('mouseenter', () => clearTimeout(timer));
+    /* ── Update badge + OK label while a popup is visible ── */
+    function _refresh() {
+        const badge = document.getElementById('_unp_badge');
+        const ok    = document.getElementById('_unp_ok_btn');
+        const q     = _queue.length;
+        if (badge) badge.textContent = q > 0 ? '+' + q : '';
+        if (ok && q > 0)
+            ok.innerHTML = `OK &nbsp;<span style="opacity:.7;font-weight:500">· Next (${q})</span>`;
+        else if (ok)
+            ok.textContent = 'OK';
     }
 
-    /* ── Persist seen IDs ────────────────────────────────────── */
-    function markSeen(id) {
-        _seenIds.add(String(id));
-        /* Keep only last 200 to avoid unbounded growth */
-        const arr = [..._seenIds];
-        if (arr.length > 200) arr.splice(0, arr.length - 200);
-        _seenIds = new Set(arr);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify([..._seenIds])); } catch(e) {}
-    }
+    /* ── Build and show one card ─────────────────────────── */
+    function _next() {
+        if (_showing || _queue.length === 0) return;
+        _showing = true;
 
-    /* ── Poll ────────────────────────────────────────────────── */
-    async function poll() {
-        const userRaw = localStorage.getItem('us_user');
-        const token   = localStorage.getItem('us_token');
-        if (!userRaw || !token) return;
+        const n      = _queue.shift();
+        const m      = _meta(n.type || 'general');
+        const raw    = (n.content || n.content_text || n.message || '').trim();
+        const isLong = raw.length > 320;
+        const preview = isLong ? raw.slice(0, 320) + '…' : raw;
+        const qLeft   = _queue.length;
 
-        let user;
-        try { user = JSON.parse(userRaw); } catch(e) { return; }
-        if (!user || !user.id) return;
+        const card = document.createElement('div');
+        card.className = '_unp';
+        card.setAttribute('role', 'alert');
 
-        try {
-            const res = await fetch(
-                `/notices/api/notices?limit=10&user_id=${user.id}&program=${user.program||''}&year=${user.course_year||''}&semester=${user.course_semester||''}`,
-                { headers: { 'X-User-Id': user.id, 'X-Token': token } }
-            );
-            if (!res.ok) return;
-            const data = await res.json();
-            const notices = (data.data || []).slice(0, 10);
+        /* Queue badge */
+        if (qLeft > 0) {
+            const badge = document.createElement('div');
+            badge.id = '_unp_badge';
+            badge.className = '_unp_q';
+            badge.textContent = '+' + qLeft;
+            card.appendChild(badge);
+        }
 
-            /* Show popups for new ones (newest first, up to MAX_STACK) */
-            let shown = 0;
-            for (const n of notices) {
-                const nid = String(n.id || n.notice_id || '');
-                if (!nid || _seenIds.has(nid)) continue;
-                if (shown >= MAX_STACK) break;
-                showPopup(n);
-                markSeen(nid);
-                shown++;
-            }
-        } catch(e) {
-            /* silent fail */
+        /* Card body */
+        const body = document.createElement('div');
+        body.innerHTML = `
+            <div style="height:3px;background:linear-gradient(90deg,${m.color},${m.color}60,transparent)"></div>
+
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 15px 9px;border-bottom:1px solid rgba(0,0,0,.055)">
+                <div style="width:33px;height:33px;border-radius:9px;flex-shrink:0;
+                    background:${m.color}14;border:1px solid ${m.color}28;
+                    display:flex;align-items:center;justify-content:center;font-size:.9rem">${m.icon}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:.58rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:${m.color};margin-bottom:1px">${m.label}</div>
+                    <div style="font-size:.63rem;color:rgba(0,0,0,.38);font-weight:500">${_ago(n.created_at)}</div>
+                </div>
+                <button id="_unp_x" aria-label="Dismiss"
+                    style="width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.06);
+                    border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+                    font-size:.68rem;color:rgba(0,0,0,.45);flex-shrink:0;transition:background .14s">✕</button>
+            </div>
+
+            <div style="font-weight:700;font-size:.88rem;color:rgba(0,0,0,.84);
+                padding:10px 16px 0;letter-spacing:-.01em;line-height:1.35">
+                ${n.title || 'New Notification'}
+            </div>
+
+            <div class="_unp_scroll" id="_unp_scroll">${_md(preview)}</div>
+
+            ${isLong ? `<div class="_unp_more" id="_unp_more" style="color:${m.color}">Read more →</div>` : ''}
+
+            <div style="display:flex;gap:8px;padding:11px 15px 15px">
+                <button class="_unp_ok" id="_unp_ok_btn" style="background:${m.color}">
+                    ${qLeft > 0 ? `OK <span style="opacity:.7;font-weight:500">· Next (${qLeft})</span>` : 'OK'}
+                </button>
+                <button class="_unp_view">View Notice →</button>
+            </div>
+        `;
+        card.appendChild(body);
+        _host().appendChild(card);
+
+        /* Wire events */
+        body.querySelector('#_unp_x').onclick = () => _close(card);
+        body.querySelector('#_unp_x').onmouseenter = function () { this.style.background = 'rgba(0,0,0,.12)'; };
+        body.querySelector('#_unp_x').onmouseleave = function () { this.style.background = 'rgba(0,0,0,.06)'; };
+
+        body.querySelector('#_unp_ok_btn').onclick = () => _close(card);   // shows next automatically
+
+        body.querySelector('._unp_view').onclick = () =>
+            _close(card, () => { window.location.href = '/notices/'; });
+
+        if (isLong) {
+            let exp = false;
+            body.querySelector('#_unp_more').onclick = function () {
+                exp = !exp;
+                body.querySelector('#_unp_scroll').innerHTML = _md(exp ? raw : preview);
+                this.textContent = exp ? 'Show less ←' : 'Read more →';
+            };
         }
     }
 
-    /* ── Inject CSS keyframes ────────────────────────────────── */
-    function injectCSS() {
-        if (document.getElementById('notif-popup-css')) return;
-        const style = document.createElement('style');
-        style.id = 'notif-popup-css';
-        style.textContent = `
-            @keyframes notifSlideIn {
-                from { opacity:0; transform:scale(.88) translateY(16px); }
-                to   { opacity:1; transform:scale(1)   translateY(0); }
-            }
-            @keyframes notifSlideOut {
-                from { opacity:1; transform:scale(1)   translateY(0); }
-                to   { opacity:0; transform:scale(.88) translateY(12px); }
-            }
-            #notif-popup-container::-webkit-scrollbar { display:none; }
-        `;
-        document.head.appendChild(style);
+    /* ── Enqueue one notice ──────────────────────────────── */
+    function _enqueue(notice) {
+        const id = String(notice.id || notice.notice_id || '');
+        if (id && _seen.has(id)) return;
+        if (id) _markSeen(id);
+        _queue.push(notice);
+        _refresh();
+        if (!_showing) _next();
     }
 
-    /* ── Public API — trigger manually ──────────────────────── */
+    /* ── Poll server ─────────────────────────────────────── */
+    async function _poll() {
+        const user  = _user();
+        const token = localStorage.getItem('us_token');
+        if (!user || !token) return;
+
+        const qs = new URLSearchParams({
+            limit:    '20',
+            program:  user.program                                    || '',
+            year:     String(user.course_year       || user.year      || ''),
+            semester: String(user.course_semester   || user.semester  || ''),
+        });
+
+        try {
+            const res  = await fetch('/notices/api/notices?' + qs, {
+                headers: { 'X-User-Id': user.id }
+            });
+            if (!res.ok) return;
+            const { data = [] } = await res.json();
+
+            /* Enqueue unseen, oldest-first so they display chronologically */
+            [...data].reverse().forEach(n => {
+                if (_seen.has(String(n.id || ''))) return;
+                if (!_matchesBatch(n, user)) return;
+                _enqueue(n);
+            });
+        } catch (e) { /* silent */ }
+    }
+
+    /* ── Public API ──────────────────────────────────────── */
     window.UniSyncNotif = {
         /**
-         * Manually show a notification popup.
-         * @param {object} notice — { title, content, notice_type, created_at }
+         * Manually push a notice (e.g. via WebSocket).
+         * @param {{id,title,content,type,created_at}} notice
          */
-        show(notice) {
-            injectCSS();
-            showPopup(notice);
+        push(notice) {
+            _css();
+            _enqueue(notice);
         },
-
-        /** Force a poll right now */
-        pollNow: poll,
-
-        /** Dismiss all visible popups */
-        dismissAll() {
-            document.querySelectorAll('[id^="notif-"]').forEach(el => {
-                if (el.id !== 'notif-popup-container') dismissPopup(el.id);
-            });
-        },
+        /** Force an immediate poll */
+        pollNow: _poll,
     };
 
-    /* ── Auto-start ──────────────────────────────────────────── */
-    function start() {
-        injectCSS();
-        /* Initial poll after 3s (give page time to load auth) */
-        setTimeout(poll, 3000);
-        _pollTimer = setInterval(poll, POLL_MS);
+    /* ── Boot ────────────────────────────────────────────── */
+    function _boot() {
+        _css();
+        setTimeout(_poll, 4500);                  // wait for auth to settle
+        setInterval(_poll, POLL_INTERVAL);
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start);
-    } else {
-        start();
-    }
+    if (document.readyState === 'loading')
+        document.addEventListener('DOMContentLoaded', _boot);
+    else
+        _boot();
 
-})();    
+}());

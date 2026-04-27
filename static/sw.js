@@ -1,5 +1,5 @@
 /**
- * UniSync Service Worker — v4.0.0
+ * UniSync Service Worker — v4.1.0
  *
  * Caching strategy:
  *   Cache-First   → /static/ assets
@@ -8,11 +8,12 @@
  *
  * Push Notifications:
  *   • Displays notification with title, body, icon, badge
- *   • Click opens the relevant URL (default: /notices/)
+ *   • Click opens relevant URL (default: /notices/)
  *   • Action buttons: "View" and "Dismiss"
+ *   • Works when app is CLOSED and SCREEN is OFF
  */
 
-const CACHE_VERSION = 'v4.0.0';
+const CACHE_VERSION = 'v4.1.0';
 const CACHE_NAME    = 'unisync-' + CACHE_VERSION;
 const OFFLINE_URL   = '/offline';
 
@@ -26,41 +27,41 @@ const PRECACHE = [
   '/static/js/offline-sync.js',
 ];
 
-// ── Install ──────────────────────────────────────────────────────────────────
-self.addEventListener('install', function(event) {
+// ── Install ──────────────────────────────────────────────────
+self.addEventListener('install', function (event) {
   console.log('[SW] install ' + CACHE_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(function(cache) {
+      .then(function (cache) {
         return Promise.allSettled(
-          PRECACHE.map(function(url) {
-            return cache.add(url).catch(function(err) {
+          PRECACHE.map(function (url) {
+            return cache.add(url).catch(function (err) {
               console.warn('[SW] precache miss:', url, err.message);
             });
           })
         );
       })
-      .then(function() { return self.skipWaiting(); })
+      .then(function () { return self.skipWaiting(); })
   );
 });
 
-// ── Activate ─────────────────────────────────────────────────────────────────
-self.addEventListener('activate', function(event) {
+// ── Activate ─────────────────────────────────────────────────
+self.addEventListener('activate', function (event) {
   console.log('[SW] activate ' + CACHE_VERSION);
   event.waitUntil(
     caches.keys()
-      .then(function(keys) {
+      .then(function (keys) {
         return Promise.all(
-          keys.filter(function(k) { return k !== CACHE_NAME; })
-              .map(function(k) { return caches.delete(k); })
+          keys.filter(function (k) { return k !== CACHE_NAME; })
+              .map(function (k) { return caches.delete(k); })
         );
       })
-      .then(function() { return self.clients.claim(); })
+      .then(function () { return self.clients.claim(); })
   );
 });
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
-self.addEventListener('fetch', function(event) {
+// ── Fetch ─────────────────────────────────────────────────────
+self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
   if (!req.url.startsWith(self.location.origin)) return;
@@ -73,13 +74,14 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // API / dynamic Flask routes → Network Only (never cache)
+  // Dynamic Flask routes → Network Only (never cache)
   var dynamicPrefixes = [
     '/api/', '/auth/', '/academic/', '/productivity/',
     '/campus/', '/admin/', '/guest/', '/planner/', '/notices/',
     '/classmanagement/', '/exams/', '/teachers/', '/push/',
+    '/bus/', '/holidays/',
   ];
-  if (dynamicPrefixes.some(function(p) { return path.startsWith(p); })) {
+  if (dynamicPrefixes.some(function (p) { return path.startsWith(p); })) {
     event.respondWith(networkOnly(req));
     return;
   }
@@ -94,14 +96,13 @@ self.addEventListener('fetch', function(event) {
   event.respondWith(networkFirst(req));
 });
 
-// ── Caching strategies ────────────────────────────────────────────────────────
-
+// ── Caching strategies ────────────────────────────────────────
 function cacheFirst(req) {
-  return caches.match(req).then(function(cached) {
+  return caches.match(req).then(function (cached) {
     if (cached) return cached;
-    return fetch(req).then(function(res) {
+    return fetch(req).then(function (res) {
       if (res && res.status === 200) {
-        caches.open(CACHE_NAME).then(function(c) { c.put(req, res.clone()); });
+        caches.open(CACHE_NAME).then(function (c) { c.put(req, res.clone()); });
       }
       return res;
     });
@@ -109,12 +110,12 @@ function cacheFirst(req) {
 }
 
 function networkFirst(req) {
-  return fetch(req).then(function(res) {
+  return fetch(req).then(function (res) {
     if (res && res.status === 200) {
-      caches.open(CACHE_NAME).then(function(c) { c.put(req, res.clone()); });
+      caches.open(CACHE_NAME).then(function (c) { c.put(req, res.clone()); });
     }
     return res;
-  }).catch(function() {
+  }).catch(function () {
     return caches.match(req);
   });
 }
@@ -124,15 +125,15 @@ function networkOnly(req) {
 }
 
 function networkWithOfflineFallback(req) {
-  return fetch(req).then(function(res) {
+  return fetch(req).then(function (res) {
     if (res && res.status === 200) {
-      caches.open(CACHE_NAME).then(function(c) { c.put(req, res.clone()); });
+      caches.open(CACHE_NAME).then(function (c) { c.put(req, res.clone()); });
     }
     return res;
-  }).catch(function() {
-    return caches.match(req).then(function(cached) {
+  }).catch(function () {
+    return caches.match(req).then(function (cached) {
       if (cached) return cached;
-      return caches.match(OFFLINE_URL).then(function(offline) {
+      return caches.match(OFFLINE_URL).then(function (offline) {
         if (offline) return offline;
         return new Response(
           '<!DOCTYPE html><html><head><meta charset="UTF-8">'
@@ -156,50 +157,48 @@ function networkWithOfflineFallback(req) {
   });
 }
 
-// ── Background Sync ───────────────────────────────────────────────────────────
-self.addEventListener('sync', function(event) {
+// ── Background Sync ───────────────────────────────────────────
+self.addEventListener('sync', function (event) {
   if (event.tag === 'sync-pending-tasks' || event.tag === 'sync-attendance') {
     event.waitUntil(
-      self.clients.matchAll({ type: 'window' }).then(function(clients) {
-        clients.forEach(function(c) { c.postMessage({ type: 'SW_SYNC', tag: event.tag }); });
+      self.clients.matchAll({ type: 'window' }).then(function (clients) {
+        clients.forEach(function (c) {
+          c.postMessage({ type: 'SW_SYNC', tag: event.tag });
+        });
       })
     );
   }
 });
 
-// ── Push Notifications ────────────────────────────────────────────────────────
-self.addEventListener('push', function(event) {
+// ── Push Notifications ────────────────────────────────────────
+// This fires even when the app is CLOSED or the SCREEN is OFF.
+// Payload sent from core/push.py via pywebpush → VAPID.
+self.addEventListener('push', function (event) {
   if (!event.data) return;
 
   var payload;
   try {
     payload = event.data.json();
-  } catch(e) {
-    payload = { title: 'UniSync', body: event.data.text(), url: '/dashboard' };
+  } catch (e) {
+    payload = { title: 'UniSync', body: event.data.text(), url: '/notices/' };
   }
 
-  var title   = payload.title  || 'UniSync';
-  var body    = payload.body   || 'আপনার জন্য একটি নতুন আপডেট আছে।';
-  var url     = payload.url    || '/notices/';
-  var icon    = payload.icon   || '/static/icons/icon-192x192.png';
-  var badge   = payload.badge  || '/static/icons/badge-72x72.png';
-  var tag     = payload.tag    || 'unisync-' + Date.now();
-
-  // Choose notification icon based on type
-  var notifIcon = icon;
-  if (title.includes('❌') || title.includes('Cancel')) {
-    // Use the same icon — color differentiation is in title emoji
-  }
+  var title = payload.title  || 'UniSync';
+  var body  = payload.body   || 'নতুন আপডেট আছে।';
+  var url   = payload.url    || '/notices/';
+  var icon  = payload.icon   || '/static/icons/icon-192x192.png';
+  var badge = payload.badge  || '/static/icons/badge-72x72.png';
+  var tag   = payload.tag    || ('unisync-' + Date.now());
 
   var options = {
-    body:     body,
-    icon:     notifIcon,
-    badge:    badge,
-    tag:      tag,
-    data:     { url: url },
-    vibrate:  [150, 80, 150],
-    renotify: true,
-    requireInteraction: false,   // Don't force persistent notification
+    body:               body,
+    icon:               icon,
+    badge:              badge,
+    tag:                tag,
+    data:               { url: url, notice_id: payload.notice_id || '' },
+    vibrate:            [180, 80, 180, 80, 180],
+    renotify:           true,
+    requireInteraction: false,
     actions: [
       { action: 'view',    title: '👁 View' },
       { action: 'dismiss', title: '✕ Dismiss' },
@@ -211,30 +210,26 @@ self.addEventListener('push', function(event) {
   );
 });
 
-// ── Notification Click ────────────────────────────────────────────────────────
-self.addEventListener('notificationclick', function(event) {
+// ── Notification Click ────────────────────────────────────────
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-
-  // Dismiss action = just close
   if (event.action === 'dismiss') return;
 
   var targetUrl = (event.notification.data && event.notification.data.url)
-                ? event.notification.data.url
-                : '/notices/';
+    ? event.notification.data.url
+    : '/notices/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(function(clients) {
-        // If app is already open, focus it and navigate
+      .then(function (clients) {
         for (var i = 0; i < clients.length; i++) {
           var c = clients[i];
           if ('focus' in c) {
             c.focus();
-            c.navigate(targetUrl);
+            if ('navigate' in c) c.navigate(targetUrl);
             return;
           }
         }
-        // Otherwise open a new window
         if (self.clients.openWindow) {
           return self.clients.openWindow(targetUrl);
         }
@@ -242,34 +237,39 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
-// ── Push subscription change ──────────────────────────────────────────────────
-// Re-subscribe automatically if subscription is invalidated by browser
-self.addEventListener('pushsubscriptionchange', function(event) {
+// ── Push subscription change ──────────────────────────────────
+self.addEventListener('pushsubscriptionchange', function (event) {
   event.waitUntil(
     self.registration.pushManager.subscribe(event.oldSubscription.options)
-      .then(function(newSub) {
-        // Send new subscription to server
-        return self.clients.matchAll({ type: 'window' }).then(function(clients) {
-          clients.forEach(function(c) {
-            c.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSub.toJSON() });
+      .then(function (newSub) {
+        return self.clients.matchAll({ type: 'window' }).then(function (clients) {
+          clients.forEach(function (c) {
+            c.postMessage({
+              type:         'PUSH_SUBSCRIPTION_CHANGED',
+              subscription: newSub.toJSON(),
+            });
           });
         });
       })
-      .catch(function(err) {
+      .catch(function (err) {
         console.warn('[SW] pushsubscriptionchange resubscribe failed:', err);
       })
   );
 });
 
-// ── Message Handler ───────────────────────────────────────────────────────────
-self.addEventListener('message', function(event) {
+// ── Message Handler ───────────────────────────────────────────
+self.addEventListener('message', function (event) {
   var data = event.data || {};
   if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   if (data.type === 'CLEAR_CACHE') {
     caches.keys()
-      .then(function(keys) { return Promise.all(keys.map(function(k) { return caches.delete(k); })); })
-      .then(function() { if (event.source) event.source.postMessage({ type: 'CACHE_CLEARED' }); });
+      .then(function (keys) {
+        return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+      })
+      .then(function () {
+        if (event.source) event.source.postMessage({ type: 'CACHE_CLEARED' });
+      });
   }
 });

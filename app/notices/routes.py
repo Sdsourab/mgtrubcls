@@ -1,45 +1,96 @@
 """
 app/notices/routes.py
 ─────────────────────
-Notice system.
-FIX: Notice create করলে push notification যাবে সবার কাছে।
+Notice system with instant Web Push on creation.
+
+PUSH LOGIC:
+  • Notice created with target_year + target_sem + program
+      → push_to_batch(program, year, sem)   — only that batch
+  • Notice created with NO batch target (admin/teacher central)
+      → push_to_all()                       — every subscribed user
+  • Push failures NEVER prevent notice from being saved.
 """
 
 from flask import Blueprint, jsonify, request, render_template
 from core.supabase_client import get_supabase_admin
 from datetime import datetime, timezone
+import logging
 import re
 
+log = logging.getLogger(__name__)
 notices_bp = Blueprint('notices', __name__)
 
+# ── Helpers ───────────────────────────────────────────────────
 
 def _get_profile(user_id: str) -> dict:
-    """Return profile dict for user_id, or {} on error."""
     if not user_id:
         return {}
     try:
-        sb = get_supabase_admin()
-        p  = sb.table('profiles').select('*').eq('id', user_id).single().execute()
-        return p.data or {}
+        return get_supabase_admin() \
+               .table('profiles').select('*') \
+               .eq('id', user_id).single().execute().data or {}
     except Exception:
         return {}
 
 
-def _can_post(user_id: str) -> tuple:
-    if not user_id:
-        return False, {}
-    profile = _get_profile(user_id)
-    if not profile:
-        return False, {}
-    role = profile.get('role', 'student')
-    if role in ('cr', 'admin', 'teacher'):
-        return True, profile
-    if profile.get('is_cr'):
-        return True, profile
-    return True, profile
+def _strip_html(html: str) -> str:
+    return re.sub(r'<[^>]+>', ' ', html or '').strip()
 
 
-# ── Page ──────────────────────────────────────────────────────
+def _fire_push(notice: dict) -> None:
+    """
+    Send Web Push immediately after notice is saved.
+    Batch-aware: matches target_year / target_sem / program.
+    Central notice (no target) → all users.
+    Silent on any error.
+    """
+    try:
+        from core.push import push_to_batch, push_to_all
+
+        EMOJI = {
+            'general':  '📢',
+            'exam':     '📝',
+            'class':    '📅',
+            'resource': '📁',
+            'urgent':   '🚨',
+            'result':   '🏆',
+        }
+
+        notice_id   = str(notice.get('id', ''))
+        ntype       = notice.get('type', 'general')
+        emoji       = EMOJI.get(ntype, '📢')
+        push_title  = f"{emoji} {notice.get('title', 'New Notice')}"
+        push_body   = (notice.get('content_text') or 'Tap to view')[:120]
+        push_url    = f"/notices/?highlight={notice_id}"
+        program     = notice.get('program', '')
+        target_year = notice.get('target_year')
+        target_sem  = notice.get('target_sem')
+
+        # Batch-specific notice
+        if target_year and target_sem and program:
+            push_to_batch(
+                program   = program,
+                year      = int(target_year),
+                semester  = int(target_sem),
+                title     = push_title,
+                body      = push_body,
+                url       = push_url,
+                notice_id = notice_id,
+            )
+        else:
+            # Central — send to all
+            push_to_all(
+                title     = push_title,
+                body      = push_body,
+                url       = push_url,
+                notice_id = notice_id,
+            )
+
+    except Exception as e:
+        log.warning(f'[Notices] push error (non-fatal): {e}')
+
+
+# ── Pages ─────────────────────────────────────────────────────
 
 @notices_bp.route('/')
 def notices_page():
@@ -50,17 +101,24 @@ def notices_page():
 
 @notices_bp.route('/api/notices', methods=['GET'])
 def get_notices():
-    program = request.args.get('program', '')
-    year    = request.args.get('year', '')
-    sem     = request.args.get('semester', '')
-    limit   = int(request.args.get('limit', 20))
+    """
+    Fetch notices for a user's batch.
+    Rules:
+      • notice.target_year is NULL  → everyone sees it (central)
+      • notice.target_sem  is NULL  → everyone sees it
+      • otherwise must match program + year + semester query params
+    """
+    program = request.args.get('program', '').strip()
+    year    = request.args.get('year', '').strip()
+    sem     = request.args.get('semester', '').strip()
+    limit   = min(int(request.args.get('limit', 20)), 50)
 
     sb = get_supabase_admin()
     try:
         q = sb.table('notices') \
               .select('*') \
               .eq('is_draft', False) \
-              .order('pinned', desc=True) \
+              .order('pinned',     desc=True) \
               .order('created_at', desc=True) \
               .limit(limit)
 
@@ -69,12 +127,13 @@ def get_notices():
 
         notices = q.execute().data or []
 
+        # Client-side batch filter
         if year and sem:
             y, s = int(year), int(sem)
             notices = [
                 n for n in notices
-                if (n.get('target_year') is None or n['target_year'] == y)
-                and (n.get('target_sem')  is None or n['target_sem']  == s)
+                if (not n.get('target_year') or n['target_year'] == y)
+                and (not n.get('target_sem')  or n['target_sem']  == s)
             ]
 
         return jsonify({'success': True, 'data': notices, 'count': len(notices)})
@@ -93,8 +152,8 @@ def create_notice():
     if not user_id:
         return jsonify({'error': 'user_id required'}), 401
 
-    authorized, profile = _can_post(user_id)
-    if not authorized:
+    profile = _get_profile(user_id)
+    if not profile:
         return jsonify({'error': 'Account not found. Please log in again.'}), 403
 
     title   = (data.get('title')   or '').strip()
@@ -102,15 +161,8 @@ def create_notice():
 
     if not title:
         return jsonify({'error': 'Title is required'}), 400
-    if not content or content == '<p><br></p>':
+    if not content or content in ('<p><br></p>', '<p></p>'):
         return jsonify({'error': 'Notice content cannot be empty'}), 400
-
-    content_text = re.sub(r'<[^>]+>', ' ', content).strip()
-
-    program     = data.get('program') or profile.get('program', 'BBA')
-    target_year = data.get('target_year') or None
-    target_sem  = data.get('target_sem')  or None
-    is_draft    = bool(data.get('is_draft', False))
 
     sb = get_supabase_admin()
     try:
@@ -119,45 +171,21 @@ def create_notice():
             'author_name':  profile.get('full_name', 'CR'),
             'title':        title,
             'content':      content,
-            'content_text': content_text[:500],
+            'content_text': _strip_html(content)[:500],
             'type':         data.get('type', 'general'),
-            'program':      program,
-            'target_year':  target_year,
-            'target_sem':   target_sem,
-            'is_draft':     is_draft,
+            'program':      data.get('program') or profile.get('program', 'BBA'),
+            'target_year':  data.get('target_year') or None,
+            'target_sem':   data.get('target_sem')  or None,
+            'is_draft':     bool(data.get('is_draft', False)),
             'pinned':       bool(data.get('pinned', False)),
         }
-        resp = sb.table('notices').insert(payload).execute()
 
-        # ── Push notification to affected batch ──────────────
-        if not is_draft:
-            try:
-                from core.push import push_to_batch
-                notice_type = data.get('type', 'general')
-                type_emoji = {
-                    'exam':      '📝',
-                    'holiday':   '🎉',
-                    'urgent':    '🚨',
-                    'class':     '📚',
-                    'general':   '📢',
-                }.get(notice_type, '📢')
+        resp  = sb.table('notices').insert(payload).execute()
+        saved = resp.data[0] if resp.data else payload
 
-                author = profile.get('full_name', 'CR')
-                push_body = f"{type_emoji} {author}: {content_text[:80]}{'...' if len(content_text) > 80 else ''}"
-
-                year_int = int(target_year) if target_year else profile.get('year', 1)
-                sem_int  = int(target_sem)  if target_sem  else profile.get('semester', 1)
-
-                push_to_batch(
-                    program  = program,
-                    year     = year_int,
-                    semester = sem_int,
-                    title    = f"New Notice: {title}",
-                    body     = push_body,
-                    url      = '/notices/',
-                )
-            except Exception:
-                pass  # Push failure doesn't block notice creation
+        # ── Fire push immediately (non-blocking) ──────────────
+        if not payload['is_draft']:
+            _fire_push(saved)
 
         return jsonify({'success': True, 'data': resp.data}), 201
 
@@ -174,16 +202,14 @@ def update_notice(notice_id):
 
     if not user_id:
         return jsonify({'error': 'user_id required'}), 401
-
-    profile = _get_profile(user_id)
-    if not profile:
+    if not _get_profile(user_id):
         return jsonify({'error': 'Forbidden'}), 403
 
     allowed = ['title', 'content', 'type', 'pinned', 'is_draft']
     payload = {k: data[k] for k in allowed if k in data}
 
     if 'content' in payload:
-        payload['content_text'] = re.sub(r'<[^>]+>', ' ', payload['content']).strip()[:500]
+        payload['content_text'] = _strip_html(payload['content'])[:500]
 
     payload['updated_at'] = datetime.now(timezone.utc).isoformat()
 
@@ -199,9 +225,8 @@ def update_notice(notice_id):
 
 @notices_bp.route('/api/notices/<notice_id>', methods=['DELETE'])
 def delete_notice(notice_id):
-    user_id = request.args.get('user_id', '')
-    profile = _get_profile(user_id)
-    if not profile:
+    user_id = request.args.get('user_id', '').strip()
+    if not _get_profile(user_id):
         return jsonify({'error': 'Forbidden'}), 403
 
     sb = get_supabase_admin()
@@ -212,19 +237,19 @@ def delete_notice(notice_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ── Bulk sync drafts ──────────────────────────────────────────
+# ── Offline sync — bulk upload drafts ────────────────────────
 
 @notices_bp.route('/api/notices/sync', methods=['POST'])
 def sync_offline_notices():
     data    = request.get_json() or {}
-    user_id = data.get('user_id', '')
+    user_id = data.get('user_id', '').strip()
     drafts  = data.get('drafts', [])
 
     if not user_id or not drafts:
         return jsonify({'error': 'user_id and drafts required'}), 400
 
-    authorized, profile = _can_post(user_id)
-    if not authorized:
+    profile = _get_profile(user_id)
+    if not profile:
         return jsonify({'error': 'Forbidden'}), 403
 
     sb = get_supabase_admin()
@@ -238,7 +263,7 @@ def sync_offline_notices():
                 'author_name':  profile.get('full_name', 'CR'),
                 'title':        draft.get('title', 'Untitled'),
                 'content':      content,
-                'content_text': re.sub(r'<[^>]+>', ' ', content).strip()[:500],
+                'content_text': _strip_html(content)[:500],
                 'type':         draft.get('type', 'general'),
                 'program':      draft.get('program') or profile.get('program', 'BBA'),
                 'target_year':  draft.get('target_year'),
@@ -246,7 +271,9 @@ def sync_offline_notices():
                 'is_draft':     False,
                 'pinned':       False,
             }
-            sb.table('notices').insert(payload).execute()
+            resp = sb.table('notices').insert(payload).execute()
+            saved = resp.data[0] if resp.data else payload
+            _fire_push(saved)
             synced.append(draft.get('local_id'))
         except Exception as e:
             failed.append({'local_id': draft.get('local_id'), 'error': str(e)})
