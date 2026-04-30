@@ -1,15 +1,16 @@
 """
 app/academic/routes.py
 ══════════════════════
-CRITICAL FIX: Removed the fallback that returned ALL classes when a
-semester has no classes on a given day. Empty = "no classes" now.
+CRITICAL FIX in get_routine():
+  REMOVED the fallback that returned ALL classes when a
+  semester had no classes that day.
 
-Before (wrong):
-    if not rows and program:
-        rows = all_classes_for_day  # ← showed wrong semester's data
+  Before (wrong):
+      if not rows and program and year and semester:
+          rows = all_day_classes   # ← showed every batch's classes!
 
-After (correct):
-    if not rows: return []  # ← correct "no classes" response
+  After (correct):
+      # no fallback — empty = no classes for this batch today
 """
 
 from flask import Blueprint, jsonify, request, render_template
@@ -43,26 +44,26 @@ def _fmt12h(t: str) -> str:
         return t or ''
 
 
-def _apply_filters(q, program: str, year: str, semester: str):
-    """
-    Apply program/year/semester filters strictly.
-    NO fallback — if a semester has no classes, return empty.
-    """
-    if program and year and semester:
-        try:
-            q = q.eq('program', program) \
-                 .eq('course_year', int(year)) \
-                 .eq('course_semester', int(semester))
-        except Exception:
-            pass
-    return q
-
-
 def _with_12h(rows):
     for r in rows:
         r['time_start_12h'] = _fmt12h(r.get('time_start', ''))
         r['time_end_12h']   = _fmt12h(r.get('time_end',   ''))
     return rows
+
+
+def _apply_filters(q, program: str, year: str, semester: str):
+    """
+    Apply semester/year/program filters with NO fallback.
+    If no rows match, the caller receives an empty list.
+    """
+    if program and year and semester:
+        try:
+            q = q.eq('program', program) \
+                 .eq('course_year',     int(year)) \
+                 .eq('course_semester', int(semester))
+        except Exception:
+            pass
+    return q
 
 
 # ── Pages ──────────────────────────────────────────────────────
@@ -92,9 +93,20 @@ def get_routine():
             q = q.eq('day', day)
         q = _apply_filters(q, program, year, semester)
         rows = q.order('time_start').execute().data or []
-        # ── NO FALLBACK ── if this semester has no classes, return []
+
+        # ── NO FALLBACK ───────────────────────────────────────
+        # If this batch has no classes today → return []
+        # The frontend will show "No classes scheduled"
+        # DO NOT fall back to showing all batches' classes.
+        # ─────────────────────────────────────────────────────
+
         rows = _with_12h(_enrich(rows, _get_mapping(sb)))
-        return jsonify({'success': True, 'data': rows, 'count': len(rows)})
+        return jsonify({
+            'success':       True,
+            'data':          rows,
+            'count':         len(rows),
+            'no_class_today': len(rows) == 0,
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'data': []}), 500
@@ -184,8 +196,11 @@ def holiday_check():
     except Exception:
         return jsonify({'error': 'Use YYYY-MM-DD'}), 400
     is_hol, name = is_holiday(d)
-    return jsonify({'is_holiday': is_hol, 'name': name,
-                    'upcoming': get_upcoming_holidays(30)})
+    return jsonify({
+        'is_holiday': is_hol,
+        'name':       name,
+        'upcoming':   get_upcoming_holidays(30),
+    })
 
 
 # ── API: Mappings ──────────────────────────────────────────────
@@ -205,11 +220,9 @@ def get_mappings():
 @academic_bp.route('/api/dashboard-schedule', methods=['GET'])
 def dashboard_schedule():
     """
-    Returns classes for today/tomorrow based on BST time window.
-
-    FIXED: If user's semester has no classes on that day,
-    returns classes=[] with no_class_today=True.
-    Does NOT fall back to showing other semesters' classes.
+    Returns classes for today/tomorrow.
+    FIXED: If this batch has no classes → returns empty list + no_class_today=True
+    NEVER falls back to showing other batches' classes.
     """
     try:
         from core.schedule_utils import get_schedule_target, fmt12h, classify_class_status
@@ -225,9 +238,9 @@ def dashboard_schedule():
     is_hol, hol_name = is_holiday(target['date'])
     if is_hol:
         return jsonify({
-            'success': True, 'mode': mode, 'day': day_name,
-            'label': label, 'bst_time': bst_time,
-            'is_holiday': True, 'holiday_name': hol_name,
+            'success':       True, 'mode': mode, 'day': day_name,
+            'label':         label, 'bst_time': bst_time,
+            'is_holiday':    True, 'holiday_name': hol_name,
             'no_class_today': False, 'classes': [],
         })
 
@@ -241,12 +254,9 @@ def dashboard_schedule():
         q = _apply_filters(q, program, year, semester)
         rows = q.order('time_start').execute().data or []
 
-        # ── CRITICAL FIX ──────────────────────────────────────
-        # Do NOT fall back to all-semester data.
-        # If this semester genuinely has no classes today, return empty.
-        # The dashboard will show "আজ/আগামীকাল কোনো ক্লাস নেই।"
+        # ── NO FALLBACK ───────────────────────────────────────
         no_class_today = (len(rows) == 0)
-        # ──────────────────────────────────────────────────────
+        # ─────────────────────────────────────────────────────
 
         rows = _enrich(rows, _get_mapping(sb))
         enriched = []
@@ -265,11 +275,11 @@ def dashboard_schedule():
             enriched.append(cls)
 
         return jsonify({
-            'success': True, 'mode': mode, 'day': day_name,
-            'label': label, 'bst_time': bst_time,
-            'is_holiday': False, 'holiday_name': None,
+            'success':       True, 'mode': mode, 'day': day_name,
+            'label':         label, 'bst_time': bst_time,
+            'is_holiday':    False, 'holiday_name': None,
             'no_class_today': no_class_today,
-            'classes': enriched,
+            'classes':       enriched,
         })
 
     except Exception as e:
@@ -280,5 +290,4 @@ def dashboard_schedule():
 
 @academic_bp.route('/api/time-search', methods=['GET'])
 def time_search():
-    """Alias for duration-search, kept for backward compatibility."""
     return duration_search()

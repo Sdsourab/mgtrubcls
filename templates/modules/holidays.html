@@ -1,267 +1,229 @@
 {% extends "base.html" %}
-{% block title %}Holiday Plan{% endblock %}
+{% block title %}Holiday Plan 2026 — UniSync{% endblock %}
 {% block nav_holidays %}active{% endblock %}
 
 {% block extra_css %}
 <style>
 /* ═══════════════════════════════════════════════════════════════
    UniSync Holiday Plan — 2026 Academic Calendar
+   Vivid, accessible colors. Dark hero. Clear type.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Hero banner ─────────────────────────────────────────────── */
-.hol-hero {
+/* ── Hero ─────────────────────────────────────────────────────── */
+.hp-hero {
     position: relative; overflow: hidden;
-    background: linear-gradient(135deg,
-        rgba(188,111,55,.12) 0%,
-        rgba(205,169,106,.08) 50%,
-        rgba(142,137,70,.06) 100%);
-    border: 1px solid var(--border-card);
+    background: linear-gradient(135deg, #2C1408 0%, #4A2010 55%, #2C2008 100%);
+    border: 1px solid rgba(205,169,106,.20);
     border-radius: var(--radius-lg);
-    padding: 24px 26px 20px; margin-bottom: 24px;
+    padding: 26px 28px 22px; margin-bottom: 26px;
+    box-shadow: 0 8px 36px rgba(44,20,8,.28);
 }
-.hol-hero::after {
-    content: '🌴'; position: absolute; right: 20px; top: 50%;
-    transform: translateY(-50%); font-size: 4.5rem; opacity: .06;
-    pointer-events: none;
+.hp-hero::after {
+    content: '🌴';
+    position: absolute; right: 22px; top: 50%; transform: translateY(-50%);
+    font-size: 5.5rem; opacity: .08; pointer-events: none; line-height: 1;
 }
-.hol-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
-.hol-eyebrow {
+.hp-eyebrow {
     font-family: var(--font-body);
-    font-size: .63rem; font-weight: 800; letter-spacing: .15em;
-    text-transform: uppercase; color: var(--terra); margin-bottom: 6px;
+    font-size: .62rem; font-weight: 800; letter-spacing: .17em;
+    text-transform: uppercase; color: #DFC087; margin-bottom: 7px;
+    display: flex; align-items: center; gap: 7px;
 }
-.hol-title {
+.hp-eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: #BC6F37; }
+.hp-title {
     font-family: var(--font-display);
-    font-size: 1.7rem; font-weight: 700; color: var(--text-primary);
+    font-size: 1.85rem; font-weight: 700; color: #F5EAD0;
     letter-spacing: -.025em; line-height: 1.1; margin-bottom: 4px;
 }
-.hol-sub {
-    font-family: var(--font-body);
-    font-size: .8rem; color: var(--text-muted);
+.hp-sub { font-family: var(--font-body); font-size: .8rem; color: rgba(245,234,208,.48); }
+.hp-stats { display: flex; gap: 11px; flex-wrap: wrap; margin-top: 18px; }
+.hp-stat {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(205,169,106,.18);
+    border-radius: var(--radius-md); padding: 10px 17px; min-width: 76px;
+    transition: background .15s;
 }
-.hol-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
-.hol-stat {
-    background: rgba(255,255,255,.35);
-    border: 1px solid rgba(188,111,55,.18);
-    border-radius: var(--radius-md); padding: 10px 16px; text-align: center;
-}
-.hol-stat-num {
+.hp-stat:hover { background: rgba(255,255,255,.11); }
+.hp-stat-n {
     font-family: var(--font-display);
-    font-size: 1.6rem; font-weight: 700; color: var(--terra); line-height: 1;
+    font-size: 1.7rem; font-weight: 700; color: #DFC087; line-height: 1;
 }
-.hol-stat-lbl {
+.hp-stat-l {
     font-family: var(--font-body);
-    font-size: .62rem; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--text-muted); margin-top: 2px;
+    font-size: .59rem; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: rgba(223,192,135,.48); margin-top: 2px;
 }
 
-/* ── Countdown cards ─────────────────────────────────────────── */
-.hol-countdown-section { margin-bottom: 26px; }
-.hol-sec-title {
+/* ── Section head ─────────────────────────────────────────────── */
+.hp-sec {
     font-family: var(--font-body);
-    font-size: .65rem; font-weight: 800; letter-spacing: .13em;
+    font-size: .63rem; font-weight: 800; letter-spacing: .14em;
     text-transform: uppercase; color: var(--text-muted);
     display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
 }
-.hol-sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.hp-sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-.countdown-grid {
+/* ── Countdown grid ───────────────────────────────────────────── */
+.cd-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 14px; margin-bottom: 28px;
 }
-.countdown-card {
+
+.cd-card {
     position: relative; overflow: hidden;
     background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: var(--radius-lg); padding: 18px 20px;
+    border-radius: var(--radius-lg);
     transition: box-shadow .2s, transform .2s;
 }
-.countdown-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
-.cc-strip {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-}
-.strip-religious { background: linear-gradient(90deg, var(--terra), #e8844a); }
-.strip-national  { background: linear-gradient(90deg, #2a6a9a, #4a9aca); }
-.strip-academic  { background: linear-gradient(90deg, var(--olive), #aaaa50); }
-.strip-cultural  { background: linear-gradient(90deg, var(--golden), #e8c87a); }
+.cd-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
 
-.cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.cc-category {
+/* Vivid top strip by category */
+.cd-strip { height: 4px; }
+.cds-religious { background: linear-gradient(90deg, #BC6F37, #E8844A, #BC6F37); }
+.cds-national  { background: linear-gradient(90deg, #1D4ED8, #3B82F6, #1D4ED8); }
+.cds-academic  { background: linear-gradient(90deg, #15803D, #22C55E, #15803D); }
+.cds-cultural  { background: linear-gradient(90deg, #B45309, #F59E0B, #B45309); }
+
+.cd-body { padding: 16px 18px 18px; }
+.cd-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 9px; }
+.cd-cat {
     font-family: var(--font-body);
-    font-size: .58rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-    padding: 2px 8px; border-radius: 8px;
+    font-size: .58rem; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; padding: 2px 9px; border-radius: 8px;
 }
-.cat-religious { background: rgba(188,111,55,.1); border: 1px solid rgba(188,111,55,.2); color: var(--terra); }
-.cat-national  { background: rgba(42,106,154,.1); border: 1px solid rgba(42,106,154,.2); color: var(--info); }
-.cat-academic  { background: rgba(142,137,70,.1); border: 1px solid rgba(142,137,70,.2); color: var(--olive); }
-.cat-cultural  { background: rgba(205,169,106,.12); border: 1px solid rgba(205,169,106,.25); color: var(--golden); }
+.ccat-religious { background: rgba(188,111,55,.14); border: 1px solid rgba(188,111,55,.28); color: #BC6F37; }
+.ccat-national  { background: rgba(29,78,216,.12);  border: 1px solid rgba(29,78,216,.26);  color: #2563EB; }
+.ccat-academic  { background: rgba(21,128,61,.12);  border: 1px solid rgba(21,128,61,.26);  color: #16A34A; }
+.ccat-cultural  { background: rgba(180,83,9,.12);   border: 1px solid rgba(180,83,9,.26);   color: #B45309; }
+.cd-moon { font-size: .78rem; opacity: .65; }
 
-.cc-moon {
-    font-size: .7rem; color: var(--text-muted); flex-shrink: 0;
-    title: "Date depends on moon sighting";
-}
-.cc-name {
+.cd-name {
     font-family: var(--font-display);
-    font-size: .98rem; font-weight: 700; color: var(--text-primary);
-    line-height: 1.3; margin-bottom: 6px;
+    font-size: .98rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; margin-bottom: 2px;
 }
-.cc-name-bn {
-    font-family: var(--font-body);
-    font-size: .72rem; color: var(--text-muted); margin-bottom: 10px;
+.cd-name-bn { font-family: var(--font-body); font-size: .72rem; color: var(--text-muted); margin-bottom: 10px; }
+.cd-date {
+    font-family: var(--font-body); font-size: .74rem; color: var(--text-secondary);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 13px;
 }
-.cc-date-row {
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-    font-family: var(--font-body); font-size: .75rem;
-    color: var(--text-secondary); margin-bottom: 12px;
-}
-.cc-date-icon { color: var(--terra); font-size: .8rem; }
-
-.cc-countdown-num {
-    font-family: var(--font-display);
-    font-size: 2.2rem; font-weight: 700; color: var(--terra); line-height: 1;
-}
-.cc-countdown-lbl {
-    font-family: var(--font-body);
-    font-size: .65rem; font-weight: 600; letter-spacing: .09em;
-    text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
-}
-.cc-progress-wrap { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
-.cc-progress-bar {
-    height: 100%; border-radius: 4px;
-    background: linear-gradient(90deg, var(--terra), var(--golden));
-    transition: width 1s ease;
+.cd-daychip {
+    font-family: var(--font-body); font-size: .63rem; font-weight: 700;
+    border-radius: 10px; padding: 2px 9px;
 }
 
-/* Ongoing pill */
-.cc-ongoing {
+/* Countdown number */
+.cd-num { font-family: var(--font-display); font-size: 2.5rem; font-weight: 700; line-height: 1; }
+.cd-lbl {
+    font-family: var(--font-body); font-size: .62rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+}
+.cd-prog { height: 5px; background: var(--border); border-radius: 5px; overflow: hidden; }
+.cd-bar  { height: 100%; border-radius: 5px; transition: width 1.2s ease; }
+
+/* Ongoing badge */
+.cd-live {
     display: inline-flex; align-items: center; gap: 5px;
     font-family: var(--font-body); font-size: .68rem; font-weight: 700;
-    color: var(--success); background: var(--success-bg);
-    border: 1px solid rgba(74,140,74,.2); border-radius: 12px; padding: 3px 10px;
+    color: #16A34A; background: rgba(21,128,61,.1);
+    border: 1px solid rgba(21,128,61,.25); border-radius: 12px; padding: 3px 10px;
 }
-.cc-ongoing-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); animation: pulseDot 1.4s infinite; }
-@keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+.cd-live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #16A34A;
+    animation: liveP 1.4s ease-in-out infinite;
+}
+@keyframes liveP { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-/* Days badge */
-.cc-days-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-family: var(--font-body); font-size: .65rem; font-weight: 700;
-    color: var(--terra); background: rgba(188,111,55,.08);
-    border: 1px solid rgba(188,111,55,.18); border-radius: 10px; padding: 2px 8px;
+/* ── Month tabs ──────────────────────────────────────────────── */
+.hp-months {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px;
 }
+.hp-mtab {
+    font-family: var(--font-body); font-size: .7rem; font-weight: 600;
+    padding: 5px 13px; border-radius: 20px; white-space: nowrap; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted);
+    transition: all .18s; flex-shrink: 0;
+}
+.hp-mtab:hover { border-color: var(--border-mid); color: var(--text-primary); }
+.hp-mtab.mon { background: rgba(188,111,55,.12); border-color: #BC6F37; color: #BC6F37; font-weight: 700; }
 
-/* ── Month filter tabs ────────────────────────────────────────── */
-.month-tabs {
-    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
-    overflow-x: auto; padding-bottom: 4px;
+/* Category filter chips */
+.hp-cats { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+.hp-chip {
+    font-family: var(--font-body); font-size: .7rem; font-weight: 600;
+    padding: 5px 13px; border-radius: 16px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted);
+    transition: all .18s;
 }
-.month-tab {
-    font-family: var(--font-body);
-    font-size: .7rem; font-weight: 600; padding: 5px 13px; border-radius: 20px;
-    border: 1px solid var(--border); background: var(--bg-card);
-    color: var(--text-muted); cursor: pointer; transition: all .18s;
-    white-space: nowrap; flex-shrink: 0;
-}
-.month-tab:hover { border-color: var(--border-mid); color: var(--text-primary); }
-.month-tab.m-on {
-    background: linear-gradient(135deg,rgba(188,111,55,.13),rgba(205,169,106,.07));
-    border-color: var(--terra); color: var(--terra); font-weight: 700;
-}
+.hp-chip:hover { border-color: var(--border-mid); color: var(--text-primary); }
+.hp-chip.chon { background: rgba(188,111,55,.1); border-color: #BC6F37; color: #BC6F37; font-weight: 700; }
 
-/* Category filter */
-.cat-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-.cat-f {
-    font-family: var(--font-body);
-    font-size: .68rem; font-weight: 600; padding: 4px 12px; border-radius: 16px;
-    border: 1px solid var(--border); background: var(--bg-card);
-    color: var(--text-muted); cursor: pointer; transition: all .18s;
-}
-.cat-f.c-on { border-color: var(--terra); color: var(--terra); font-weight: 700;
-    background: rgba(188,111,55,.08); }
+/* ── Holiday list rows ───────────────────────────────────────── */
+.hp-list { display: flex; flex-direction: column; gap: 8px; }
 
-/* ── Holiday list / table ────────────────────────────────────── */
-.hol-list { display: flex; flex-direction: column; gap: 10px; }
-
-.hol-row {
-    display: grid;
-    grid-template-columns: 3px 1fr auto;
-    gap: 0 14px;
+.hp-row {
+    display: grid; grid-template-columns: 4px 1fr auto;
     background: var(--bg-card); border: 1px solid var(--border-card);
     border-radius: var(--radius-md); overflow: hidden;
     transition: box-shadow .18s, border-color .18s;
 }
-.hol-row:hover { box-shadow: var(--shadow-sm); border-color: var(--border-mid); }
-.hol-row.hr-past { opacity: .46; }
-.hol-row.hr-ongoing { border-color: rgba(74,140,74,.3); }
-.hol-row.hr-ongoing .hr-accent { background: var(--success); }
+.hp-row:hover { box-shadow: var(--shadow-sm); border-color: var(--border-mid); }
+.hp-row.rpast { opacity: .42; }
+.hp-row.rongoing { border-color: rgba(21,128,61,.35); }
 
-.hr-accent { width: 3px; flex-shrink: 0; }
-.hr-accent-religious { background: var(--terra); }
-.hr-accent-national  { background: #2a6a9a; }
-.hr-accent-academic  { background: var(--olive); }
-.hr-accent-cultural  { background: var(--golden); }
+.hr-bar { width: 4px; }
+.hrb-religious { background: #BC6F37; }
+.hrb-national  { background: #2563EB; }
+.hrb-academic  { background: #16A34A; }
+.hrb-cultural  { background: #B45309; }
 
-.hr-body { padding: 12px 0 12px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.hr-icon { font-size: 1.2rem; flex-shrink: 0; }
+.hr-body { padding: 12px 0 12px 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.hr-ico  { font-size: 1.2rem; flex-shrink: 0; }
 .hr-info { flex: 1; min-width: 0; }
 .hr-name {
-    font-family: var(--font-display);
-    font-size: .9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;
+    font-family: var(--font-display); font-size: .9rem; font-weight: 700;
+    color: var(--text-primary); margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.hr-name-bn {
-    font-family: var(--font-body);
-    font-size: .7rem; color: var(--text-muted);
-}
-.hr-date-str {
-    font-family: var(--font-body);
-    font-size: .72rem; color: var(--text-secondary); margin-top: 3px;
-}
+.hr-name-bn { font-family: var(--font-body); font-size: .7rem; color: var(--text-muted); }
+.hr-date-s  { font-family: var(--font-body); font-size: .71rem; color: var(--text-secondary); margin-top: 3px; }
 
-.hr-right { padding: 12px 16px 12px 0; text-align: right; flex-shrink: 0; }
-.hr-days {
-    font-family: var(--font-mono);
-    font-size: .88rem; font-weight: 600; color: var(--terra);
+.hr-right { padding: 12px 16px; text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 3px; }
+.hr-days-n { font-family: var(--font-mono); font-size: .95rem; font-weight: 700; }
+.hr-days-l { font-family: var(--font-body); font-size: .58rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.hr-badge {
+    font-family: var(--font-body); font-size: .6rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 8px; display: inline-block;
 }
-.hr-days-lbl {
-    font-family: var(--font-body);
-    font-size: .58rem; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--text-muted);
-}
-.hr-status-badge {
-    display: inline-block; font-family: var(--font-body);
-    font-size: .6rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; margin-top: 4px;
-}
-.hsb-ongoing  { background: var(--success-bg); color: var(--success); }
-.hsb-past     { background: rgba(0,0,0,.04); color: var(--text-muted); }
-.hsb-soon     { background: rgba(188,111,55,.1); color: var(--terra); }
-.hsb-upcoming { background: var(--info-bg); color: var(--info); }
+.hbg-ongoing  { background: rgba(21,128,61,.12);  color: #16A34A; }
+.hbg-past     { background: rgba(0,0,0,.05);       color: var(--text-muted); }
+.hbg-soon7    { background: rgba(188,111,55,.12);  color: #BC6F37; }
+.hbg-upcoming { background: rgba(29,78,216,.09);   color: #2563EB; }
 
-/* Empty state */
-.hol-empty {
-    text-align: center; padding: 36px 20px;
-    font-family: var(--font-body); font-size: .85rem; color: var(--text-muted);
+/* Month heading */
+.hp-mhead {
+    font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+    color: var(--text-primary); display: flex; align-items: center; gap: 8px;
+    padding: 14px 0 8px;
 }
+.hp-mhead::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-/* Sticky month heading */
-.month-heading {
-    font-family: var(--font-display);
-    font-size: 1rem; font-weight: 700; color: var(--text-primary);
-    padding: 14px 0 8px; display: flex; align-items: center; gap: 8px;
-}
-.month-heading::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+/* Empty / loading */
+.hp-empty { text-align: center; padding: 38px 20px; font-family: var(--font-body); font-size: .85rem; color: var(--text-muted); }
 
-/* Info note */
-.hol-moon-note {
-    font-family: var(--font-body);
-    font-size: .72rem; color: var(--text-muted); margin-top: 20px; line-height: 1.6;
-    padding: 10px 14px; background: rgba(188,111,55,.05);
-    border: 1px solid rgba(188,111,55,.12); border-radius: var(--radius-sm);
+/* Moon note */
+.hp-note {
+    font-family: var(--font-body); font-size: .72rem; color: var(--text-muted);
+    margin-top: 20px; line-height: 1.6; padding: 10px 14px;
+    background: rgba(188,111,55,.05); border: 1px solid rgba(188,111,55,.12);
+    border-radius: var(--radius-sm);
 }
 
 @media (max-width: 640px) {
-    .hol-title { font-size: 1.4rem; }
-    .countdown-grid { grid-template-columns: 1fr; }
-    .hr-body { gap: 10px; }
+    .hp-title  { font-size: 1.45rem; }
+    .cd-grid   { grid-template-columns: 1fr; }
+    .hp-stats  { gap: 8px; }
+    .hr-name   { font-size: .84rem; }
 }
 </style>
 {% endblock %}
@@ -269,85 +231,63 @@
 {% block content %}
 <div class="page-wrapper">
 
-  <!-- ════════════════════════
-       HERO
-       ════════════════════════ -->
-  <div class="hol-hero">
-    <div class="hol-hero-top">
-      <div>
-        <div class="hol-eyebrow">Rabindra University Bangladesh</div>
-        <h1 class="hol-title">Holiday Plan 2026</h1>
-        <div class="hol-sub">Academic Calendar · Department of Management</div>
-      </div>
-    </div>
-    <div class="hol-stats" id="heroStats">
-      <div class="hol-stat">
-        <div class="hol-stat-num" id="statTotal">—</div>
-        <div class="hol-stat-lbl">Total Holidays</div>
-      </div>
-      <div class="hol-stat">
-        <div class="hol-stat-num" id="statClassDays">—</div>
-        <div class="hol-stat-lbl">Class Off Days</div>
-      </div>
-      <div class="hol-stat">
-        <div class="hol-stat-num" id="statRemaining">—</div>
-        <div class="hol-stat-lbl">Remaining</div>
-      </div>
-      <div class="hol-stat">
-        <div class="hol-stat-num" id="statNextIn">—</div>
-        <div class="hol-stat-lbl">Next Holiday In</div>
-      </div>
+  <!-- ════════ HERO ══════════════════════════════════════════════ -->
+  <div class="hp-hero">
+    <div class="hp-eyebrow"><span class="hp-eyebrow-dot"></span>Rabindra University Bangladesh</div>
+    <h1 class="hp-title">Holiday Plan 2026</h1>
+    <div class="hp-sub">Academic Calendar · Department of Management · Session 2025–26</div>
+    <div class="hp-stats">
+      <div class="hp-stat"><div class="hp-stat-n" id="st-total">—</div><div class="hp-stat-l">Holidays</div></div>
+      <div class="hp-stat"><div class="hp-stat-n" id="st-class">—</div><div class="hp-stat-l">Class Off</div></div>
+      <div class="hp-stat"><div class="hp-stat-n" id="st-left">—</div><div class="hp-stat-l">Remaining</div></div>
+      <div class="hp-stat"><div class="hp-stat-n" id="st-next">—</div><div class="hp-stat-l">Next in</div></div>
     </div>
   </div>
 
-  <!-- ════════════════════════
-       VACATION COUNTDOWN
-       ════════════════════════ -->
-  <div class="hol-countdown-section" id="countdownSection">
-    <div class="hol-sec-title">Vacation Countdown</div>
-    <div class="countdown-grid" id="countdownGrid">
-      <div style="color:var(--text-muted);font-size:.82rem;padding:12px;">Loading…</div>
-    </div>
+  <!-- ════════ COUNTDOWN CARDS ══════════════════════════════════ -->
+  <div id="cdSection">
+    <div class="hp-sec">Vacation Countdown</div>
+    <div class="cd-grid" id="cdGrid"><div class="hp-empty">Loading…</div></div>
   </div>
 
-  <!-- ════════════════════════
-       FULL LIST
-       ════════════════════════ -->
-  <div class="hol-sec-title" style="margin-bottom:14px;">All Holidays</div>
+  <!-- ════════ FULL LIST ════════════════════════════════════════ -->
+  <div class="hp-sec" style="margin-bottom:14px;">All Holidays 2026</div>
 
-  <!-- Month filter -->
-  <div class="month-tabs" id="monthTabs">
-    <button class="month-tab m-on" onclick="filterMonth('all')" data-m="all">All Year</button>
-    <button class="month-tab" onclick="filterMonth(1)"  data-m="1">January</button>
-    <button class="month-tab" onclick="filterMonth(2)"  data-m="2">February</button>
-    <button class="month-tab" onclick="filterMonth(3)"  data-m="3">March</button>
-    <button class="month-tab" onclick="filterMonth(4)"  data-m="4">April</button>
-    <button class="month-tab" onclick="filterMonth(5)"  data-m="5">May</button>
-    <button class="month-tab" onclick="filterMonth(6)"  data-m="6">June</button>
-    <button class="month-tab" onclick="filterMonth(7)"  data-m="7">July</button>
-    <button class="month-tab" onclick="filterMonth(8)"  data-m="8">August</button>
-    <button class="month-tab" onclick="filterMonth(9)"  data-m="9">September</button>
-    <button class="month-tab" onclick="filterMonth(10)" data-m="10">October</button>
-    <button class="month-tab" onclick="filterMonth(11)" data-m="11">November</button>
-    <button class="month-tab" onclick="filterMonth(12)" data-m="12">December</button>
+  <!-- Month tabs -->
+  <div class="hp-months" id="monthTabs">
+    <button class="hp-mtab mon" data-m="all"  onclick="fMonth('all')">All Year</button>
+    <button class="hp-mtab" data-m="1"   onclick="fMonth(1)">Jan</button>
+    <button class="hp-mtab" data-m="2"   onclick="fMonth(2)">Feb</button>
+    <button class="hp-mtab" data-m="3"   onclick="fMonth(3)">Mar</button>
+    <button class="hp-mtab" data-m="4"   onclick="fMonth(4)">Apr</button>
+    <button class="hp-mtab" data-m="5"   onclick="fMonth(5)">May</button>
+    <button class="hp-mtab" data-m="6"   onclick="fMonth(6)">Jun</button>
+    <button class="hp-mtab" data-m="7"   onclick="fMonth(7)">Jul</button>
+    <button class="hp-mtab" data-m="8"   onclick="fMonth(8)">Aug</button>
+    <button class="hp-mtab" data-m="9"   onclick="fMonth(9)">Sep</button>
+    <button class="hp-mtab" data-m="10"  onclick="fMonth(10)">Oct</button>
+    <button class="hp-mtab" data-m="11"  onclick="fMonth(11)">Nov</button>
+    <button class="hp-mtab" data-m="12"  onclick="fMonth(12)">Dec</button>
   </div>
 
-  <!-- Category filter -->
-  <div class="cat-filters">
-    <button class="cat-f c-on" onclick="filterCat('all')"       data-c="all">All</button>
-    <button class="cat-f"      onclick="filterCat('religious')" data-c="religious">🕌 Religious</button>
-    <button class="cat-f"      onclick="filterCat('national')"  data-c="national">🇧🇩 National</button>
-    <button class="cat-f"      onclick="filterCat('academic')"  data-c="academic">📚 Academic</button>
-    <button class="cat-f"      onclick="filterCat('cultural')"  data-c="cultural">🎨 Cultural</button>
+  <!-- Category chips -->
+  <div class="hp-cats">
+    <button class="hp-chip chon" data-c="all"       onclick="fCat('all')">All</button>
+    <button class="hp-chip"      data-c="religious" onclick="fCat('religious')"
+            style="border-color:rgba(188,111,55,.3);color:#BC6F37">🕌 Religious</button>
+    <button class="hp-chip"      data-c="national"  onclick="fCat('national')"
+            style="border-color:rgba(29,78,216,.3);color:#2563EB">🇧🇩 National</button>
+    <button class="hp-chip"      data-c="academic"  onclick="fCat('academic')"
+            style="border-color:rgba(21,128,61,.3);color:#16A34A">📚 Academic</button>
+    <button class="hp-chip"      data-c="cultural"  onclick="fCat('cultural')"
+            style="border-color:rgba(180,83,9,.3);color:#B45309">🎨 Cultural</button>
   </div>
 
-  <div id="holidayList" class="hol-list">
-    <div class="hol-empty">Loading holidays…</div>
-  </div>
+  <div id="hpList" class="hp-list"><div class="hp-empty">Loading holidays…</div></div>
 
-  <div class="hol-moon-note">
-    ⭐ Dates marked with <strong>🌙</strong> are dependent on moon sighting and may vary by ±1 day.
-    · Source: Rabindra University Bangladesh Academic Calendar 2026.
+  <div class="hp-note">
+    ⭐ Dates marked with <strong>🌙</strong> depend on moon sighting and may vary by ±1 day.
+    &nbsp;·&nbsp; Source: Rabindra University Bangladesh Academic Calendar 2026.
   </div>
 
 </div>
@@ -355,228 +295,233 @@
 
 {% block extra_js %}
 <script>
-/* ════════════════════════════════════════════════════════════════
-   UniSync Holiday Plan Engine
-   ════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   UniSync Holiday Plan — Client Engine
+   ═══════════════════════════════════════════════════════════════ */
 
-const MONTHS = ['','January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
-const MONTH_SHORT = ['','Jan','Feb','Mar','Apr','May','Jun',
-                     'Jul','Aug','Sep','Oct','Nov','Dec'];
-const CAT_ICONS = { religious:'🕌', national:'🇧🇩', academic:'📚', cultural:'🎭' };
-const CAT_CLASS = { religious:'cat-religious', national:'cat-national',
-                    academic:'cat-academic', cultural:'cat-cultural' };
-const ACCENT_CLASS = { religious:'hr-accent-religious', national:'hr-accent-national',
-                       academic:'hr-accent-academic', cultural:'hr-accent-cultural' };
-const STRIP_CLASS = { religious:'strip-religious', national:'strip-national',
-                      academic:'strip-academic', cultural:'strip-cultural' };
+const MONTHS   = ['','January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+const MONTHS_S = ['','Jan','Feb','Mar','Apr','May','Jun',
+                  'Jul','Aug','Sep','Oct','Nov','Dec'];
 
-let _allHolidays = [];
+/* Category → design tokens */
+const C = {
+    religious: { color:'#BC6F37', icon:'🕌', strip:'cds-religious', cat:'ccat-religious', bar:'hrb-religious', dayn:'#BC6F37' },
+    national:  { color:'#2563EB', icon:'🇧🇩', strip:'cds-national',  cat:'ccat-national',  bar:'hrb-national',  dayn:'#2563EB' },
+    academic:  { color:'#16A34A', icon:'📚', strip:'cds-academic',  cat:'ccat-academic',  bar:'hrb-academic',  dayn:'#16A34A' },
+    cultural:  { color:'#B45309', icon:'🎭', strip:'cds-cultural',  cat:'ccat-cultural',  bar:'hrb-cultural',  dayn:'#B45309' },
+};
+const Cdef = { color:'#BC6F37', icon:'📌', strip:'cds-religious', cat:'ccat-religious', bar:'hrb-religious', dayn:'#BC6F37' };
+const ct   = cat => C[cat] || Cdef;
+
+let _all         = [];
 let _activeMonth = 'all';
 let _activeCat   = 'all';
 
-/* ── Load data ───────────────────────────────────────────────── */
-async function loadHolidays() {
+/* ── Format ─────────────────────────────────────────────────── */
+function fmtRange(start, end) {
+    const s  = new Date(start + 'T00:00:00');
+    const e  = new Date(end   + 'T00:00:00');
+    const sm = MONTHS_S[s.getMonth()+1];
+    if (start === end) return s.getDate() + ' ' + sm + ' 2026';
+    const em = MONTHS_S[e.getMonth()+1];
+    return s.getDate() + ' ' + sm + ' – ' + e.getDate() + ' ' + em + ' 2026';
+}
+
+/* ── Load ───────────────────────────────────────────────────── */
+async function load() {
     try {
         const res  = await fetch('/holidays/api/holidays');
-        const data = await res.json();
-        _allHolidays = data.data || [];
+        const json = await res.json();
+        _all = json.data || [];
         renderStats();
         renderCountdowns();
         renderList();
-        highlightCurrentMonth();
-    } catch(e) {
-        document.getElementById('holidayList').innerHTML =
-            '<div class="hol-empty">Failed to load holidays.</div>';
+        scrollToCurrentMonth();
+    } catch (e) {
+        document.getElementById('hpList').innerHTML =
+            '<div class="hp-empty">⚠ Failed to load holiday data.</div>';
     }
 }
 
-/* ── Stats ───────────────────────────────────────────────────── */
+/* ── Stats ──────────────────────────────────────────────────── */
 function renderStats() {
-    const total      = _allHolidays.length;
-    const classDays  = _allHolidays.reduce((s,h) => s + h.days_class, 0);
-    const remaining  = _allHolidays.filter(h => h.status !== 'past').length;
-    const nextH      = _allHolidays.find(h => h.status === 'upcoming' || h.status === 'ongoing');
-    const nextIn     = nextH
-        ? (nextH.status === 'ongoing' ? 'Today' : nextH.days_until + 'd')
+    const total  = _all.length;
+    const cls    = _all.reduce((s,h) => s+(h.days_class||0), 0);
+    const left   = _all.filter(h => h.status !== 'past').length;
+    const nxt    = _all.find(h => h.status==='upcoming'||h.status==='ongoing');
+    const nextIn = nxt
+        ? (nxt.status==='ongoing' ? 'Now 🎉' : nxt.days_until+'d')
         : '—';
-
-    document.getElementById('statTotal').textContent     = total;
-    document.getElementById('statClassDays').textContent = classDays;
-    document.getElementById('statRemaining').textContent = remaining;
-    document.getElementById('statNextIn').textContent    = nextIn;
+    document.getElementById('st-total').textContent = total;
+    document.getElementById('st-class').textContent = cls;
+    document.getElementById('st-left').textContent  = left;
+    document.getElementById('st-next').textContent  = nextIn;
 }
 
-/* ── Countdown cards ─────────────────────────────────────────── */
+/* ── Countdown cards ────────────────────────────────────────── */
 function renderCountdowns() {
-    const cards = _allHolidays.filter(h =>
-        (h.status === 'upcoming' && h.show_countdown) ||
-        h.status === 'ongoing'
+    const cards = _all.filter(h =>
+        h.status === 'ongoing' ||
+        (h.status === 'upcoming' && h.show_countdown)
     );
 
-    const grid = document.getElementById('countdownGrid');
-    if (!cards.length) {
-        document.getElementById('countdownSection').style.display = 'none';
-        return;
-    }
-    document.getElementById('countdownSection').style.display = '';
+    const sec  = document.getElementById('cdSection');
+    const grid = document.getElementById('cdGrid');
+
+    if (!cards.length) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
 
     grid.innerHTML = cards.slice(0, 6).map(h => {
-        const stripCls  = STRIP_CLASS[h.category] || 'strip-religious';
-        const catCls    = CAT_CLASS[h.category] || 'cat-religious';
-        const moon      = h.moon_dep ? '🌙' : '';
-        const dateStr   = formatDateRange(h.start, h.end);
+        const c       = ct(h.category);
+        const moon    = h.moon_dep ? '🌙' : '';
+        const dateStr = fmtRange(h.start, h.end);
 
-        let bottomHtml;
+        let bottom;
         if (h.status === 'ongoing') {
-            bottomHtml = `
-                <div class="cc-ongoing">
-                    <span class="cc-ongoing-dot"></span>
-                    Ongoing — ${h.days_left} day${h.days_left !== 1 ? 's' : ''} left
-                </div>`;
+            bottom = `<div class="cd-live"><span class="cd-live-dot"></span>
+                        Ongoing — ${h.days_left} day${h.days_left!==1?'s':''} left</div>`;
         } else {
-            /* Progress bar: 0% = countdown_threshold days before, 100% = 0 days before */
-            const pct = Math.max(0, Math.min(100,
-                (1 - h.days_until / h.countdown_threshold) * 100
+            const pct = Math.min(100, Math.max(0,
+                (1 - h.days_until / Math.max(h.countdown_threshold,1)) * 100
             ));
-            bottomHtml = `
-                <div class="cc-countdown-num">${h.days_until}</div>
-                <div class="cc-countdown-lbl">day${h.days_until !== 1 ? 's' : ''} away</div>
-                <div class="cc-progress-wrap">
-                    <div class="cc-progress-bar" style="width:${pct}%"></div>
+            bottom = `
+                <div class="cd-num" style="color:${c.color}">${h.days_until}</div>
+                <div class="cd-lbl">day${h.days_until!==1?'s':''} away</div>
+                <div class="cd-prog">
+                    <div class="cd-bar" style="width:${pct}%;background:${c.color}"></div>
                 </div>`;
         }
 
         return `
-        <div class="countdown-card">
-            <div class="cc-strip ${stripCls}"></div>
-            <div class="cc-top">
-                <span class="cc-category ${catCls}">${h.category}</span>
-                <span class="cc-moon" title="Moon-sighting dependent">${moon}</span>
+        <div class="cd-card">
+            <div class="cd-strip ${c.strip}"></div>
+            <div class="cd-body">
+                <div class="cd-top">
+                    <span class="cd-cat ${c.cat}">${h.category}</span>
+                    <span class="cd-moon">${moon}</span>
+                </div>
+                <div class="cd-name">${h.name_en}</div>
+                <div class="cd-name-bn">${h.name_bn}</div>
+                <div class="cd-date">
+                    <span>📅</span>${dateStr}
+                    <span class="cd-daychip"
+                          style="background:${c.color}12;border:1px solid ${c.color}28;color:${c.color}">
+                        ${h.total_days} day${h.total_days!==1?'s':''}
+                    </span>
+                </div>
+                ${bottom}
             </div>
-            <div class="cc-name">${h.name_en}</div>
-            <div class="cc-name-bn">${h.name_bn}</div>
-            <div class="cc-date-row">
-                <span class="cc-date-icon">📅</span>
-                ${dateStr}
-                &nbsp;·&nbsp;
-                <span class="cc-days-badge">${h.total_days} day${h.total_days !== 1 ? 's' : ''}</span>
-            </div>
-            ${bottomHtml}
         </div>`;
     }).join('');
 }
 
-/* ── Full list ───────────────────────────────────────────────── */
+/* ── Full list ──────────────────────────────────────────────── */
 function renderList() {
-    let filtered = _allHolidays;
-
+    let data = _all;
     if (_activeCat !== 'all')
-        filtered = filtered.filter(h => h.category === _activeCat);
-
-    if (_activeMonth !== 'all')
-        filtered = filtered.filter(h => {
-            const m = parseInt(h.start.split('-')[1]);
-            const me = parseInt(h.end.split('-')[1]);
-            return m === _activeMonth || me === _activeMonth;
+        data = data.filter(h => h.category === _activeCat);
+    if (_activeMonth !== 'all') {
+        const m = parseInt(_activeMonth);
+        data = data.filter(h => {
+            const sm = parseInt(h.start.split('-')[1]);
+            const em = parseInt(h.end.split('-')[1]);
+            return sm === m || em === m;
         });
+    }
 
-    const listEl = document.getElementById('holidayList');
-    if (!filtered.length) {
-        listEl.innerHTML = '<div class="hol-empty">No holidays found for this filter.</div>';
+    const el = document.getElementById('hpList');
+    if (!data.length) {
+        el.innerHTML = '<div class="hp-empty">No holidays for this filter.</div>';
         return;
     }
 
-    /* Group by month if showing all */
     let html = '';
+
     if (_activeMonth === 'all') {
-        const byMonth = {};
-        filtered.forEach(h => {
+        /* Group by month */
+        const byM = {};
+        data.forEach(h => {
             const m = parseInt(h.start.split('-')[1]);
-            (byMonth[m] = byMonth[m] || []).push(h);
+            (byM[m] = byM[m] || []).push(h);
         });
-        Object.keys(byMonth).sort((a,b) => a-b).forEach(m => {
-            html += `<div class="month-heading">${MONTHS[m]} 2026</div>`;
-            html += byMonth[m].map(h => holidayRowHtml(h)).join('');
+        Object.keys(byM).sort((a,b) => a-b).forEach(m => {
+            html += `<div class="hp-mhead">${MONTHS[m]} 2026</div>`;
+            html += byM[m].map(rowHtml).join('');
         });
     } else {
-        html = filtered.map(h => holidayRowHtml(h)).join('');
+        html = data.map(rowHtml).join('');
     }
 
-    listEl.innerHTML = html;
+    el.innerHTML = html;
 }
 
-function holidayRowHtml(h) {
-    const accent  = ACCENT_CLASS[h.category] || 'hr-accent-religious';
-    const catIcon = CAT_ICONS[h.category] || '📌';
+function rowHtml(h) {
+    const c       = ct(h.category);
     const moon    = h.moon_dep ? ' 🌙' : '';
-    const dateStr = formatDateRange(h.start, h.end);
+    const dateStr = fmtRange(h.start, h.end);
+    const rowCls  = h.status==='past' ? 'rpast' : h.status==='ongoing' ? 'rongoing' : '';
 
-    let statusBadge;
-    if (h.status === 'ongoing') {
-        statusBadge = '<span class="hr-status-badge hsb-ongoing">● Ongoing</span>';
-    } else if (h.status === 'past') {
-        statusBadge = '<span class="hr-status-badge hsb-past">Completed</span>';
-    } else if (h.days_until <= 7) {
-        statusBadge = `<span class="hr-status-badge hsb-soon">${h.days_until}d away</span>`;
-    } else {
-        statusBadge = `<span class="hr-status-badge hsb-upcoming">${h.days_until}d</span>`;
-    }
-
-    const rowClass = h.status === 'past' ? 'hr-past' : h.status === 'ongoing' ? 'hr-ongoing' : '';
+    let badge;
+    if      (h.status === 'ongoing')                        badge = '<span class="hr-badge hbg-ongoing">● Ongoing</span>';
+    else if (h.status === 'past')                           badge = '<span class="hr-badge hbg-past">Completed</span>';
+    else if (h.days_until !== undefined && h.days_until<=7) badge = `<span class="hr-badge hbg-soon7">${h.days_until}d away</span>`;
+    else                                                    badge = `<span class="hr-badge hbg-upcoming">${h.days_until??''}d</span>`;
 
     return `
-    <div class="hol-row ${rowClass}">
-        <div class="hr-accent ${accent}"></div>
+    <div class="hp-row ${rowCls}">
+        <div class="hr-bar ${c.bar}"></div>
         <div class="hr-body">
-            <div class="hr-icon">${catIcon}</div>
+            <div class="hr-ico">${c.icon}</div>
             <div class="hr-info">
                 <div class="hr-name">${h.name_en}${moon}</div>
                 <div class="hr-name-bn">${h.name_bn}</div>
-                <div class="hr-date-str">📅 ${dateStr}</div>
+                <div class="hr-date-s">📅 ${dateStr}</div>
             </div>
         </div>
         <div class="hr-right">
-            <div class="hr-days">${h.days_class || '—'}</div>
-            <div class="hr-days-lbl">class days</div>
-            ${statusBadge}
+            <div class="hr-days-n" style="color:${c.dayn}">${h.days_class??'—'}</div>
+            <div class="hr-days-l">class days</div>
+            ${badge}
         </div>
     </div>`;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────── */
-function formatDateRange(start, end) {
-    const s = new Date(start + 'T00:00:00');
-    const e = new Date(end   + 'T00:00:00');
-    const sm = MONTH_SHORT[s.getMonth()+1];
-    if (start === end) return `${s.getDate()} ${sm} 2026`;
-    const em = MONTH_SHORT[e.getMonth()+1];
-    return `${s.getDate()} ${sm} – ${e.getDate()} ${em} 2026`;
-}
-
-function highlightCurrentMonth() {
-    const m = new Date().getMonth() + 1;
-    /* Auto-scroll to current month tab but don't filter */
-    const tab = document.querySelector(`[data-m="${m}"]`);
-    if (tab) tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-}
-
 /* ── Filters ─────────────────────────────────────────────────── */
-function filterMonth(m) {
+function fMonth(m) {
     _activeMonth = m;
-    document.querySelectorAll('.month-tab').forEach(b => b.classList.remove('m-on'));
-    document.querySelector(`[data-m="${m}"]`).classList.add('m-on');
+    document.querySelectorAll('.hp-mtab').forEach(b => b.classList.remove('mon'));
+    document.querySelector(`[data-m="${m}"]`).classList.add('mon');
     renderList();
 }
 
-function filterCat(c) {
+function fCat(c) {
     _activeCat = c;
-    document.querySelectorAll('.cat-f').forEach(b => b.classList.remove('c-on'));
-    document.querySelector(`[data-c="${c}"]`).classList.add('c-on');
+    document.querySelectorAll('.hp-chip').forEach(b => {
+        b.classList.remove('chon');
+        /* Restore category tint on non-active chips */
+        if (b.dataset.c !== 'all' && b.dataset.c !== c) {
+            const col = ({religious:'#BC6F37',national:'#2563EB',
+                          academic:'#16A34A',cultural:'#B45309'})[b.dataset.c];
+            if (col) { b.style.borderColor = col+'4D'; b.style.color = col; }
+        }
+    });
+    const active = document.querySelector(`[data-c="${c}"]`);
+    if (active) {
+        active.classList.add('chon');
+        active.style.borderColor = '';
+        active.style.color       = '';
+    }
     renderList();
+}
+
+function scrollToCurrentMonth() {
+    const m   = new Date().getMonth() + 1;
+    const tab = document.querySelector(`[data-m="${m}"]`);
+    if (tab) tab.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
 }
 
 /* ── Boot ────────────────────────────────────────────────────── */
-loadHolidays();
+load();
 </script>
 {% endblock %}

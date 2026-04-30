@@ -369,13 +369,32 @@ document.addEventListener('DOMContentLoaded', function () {
 /* ── Holiday banner ────────────────────────────────────────── */
 async function _checkHoliday() {
   try {
+    // Check 1: BD Government public holiday
     var today = new Date().toISOString().split('T')[0];
     var res   = await fetch('/academic/api/holiday-check?date=' + today);
-    if (!res.ok) return;
-    var data  = await res.json();
-    if (data.is_holiday) {
+    if (res.ok) {
+      var data = await res.json();
+      if (data.is_holiday) {
+        document.getElementById('holidayBanner').classList.remove('hidden');
+        document.getElementById('holidayBannerName').textContent = data.name || 'Public Holiday';
+        return; // already showing, no need to check further
+      }
+    }
+  } catch(e) {}
+
+  try {
+    // Check 2: RUB Academic Calendar multi-day holidays (Eid, Durga Puja, vacation etc.)
+    var res2 = await fetch('/holidays/api/holidays');
+    if (!res2.ok) return;
+    var hdata = await res2.json();
+    var todayStr = new Date().toISOString().split('T')[0];
+    var ongoing = (hdata.data || []).find(function(h) {
+      return h.status === 'ongoing' && h.days_class > 0;
+    });
+    if (ongoing) {
       document.getElementById('holidayBanner').classList.remove('hidden');
-      document.getElementById('holidayBannerName').textContent = data.name || 'Public Holiday';
+      document.getElementById('holidayBannerName').textContent =
+        ongoing.name_en + (ongoing.days_left ? ' (' + ongoing.days_left + ' days left)' : '');
     }
   } catch(e) {}
 }
@@ -508,27 +527,37 @@ async function _loadDashNotices() {
   var cacheKey = 'dash_notices_' + (_user.program||'BBA') + '_' + (_user.year||1) + '_' + (_user.semester||1);
 
   try {
+    // FIXED: include program + year + semester so server can filter batch-aware.
+    // The server (notices/routes.py) now correctly includes central notices
+    // (target_year=NULL) even when year/semester params are provided.
     var params = new URLSearchParams({
-      program:  _user.program  || 'BBA',
-      year:     _user.year     || 1,
-      semester: _user.semester || 1,
-      limit:    3,
+      program:  _user.program  || '',
+      year:     _user.year     || '',
+      semester: _user.semester || '',
+      limit:    10,             // fetch more, then slice to 3 after batch filter
     });
     var res  = await fetch('/notices/api/notices?' + params);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
 
     if (data.success) {
-      // Sort by created_at desc (newest first)
-      var notices = (data.data || []).sort(function(a, b) {
-        return new Date(b.created_at) - new Date(a.created_at);
-      }).slice(0, 3);
+      // Sort newest first, take top 3
+      var notices = (data.data || [])
+        .sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+        .slice(0, 3);
 
-      localStorage.setItem(cacheKey, JSON.stringify(notices));
+      localStorage.setItem(cacheKey, JSON.stringify({ notices: notices, ts: Date.now() }));
       _renderDashNotices(notices);
+    } else {
+      throw new Error(data.error || 'Failed');
     }
   } catch(e) {
-    var cached = localStorage.getItem(cacheKey);
-    if (cached) { try { _renderDashNotices(JSON.parse(cached)); } catch(e2) {} }
+    // Offline fallback
+    try {
+      var cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && cached.notices) _renderDashNotices(cached.notices);
+      else _renderDashNotices([]);
+    } catch(e2) { _renderDashNotices([]); }
   }
 }
 
