@@ -1,6 +1,9 @@
 """
 app/__init__.py — UniSync Flask Application
+
+BUG FIX: cr_bp was never registered — added import + register.
 """
+
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 from config import config
 import os
@@ -24,21 +27,24 @@ def create_app(config_name: str = None):
                   static_folder  =os.path.join(_root, 'static'))
     app.config.from_object(config[config_name])
 
-    from app.auth.routes             import auth_bp
-    from app.academic.routes         import academic_bp
-    from app.productivity.routes     import productivity_bp
-    from app.campus.routes           import campus_bp
-    from app.admin.routes            import admin_bp
-    from app.guest.routes            import guest_bp
-    from app.planner.routes          import planner_bp
-    from app.notices.routes          import notices_bp
-    from app.classmanagement.routes  import classmanagement_bp
-    from app.exams.routes            import exams_bp
-    from app.teachers.routes         import teachers_bp
-    from app.push.routes             import push_bp
-    from app.bus.routes              import bus_bp
-    from app.holidays.routes         import holidays_bp
+    # ── Blueprint imports ─────────────────────────────────────
+    from app.auth.routes            import auth_bp
+    from app.academic.routes        import academic_bp
+    from app.productivity.routes    import productivity_bp
+    from app.campus.routes          import campus_bp
+    from app.admin.routes           import admin_bp
+    from app.guest.routes           import guest_bp
+    from app.planner.routes         import planner_bp
+    from app.notices.routes         import notices_bp
+    from app.classmanagement.routes import classmanagement_bp
+    from app.exams.routes           import exams_bp
+    from app.teachers.routes        import teachers_bp
+    from app.push.routes            import push_bp
+    from app.bus.routes             import bus_bp
+    from app.holidays.routes        import holidays_bp
+    from app.cr.routes              import cr_bp          # FIX: was missing
 
+    # ── Blueprint registration ────────────────────────────────
     app.register_blueprint(auth_bp,             url_prefix='/auth')
     app.register_blueprint(academic_bp,         url_prefix='/academic')
     app.register_blueprint(productivity_bp,     url_prefix='/productivity')
@@ -50,9 +56,12 @@ def create_app(config_name: str = None):
     app.register_blueprint(classmanagement_bp,  url_prefix='/classmanagement')
     app.register_blueprint(exams_bp,            url_prefix='/exams')
     app.register_blueprint(teachers_bp,         url_prefix='/teachers')
-    app.register_blueprint(push_bp)  # /api/push/* and /api/cron/push-reminders
+    app.register_blueprint(push_bp)             # /api/push/* and /api/cron/push-reminders
     app.register_blueprint(bus_bp,              url_prefix='/bus')
     app.register_blueprint(holidays_bp,         url_prefix='/holidays')
+    app.register_blueprint(cr_bp,               url_prefix='/cr')  # FIX: was missing
+
+    # ── Core routes ───────────────────────────────────────────
 
     @app.route('/')
     def index():
@@ -85,6 +94,8 @@ def create_app(config_name: str = None):
             mimetype='application/manifest+json'
         )
 
+    # ── Diagnostic endpoints ──────────────────────────────────
+
     @app.route('/api/email-check')
     def email_check():
         from core.mailer import test_connection
@@ -112,29 +123,37 @@ def create_app(config_name: str = None):
             return jsonify({'ok': True, 'sent_to': to, 'id': result.get('id')})
         return jsonify({'ok': False, 'error': result.get('error')}), 500
 
+    # ── Daily email cron ──────────────────────────────────────
+
     @app.route('/api/cron/daily', methods=['GET', 'POST'])
     def cron_daily():
         from datetime import datetime, timedelta, timezone
         from core.mailer import send_daily_summary
+
         BST      = timezone(timedelta(hours=6))
         now_bst  = datetime.now(BST)
         tomorrow = (now_bst + timedelta(days=1)).date()
         day_name = tomorrow.strftime('%A')
         date_str = tomorrow.strftime('%d %b %Y')
         results  = {'sent': 0, 'skipped': 0, 'errors': [], 'day': day_name}
-        if day_name not in ['Sunday','Monday','Tuesday','Wednesday','Thursday']:
+
+        if day_name not in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']:
             return jsonify({'ok': True, 'reason': 'weekend', **results}), 200
+
         try:
             from core.supabase_client import get_supabase_admin
             from core.holidays        import is_holiday
+
             is_hol, _ = is_holiday(tomorrow)
-            sb    = get_supabase_admin()
-            users = sb.table('profiles').select('*').execute().data or []
+            sb         = get_supabase_admin()
+            users      = sb.table('profiles').select('*').execute().data or []
+
             for user in users:
                 email = (user.get('email') or '').strip()
                 if not email:
                     results['skipped'] += 1
                     continue
+
                 classes = []
                 if not is_hol:
                     try:
@@ -146,32 +165,49 @@ def create_app(config_name: str = None):
                     except Exception as e:
                         app.logger.error(f'[Cron] routines query error: {e}')
                         classes = []
+
                     for cls in classes:
                         try:
-                            c = sb.table('mappings').select('full_name').eq('code', cls.get('course_code', '')).execute()
+                            c = sb.table('mappings').select('full_name') \
+                                  .eq('code', cls.get('course_code', '')).execute()
                             cls['course_name'] = c.data[0]['full_name'] if c.data else cls.get('course_code', '')
                         except Exception:
                             cls['course_name'] = cls.get('course_code', '')
                         try:
-                            t = sb.table('mappings').select('full_name').eq('code', cls.get('teacher_code', '')).execute()
+                            t = sb.table('mappings').select('full_name') \
+                                  .eq('code', cls.get('teacher_code', '')).execute()
                             cls['teacher_name'] = t.data[0]['full_name'] if t.data else cls.get('teacher_code', '')
                         except Exception:
                             cls['teacher_name'] = cls.get('teacher_code', '')
                         cls['time_start_12h'] = _fmt12h(cls.get('time_start', ''))
                         cls['time_end_12h']   = _fmt12h(cls.get('time_end', ''))
+
                 try:
-                    tasks = sb.table('tasks').select('*').eq('user_id', user['id']).neq('status','done').order('deadline').execute().data or []
+                    tasks = sb.table('tasks').select('*') \
+                              .eq('user_id', user['id']) \
+                              .neq('status', 'done') \
+                              .order('deadline').execute().data or []
                 except Exception:
                     tasks = []
+
                 ok = send_daily_summary(
-                    to_email=email, user_name=user.get('full_name','Student'),
-                    classes=classes, tasks=tasks, date_str=f'{day_name}, {date_str}',
+                    to_email=email,
+                    user_name=user.get('full_name', 'Student'),
+                    classes=classes,
+                    tasks=tasks,
+                    date_str=f'{day_name}, {date_str}',
                 )
-                if ok: results['sent'] += 1
-                else:  results['errors'].append(email)
+                if ok:
+                    results['sent'] += 1
+                else:
+                    results['errors'].append(email)
+
         except Exception as e:
             results['errors'].append(str(e))
+
         return jsonify({'ok': True, **results}), 200
+
+    # ── Error handlers ────────────────────────────────────────
 
     @app.errorhandler(404)
     def not_found(e):
