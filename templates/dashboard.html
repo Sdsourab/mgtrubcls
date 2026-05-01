@@ -105,6 +105,11 @@
 .notice-dash-badge.extra_class  { background: rgba(56,161,105,.10); color: #276749; }
 .notice-dash-badge.exam         { background: rgba(214,158,46,.10); color: #B7791F; }
 .notice-dash-badge.urgent       { background: rgba(229,62,62,.15); color: #C53030; }
+.notice-dash-preview {
+  font-size: .78rem; color: var(--text-muted); margin: 5px 0 0;
+  line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
 
 .pwa-install-card__icon { font-size: 2rem; flex-shrink: 0; line-height: 1; }
 
@@ -581,8 +586,10 @@ function _renderDashNotices(notices) {
     var icon = TYPE_ICONS[type] || '📢';
     var lbl  = TYPE_LABELS[type] || 'Notice';
 
+    var preview = (n.content_text || '').trim();
     return '<div class="notice-card-dash type-' + type + '">'
       + '<div class="notice-dash-title">' + icon + ' ' + _escHtml(n.title || 'Notice') + '</div>'
+      + (preview ? '<div class="notice-dash-preview">' + _escHtml(preview) + '</div>' : '')
       + '<div class="notice-dash-meta">'
       + '<span class="notice-dash-badge ' + type + '">' + lbl + '</span>'
       + '<span>' + _escHtml(n.author_name || 'CR') + '</span>'
