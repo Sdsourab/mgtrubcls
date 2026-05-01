@@ -11,10 +11,6 @@ Holiday data: RUB Academic Calendar 2026
 
 from datetime import date
 
-# ─────────────────────────────────────────────────────────────
-# HOLIDAY DATA — 2026
-# Source: Rabindra University Bangladesh Academic Calendar
-# ─────────────────────────────────────────────────────────────
 HOLIDAYS = [
     {"id": "shab_e_miraj",       "name_en": "Shab-e-Miraj",
      "name_bn": "শব-ই-মিরাজ",
@@ -143,8 +139,6 @@ HOLIDAYS = [
 ]
 
 
-# ── Internal helpers ──────────────────────────────────────────
-
 def _total_days(h: dict) -> int:
     s = date.fromisoformat(h["start"])
     e = date.fromisoformat(h["end"])
@@ -158,17 +152,7 @@ def _threshold(total: int) -> int:
     return 1
 
 
-# ── Public API ────────────────────────────────────────────────
-
 def is_holiday(check_date: date) -> tuple:
-    """
-    Returns (True, holiday_name_en) if check_date falls within any
-    holiday range. Returns (False, '') otherwise.
-
-    Used by:
-      - app/academic/routes.py  — skip class schedule on holidays
-      - app/__init__.py cron    — skip daily email on holidays
-    """
     for h in HOLIDAYS:
         start = date.fromisoformat(h["start"])
         end   = date.fromisoformat(h["end"])
@@ -178,13 +162,6 @@ def is_holiday(check_date: date) -> tuple:
 
 
 def get_upcoming_holidays(days_ahead: int = 30) -> list:
-    """
-    Returns holidays whose start date is within the next `days_ahead`
-    days (inclusive of today), sorted by start date.
-
-    Used by:
-      - app/academic/routes.py  — /api/holiday-check endpoint
-    """
     today = date.today()
     result = []
     for h in HOLIDAYS:
@@ -205,13 +182,6 @@ def get_upcoming_holidays(days_ahead: int = 30) -> list:
 
 
 def get_all_enriched() -> list:
-    """
-    Returns all holidays enriched with status, countdown, days_until,
-    days_left, show_countdown, total_days, countdown_threshold.
-
-    Used by:
-      - app/holidays/routes.py
-    """
     today = date.today()
     result = []
     for h in HOLIDAYS:
@@ -223,9 +193,8 @@ def get_all_enriched() -> list:
 
         out["total_days"]          = total
         out["countdown_threshold"] = thr
-
-        days_until     = (start - today).days
-        out["days_until"] = days_until
+        days_until                 = (start - today).days
+        out["days_until"]          = days_until
 
         if today > end:
             out["status"] = "past"
